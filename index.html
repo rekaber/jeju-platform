@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>제주 부동산 종합정보 플랫폼 MVP</title>
+
+<!-- 카카오맵 SDK -->
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=4d07c938f981753cdabafd6532b57da8&libraries=services"></script>
+<!-- Deck.gl (3D 히트맵) -->
+<script src="https://unpkg.com/deck.gl@8.9.35/dist.min.js"></script>
+
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/intro.css">
+</head>
+<body>
+
+<!-- ════════════════ 인트로 오버레이 ════════════════ -->
+<div id="intro-overlay">
+  <svg id="intro-waves" viewBox="0 0 1440 220" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,160 C240,220 480,100 720,150 C960,200 1200,120 1440,160 L1440,220 L0,220 Z" fill="rgba(13,148,136,0.08)"/>
+    <path d="M0,180 C300,140 600,200 900,170 C1100,150 1300,180 1440,190 L1440,220 L0,220 Z" fill="rgba(13,148,136,0.05)"/>
+  </svg>
+
+  <div id="intro-content">
+    <div class="intro-agency">
+      <div class="intro-agency-emblem">🏛️</div>
+      <div class="intro-agency-name">
+        <span class="en">KOREA REAL ESTATE BOARD</span>
+        <span class="ko">한국부동산원</span>
+      </div>
+    </div>
+    <div class="intro-divider"></div>
+    <div class="intro-catch">모두의 부동산</div>
+    <div class="intro-sub">제주특별자치도 부동산 플랫폼</div>
+    <div class="intro-desc">Real Estate for Everyone · Jeju</div>
+    <!-- 입장버튼 + 레비 가로 배치 -->
+    <div class="intro-btn-revi">
+      <button class="intro-enter-btn" onclick="dismissIntro()">플랫폼 입장 &nbsp;→</button>
+      <img id="intro-revi-img" src="./images/revi.png" alt="레비">
+    </div>
+  </div>
+
+  <div class="intro-tags">
+    <span>실거래 현황</span>
+    <span>토지 거래</span>
+    <span>미분양 현황</span>
+    <span>상업용 임대</span>
+    <span>인구이동</span>
+  </div>
+  <div class="intro-ver">MVP v2.0</div>
+</div>
+<!-- ════════════════ /인트로 오버레이 ════════════════ -->
+
+<div id="topbar">
+  <div class="logo">제주 부동산 플랫폼 <span>MVP v2.0 · Kakao</span></div>
+  <div class="topbar-sep"></div>
+  <div id="search-wrap">
+    <input id="search-input" type="text" placeholder="주소 또는 장소 검색 (예: 제주시 연동 1234)">
+    <button id="search-btn">🔍 검색</button>
+  </div>
+  <div class="topbar-sep"></div>
+  <button class="map-type-btn active" id="btn-roadmap" onclick="setMapType('ROADMAP',this)">일반</button>
+  <button class="map-type-btn" id="btn-skyview" onclick="setMapType('SKYVIEW',this)">위성</button>
+  <button class="map-type-btn" id="btn-hybrid" onclick="setMapType('HYBRID',this)">하이브리드</button>
+  <div id="coord-display">위도: — 경도: —</div>
+</div>
+
+<div id="search-results"></div>
+
+<div id="main">
+  <!-- 레이어 패널 -->
+  <div id="layer-panel">
+    <div id="layer-panel-header">
+      <span>레이어 관리</span>
+      <span class="cnt" id="active-layer-cnt">0</span>
+    </div>
+    <div id="layer-body">
+
+      <div class="layer-group">
+        <div class="layer-group-title">🗺 지도 레이어</div>
+        <div class="layer-item">
+          <div class="layer-dot" style="background:#607D8B"></div>
+          <span class="layer-label">카카오맵 (기본)</span>
+          <div class="layer-toggle on" style="pointer-events:none;opacity:0.5"></div>
+        </div>
+        <div class="layer-item">
+          <div class="layer-dot" style="background:#1565C0"></div>
+          <span class="layer-label">지적편집도 (용도지역)</span>
+          <div class="layer-toggle" id="toggle-zoning" onclick="toggleZoning(this)"></div>
+        </div>
+        <div class="layer-opacity-row">
+          <input type="range" min="10" max="100" value="60" oninput="setZoningOpacity(this.value)">
+        </div>
+      </div>
+
+      <div class="layer-group">
+        <div class="layer-group-title">🏠 아파트 실거래</div>
+        <div class="layer-item">
+          <div class="layer-dot" style="background:#1976D2; border-radius:50%;"></div>
+          <span class="layer-label">실거래 내역
+            <span id="trade-cnt-badge" style="background:#1976D2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0</span>
+          </span>
+          <div class="layer-toggle" id="toggle-trade" onclick="toggleTrade(this)"></div>
+        </div>
+        <div class="trade-filter-row" id="trade-filter-row" style="opacity:0.4;pointer-events:none;">
+          <button class="trade-filter-btn active" onclick="setTradePeriod('week',this)">주간</button>
+          <button class="trade-filter-btn" onclick="setTradePeriod('month',this)">월간</button>
+          <button class="trade-filter-btn" onclick="setTradePeriod('year',this)">연간</button>
+          <button class="trade-filter-btn" onclick="setTradePeriod('pick',this)">월 선택</button>
+        </div>
+        <!-- 월 선택 피커 -->
+        <div id="trade-month-picker" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
+          <div style="display:flex;flex-wrap:wrap;gap:3px;">
+            <button class="tmp-btn active" onclick="setTradeMonth('all',this)">전체</button>
+            <button class="tmp-btn" onclick="setTradeMonth('202601',this)">1월</button>
+            <button class="tmp-btn" onclick="setTradeMonth('202602',this)">2월</button>
+            <button class="tmp-btn" onclick="setTradeMonth('202603',this)">3월</button>
+            <button class="tmp-btn" onclick="setTradeMonth('202604',this)">4월</button>
+            <button class="tmp-btn" onclick="setTradeMonth('202605',this)">5월</button>
+            <button class="tmp-btn" onclick="setTradeMonth('202606',this)">6월</button>
+            <button class="tmp-btn" onclick="setTradeMonth('202607',this)">7월</button>
+            <button class="tmp-btn" onclick="setTradeMonth('202608',this)">8월</button>
+          </div>
+        </div>
+        <div style="padding:0 6px 2px 25px;font-size:10px;color:#999;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#43A047;margin-right:3px;"></span>~3억
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#FB8C00;margin:0 3px 0 8px;"></span>3~6억
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#E53935;margin:0 3px 0 8px;"></span>6억+
+        </div>
+        <div class="layer-item" style="margin-top:2px;">
+          <div class="layer-dot" style="background:#00897B; border-radius:50%;"></div>
+          <span class="layer-label">지역별 거래현황</span>
+          <div class="layer-toggle" id="toggle-bubble" onclick="toggleBubble(this)"></div>
+        </div>
+        <div id="bubble-period-wrap" style="padding:2px 6px 6px 25px;display:none;">
+          <div style="font-size:10px;color:#888;margin-bottom:3px;">표시 기간</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <button class="bubble-period-btn active" onclick="setBubblePeriod('year',this)">올해</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriod('6m',this)">6개월</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriod('3m',this)">3개월</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriod('month',this)">1개월</button>
+          </div>
+        </div>
+        <button id="trade-data-btn" onclick="openDataModal()">
+          <span>📂</span> 실거래 데이터 연결
+        </button>
+        <div id="trade-data-source">샘플 데이터 사용 중</div>
+        <div id="trade-chart-wrap">
+          <div class="tc-title">
+            <span>📈 월별 평균 거래가</span>
+            <button class="tc-detail-btn" onclick="openStatModal()">상세 통계 ↗</button>
+          </div>
+          <svg id="trade-chart-svg" viewBox="0 0 228 90" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+      </div>
+
+      <div class="layer-group">
+        <div class="layer-group-title">🧊 3D 거래가 히트맵</div>
+        <div class="layer-item">
+          <div class="layer-dot" style="background:linear-gradient(135deg,#22c55e,#ef4444);border-radius:3px;"></div>
+          <span class="layer-label">아파트 3D 히트맵<br><span style="font-size:10px;color:#7dd3c8;">높을수록 평균 거래가 ↑</span></span>
+          <div class="layer-toggle" id="toggle-deck3d" onclick="toggleDeck3D(this)"></div>
+        </div>
+      </div>
+
+      <div class="layer-group">
+        <div class="layer-group-title">🌱 토지 실거래</div>
+        <div class="layer-item">
+          <div class="layer-dot" style="background:#5D4037; border-radius:2px;"></div>
+          <span class="layer-label">토지 실거래 마커</span>
+          <div class="layer-toggle" id="toggle-land" onclick="toggleLand(this)"></div>
+        </div>
+        <div id="land-filter-wrap" style="padding:4px 6px 6px 25px; display:none;">
+          <div style="font-size:10px;color:#888;margin-bottom:3px;">지목 필터</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;">
+            <button class="land-jimok-btn active" onclick="setLandJimok('all',this)">전체</button>
+            <button class="land-jimok-btn" onclick="setLandJimok('dae',this)">대지</button>
+            <button class="land-jimok-btn" onclick="setLandJimok('farm',this)">전·답·과수원</button>
+            <button class="land-jimok-btn" onclick="setLandJimok('imya',this)">임야</button>
+            <button class="land-jimok-btn" onclick="setLandJimok('etc',this)">기타</button>
+          </div>
+          <div style="font-size:10px;color:#888;margin-bottom:3px;">기간</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <button class="land-pd-btn active" onclick="setLandPeriod('year',this)">올해</button>
+            <button class="land-pd-btn" onclick="setLandPeriod('6m',this)">6개월</button>
+            <button class="land-pd-btn" onclick="setLandPeriod('3m',this)">3개월</button>
+            <button class="land-pd-btn" onclick="setLandPeriod('month',this)">1개월</button>
+          </div>
+          <div id="land-data-source" style="font-size:10px;color:#aaa;margin-top:5px;"></div>
+          <button class="tc-detail-btn" onclick="openLandStatModal()" style="margin-top:6px;width:100%;">📊 토지 통계 ↗</button>
+        </div>
+      </div>
+
+      <div class="layer-group">
+        <div class="layer-group-title">🏗 미분양</div>
+        <div class="layer-item">
+          <div class="layer-dot" style="background:#7B1FA2; border-radius:50%;"></div>
+          <span class="layer-label">미분양 물건
+            <span id="unsold-cnt-badge" style="background:#7B1FA2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;"></span>
+          </span>
+          <div class="layer-toggle" id="toggle-unsold" onclick="toggleUnsold(this)"></div>
+        </div>
+        <div style="padding:2px 6px 4px 25px;font-size:10px;color:#999;">실제 확인 단지 · 마커 클릭 시 상세</div>
+        <div class="layer-opacity-row">
+          <input type="range" min="10" max="100" value="100" oninput="setUnsoldOpacity(this.value)">
+        </div>
+      </div>
+
+      <div class="layer-group">
+        <div class="layer-group-title">📊 시장 분석</div>
+        <div class="layer-item" onclick="openJigaModal()" style="cursor:pointer;">
+          <div class="layer-dot" style="background:#388E3C; border-radius:2px;"></div>
+          <span class="layer-label">지가변동률 (분기별)</span>
+          <span style="font-size:11px;color:#2E75B6;font-weight:600;">열기 ↗</span>
+        </div>
+        <div class="layer-item" onclick="openImdeModal()" style="cursor:pointer;">
+          <div class="layer-dot" style="background:#F57C00; border-radius:2px;"></div>
+          <span class="layer-label">상업용 임대시장</span>
+          <span style="font-size:11px;color:#2E75B6;font-weight:600;">열기 ↗</span>
+        </div>
+        <div class="layer-item" onclick="openStatModal()" style="cursor:pointer;">
+          <div class="layer-dot" style="background:#1976D2; border-radius:2px;"></div>
+          <span class="layer-label">아파트 실거래 통계</span>
+          <span style="font-size:11px;color:#2E75B6;font-weight:600;">열기 ↗</span>
+        </div>
+        <div class="layer-item" onclick="openLandStatModal()" style="cursor:pointer;">
+          <div class="layer-dot" style="background:#5D4037; border-radius:2px;"></div>
+          <span class="layer-label">토지 실거래 통계</span>
+          <span style="font-size:11px;color:#2E75B6;font-weight:600;">열기 ↗</span>
+        </div>
+      </div>
+
+      <div class="layer-group">
+        <div class="layer-group-title">🧭 인구이동</div>
+        <div class="layer-item" id="migration-out-btn" onclick="toggleMigration('out',this)">
+          <div class="layer-dot" style="background:#E53935; border-radius:2px;"></div>
+          <span class="layer-label">전출현황 (제주→타지역)</span>
+          <div class="layer-toggle" id="toggle-mig-out"></div>
+        </div>
+        <div class="layer-item" id="migration-in-btn" onclick="toggleMigration('in',this)">
+          <div class="layer-dot" style="background:#1976D2; border-radius:2px;"></div>
+          <span class="layer-label">전입현황 (타지역→제주)</span>
+          <div class="layer-toggle" id="toggle-mig-in"></div>
+        </div>
+        <div class="layer-item" onclick="openMigrationModal()" style="cursor:pointer;">
+          <div class="layer-dot" style="background:#7B1FA2; border-radius:2px;"></div>
+          <span class="layer-label">인구이동 통계</span>
+          <span style="font-size:11px;color:#2E75B6;font-weight:600;">열기 ↗</span>
+        </div>
+      </div>
+
+      <div class="layer-group">
+        <div class="layer-group-title">🔧 분석 도구</div>
+        <div class="layer-item" id="cadastral-menu-btn" onclick="toggleCadastralPanel(this)">
+          <div class="layer-dot" style="background:#2E75B6;"></div>
+          <span class="layer-label">토지필지 형상 분석기</span>
+          <div class="layer-toggle" id="toggle-cadastral"></div>
+        </div>
+        <div style="padding:2px 6px 4px 25px;font-size:10px;color:#999;">지도 내 패널로 열림 · 연속지적도 기반</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 패널 토글 버튼 -->
+  <button id="panel-toggle" onclick="togglePanel()">◀</button>
+
+  <!-- 지도 영역 -->
+  <div id="map-wrap">
+    <div id="map"></div>
+    <svg id="migration-svg-overlay" xmlns="http://www.w3.org/2000/svg"></svg>
+    <!-- 용도지역 오버레이 -->
+    <div id="zoning-overlay"></div>
+    <!-- 용도지역 범례 -->
+    <div id="zoning-legend">
+      <div class="zl-title">🗺 지적편집도 범례</div>
+      <div class="zl-row"><div class="zl-dot" style="background:#F4A460;"></div><span class="zl-lbl">전·답 (농경지)</span></div>
+      <div class="zl-row"><div class="zl-dot" style="background:#8FBC8F;"></div><span class="zl-lbl">임야·녹지</span></div>
+      <div class="zl-row"><div class="zl-dot" style="background:#FFB6C1;"></div><span class="zl-lbl">대지 (주거)</span></div>
+      <div class="zl-row"><div class="zl-dot" style="background:#FFA500;"></div><span class="zl-lbl">상업·업무용지</span></div>
+      <div class="zl-row"><div class="zl-dot" style="background:#DDA0DD;"></div><span class="zl-lbl">공장·산업용지</span></div>
+      <div class="zl-row"><div class="zl-dot" style="background:#B0C4DE;"></div><span class="zl-lbl">도로·공공시설</span></div>
+      <div class="zl-row"><div class="zl-dot" style="background:#87CEEB;"></div><span class="zl-lbl">하천·수면</span></div>
+    </div>
+    <!-- 미분양 팝업 -->
+    <div id="unsold-popup">
+      <div class="up-header">
+        <span class="up-title" id="up-title"></span>
+        <button class="up-close" onclick="closeUnsoldPopup()">×</button>
+      </div>
+      <div class="up-body">
+        <div id="up-addr" class="up-addr"></div>
+        <div id="up-tag-wrap"></div>
+        <div id="up-grid" class="up-grid"></div>
+      </div>
+      <div class="up-arrow"></div>
+    </div>
+    <!-- 실거래 팝업 -->
+    <div id="trade-popup">
+      <button class="tp-close" onclick="document.getElementById('trade-popup').style.display='none'">×</button>
+      <div class="tp-name" id="tp-name"></div>
+      <div class="tp-addr" id="tp-addr"></div>
+      <div class="tp-price" id="tp-price"></div>
+      <div class="tp-meta" id="tp-meta"></div>
+      <div class="tp-arrow"></div>
+    </div>
+
+    <div id="toast"></div>
+    <div id="stat-tooltip"></div>
+    <!-- 토지 팝업 -->
+    <div id="land-popup">
+      <button class="lp-close" onclick="document.getElementById('land-popup').style.display='none'">×</button>
+      <div class="lp-jimok" id="lp-jimok"></div>
+      <div class="lp-addr" id="lp-addr"></div>
+      <div class="lp-price" id="lp-price"></div>
+      <div class="lp-meta" id="lp-meta"></div>
+    </div>
+
+    <!-- 실거래 통계 모달 -->
+    <div id="stat-modal">
+      <div id="stat-modal-inner">
+        <div id="stat-modal-hd">
+          <h2>📊 제주 아파트 실거래 통계 (2026년)</h2>
+          <button class="sm-close" onclick="closeStatModal()">✕</button>
+        </div>
+        <div id="stat-modal-body">
+          <!-- 지역 필터 -->
+          <div class="sm-region-tabs">
+            <button class="sm-region-tab active-all" onclick="setStatRegion('all',this)">🏝 전체</button>
+            <button class="sm-region-tab" onclick="setStatRegion('jeju',this)">🔵 제주시</button>
+            <button class="sm-region-tab" onclick="setStatRegion('seo',this)">🟠 서귀포시</button>
+          </div>
+          <!-- 데이터 유형 탭 -->
+          <div class="sm-tabs">
+            <button class="sm-tab active" onclick="setStatTab('pyung',this)">평형당 단가 (만원/평)</button>
+            <button class="sm-tab" onclick="setStatTab('total',this)">평균 거래금액 (억)</button>
+            <button class="sm-tab" onclick="setStatTab('count',this)">월별 거래건수</button>
+          </div>
+          <div class="sm-summary" id="sm-summary"></div>
+          <div id="stat-chart-wrap">
+            <svg id="stat-chart-main" viewBox="0 0 840 300" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
+          <div class="sm-legend" id="sm-legend"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 토지 실거래 통계 모달 -->
+    <div id="land-stat-modal">
+      <div id="land-stat-modal-inner">
+        <div id="land-stat-modal-hd">
+          <h2>📊 제주 토지 실거래 통계 (2026년)</h2>
+          <button class="sm-close" onclick="closeLandStatModal()">✕</button>
+        </div>
+        <div id="land-stat-modal-body">
+          <div class="sm-region-tabs">
+            <button class="lsm-region-tab active-all" onclick="setLandStatRegion('all',this)">🏝 전체</button>
+            <button class="lsm-region-tab" onclick="setLandStatRegion('jeju',this)">🔵 제주시</button>
+            <button class="lsm-region-tab" onclick="setLandStatRegion('seo',this)">🟠 서귀포시</button>
+          </div>
+          <div class="sm-tabs" style="margin-bottom:8px;">
+            <button class="lsm-jimok-tab active" onclick="setLandStatJimok('all',this)">전체 지목</button>
+            <button class="lsm-jimok-tab" onclick="setLandStatJimok('dae',this)">대지</button>
+            <button class="lsm-jimok-tab" onclick="setLandStatJimok('farm',this)">전·답·과수원</button>
+            <button class="lsm-jimok-tab" onclick="setLandStatJimok('imya',this)">임야</button>
+            <button class="lsm-jimok-tab" onclick="setLandStatJimok('etc',this)">기타</button>
+          </div>
+          <div class="sm-tabs">
+            <button class="lsm-tab active" onclick="setLandStatTab('perm2',this)">㎡당 단가 (만원/㎡)</button>
+            <button class="lsm-tab" onclick="setLandStatTab('total',this)">평균 거래금액 (억)</button>
+            <button class="lsm-tab" onclick="setLandStatTab('count',this)">월별 거래건수</button>
+          </div>
+          <div class="sm-summary" id="lsm-summary"></div>
+          <div id="land-stat-chart-wrap">
+            <svg id="land-stat-chart-main" viewBox="0 0 840 300" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
+          <div class="sm-legend" id="lsm-legend"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 인구이동 통계 모달 -->
+    <div id="mig-modal">
+      <div id="mig-modal-inner">
+        <div id="mig-modal-hd">
+          <h2>🧭 제주 인구이동 현황 (2026년)</h2>
+          <button class="sm-close" onclick="closeMigrationModal()">✕</button>
+        </div>
+        <div id="mig-modal-body">
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+            <div class="sm-tabs" style="margin-bottom:0;">
+              <button class="mig-tab active" onclick="setMigTab('trend',this)">월별 추이</button>
+              <button class="mig-tab" onclick="setMigTab('out',this)">전출 지역별</button>
+              <button class="mig-tab" onclick="setMigTab('in',this)">전입 지역별</button>
+              <button class="mig-tab" onclick="setMigTab('net',this)">순이동</button>
+            </div>
+            <div id="mig-year-tabs" style="display:flex;gap:4px;">
+              <button class="mig-year-btn active" onclick="setMigYear('all',this)" style="padding:4px 10px;border-radius:12px;border:1px solid #7B1FA2;font-size:11px;cursor:pointer;background:#7B1FA2;color:#fff;">전체</button>
+              <button class="mig-year-btn" onclick="setMigYear('2024',this)" style="padding:4px 10px;border-radius:12px;border:1px solid #D0D7E2;font-size:11px;cursor:pointer;background:#fff;color:#555;">2024년</button>
+              <button class="mig-year-btn" onclick="setMigYear('2025',this)" style="padding:4px 10px;border-radius:12px;border:1px solid #D0D7E2;font-size:11px;cursor:pointer;background:#fff;color:#555;">2025년</button>
+              <button class="mig-year-btn" onclick="setMigYear('2026',this)" style="padding:4px 10px;border-radius:12px;border:1px solid #D0D7E2;font-size:11px;cursor:pointer;background:#fff;color:#555;">2026년</button>
+            </div>
+          </div>
+          <div class="mig-kpi" id="mig-kpi"></div>
+          <div id="mig-chart-wrap">
+            <svg id="mig-chart-main" viewBox="0 0 840 300" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
+          <div id="mig-table-wrap"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 지가변동률 모달 -->
+    <div id="jiga-modal">
+      <div id="jiga-modal-inner">
+        <div id="jiga-modal-hd">
+          <h2>📈 제주 지가변동률 (2021Q1~2026Q2)</h2>
+          <button class="sm-close" onclick="closeJigaModal()">✕</button>
+        </div>
+        <div style="padding:16px 20px 20px;">
+          <div class="sm-region-tabs" style="margin-bottom:10px;">
+            <button class="jiga-region-tab active-all" onclick="setJigaRegion('제주전체',this)">🏝 제주 전체</button>
+            <button class="jiga-region-tab" onclick="setJigaRegion('제주시',this)">🔵 제주시</button>
+            <button class="jiga-region-tab" onclick="setJigaRegion('서귀포시',this)">🟠 서귀포시</button>
+          </div>
+          <div class="sm-tabs" style="margin-bottom:8px;">
+            <button class="jiga-cat-tab active" onclick="setJigaCat('평균',this)">전체 평균</button>
+            <button class="jiga-cat-tab" onclick="setJigaCat('용도지역',this)">용도지역별</button>
+            <button class="jiga-cat-tab" onclick="setJigaCat('이용상황',this)">이용상황별</button>
+          </div>
+          <div id="jiga-sub-wrap" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px;"></div>
+          <div class="sm-summary" id="jiga-kpi"></div>
+          <div style="background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:12px 8px 4px;">
+            <svg id="jiga-chart" viewBox="0 0 840 280" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
+          <div class="sm-legend" id="jiga-legend"></div>
+          <div style="font-size:10px;color:#aaa;margin-top:8px;text-align:right;">출처: 한국부동산원 지가변동률 (단위: %)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 상업용 임대시장 모달 -->
+    <div id="imde-modal">
+      <div id="imde-modal-inner">
+        <div id="imde-modal-hd">
+          <h2>🏢 제주 상업용 임대시장 (2023Q1~2026Q2)</h2>
+          <button class="sm-close" onclick="closeImdeModal()">✕</button>
+        </div>
+        <div style="padding:16px 20px 20px;">
+          <div class="sm-tabs" style="margin-bottom:8px;">
+            <button class="imde-sec-tab active" onclick="setImdeSec('임대가격지수',this)">임대가격지수</button>
+            <button class="imde-sec-tab" onclick="setImdeSec('공실률',this)">공실률 (%)</button>
+            <button class="imde-sec-tab" onclick="setImdeSec('투자수익률',this)">투자수익률 (%)</button>
+          </div>
+          <div class="sm-tabs" style="margin-bottom:12px;">
+            <button class="imde-cat-tab active" onclick="setImdeCat('오피스',this)">오피스</button>
+            <button class="imde-cat-tab" onclick="setImdeCat('중대형',this)">중대형</button>
+            <button class="imde-cat-tab" onclick="setImdeCat('소규모',this)">소규모</button>
+            <button class="imde-cat-tab" onclick="setImdeCat('집합',this)">집합</button>
+          </div>
+          <div class="sm-summary" id="imde-kpi"></div>
+          <div style="background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:12px 8px 4px;">
+            <svg id="imde-chart" viewBox="0 0 840 280" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
+          <div style="font-size:10px;color:#aaa;margin-top:8px;text-align:right;">출처: 한국부동산원 상업용부동산 임대동향조사 (기준: 2024.2Q=100)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 토지필지 형상 분석기 패널 -->
+    <div id="cadastral-panel">
+      <div id="cadastral-panel-header">
+        <span class="cp-title">🗺 토지필지 형상 분석기</span>
+        <button class="cp-close" onclick="closeCadastralPanel()">✕ 닫기</button>
+      </div>
+      <iframe id="cadastral-iframe" src="" allow="fullscreen"></iframe>
+    </div>
+  </div>
+
+  <!-- 우측 정보 패널 -->
+  <div id="info-panel">
+    <div class="ip-header">📊 제주 부동산 현황</div>
+    <div class="ip-body">
+      <div class="stat-chip">
+        <div class="sc-lbl">미분양 총계 (국토부)</div>
+        <div class="sc-val">2,909세대</div>
+        <div class="sc-chg up">▲ 제주시 1,910 · 서귀포 999</div>
+      </div>
+      <div class="stat-chip">
+        <div class="sc-lbl">제주 평균 아파트 매매가 (2026 상반기)</div>
+        <div class="sc-val">3.29억</div>
+        <div class="sc-chg" style="color:#888">제주시 3.47억 · 서귀포시 2.77억</div>
+      </div>
+      <div class="stat-chip">
+        <div class="sc-lbl">실거래 건수 (2026년 1~8월)</div>
+        <div class="sc-val">1,370건</div>
+        <div class="sc-chg" style="color:#888">제주시 1,029건 · 서귀포시 341건</div>
+      </div>
+      <div class="area-rank">
+        <div class="ar-title">지역별 평균 거래가 TOP 5</div>
+        <div class="rank-row"><span class="r-name">아라일동</span><span class="r-val">5.27억</span></div>
+        <div class="rank-row"><span class="r-name">월평동</span><span class="r-val">5.27억</span></div>
+        <div class="rank-row"><span class="r-name">도련이동</span><span class="r-val">5.09억</span></div>
+        <div class="rank-row"><span class="r-name">도련일동</span><span class="r-val">4.83억</span></div>
+        <div class="rank-row"><span class="r-name">노형동</span><span class="r-val">4.77억</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 데이터 연결 모달 -->
+<div id="data-modal-backdrop" onclick="if(event.target===this)closeDataModal()">
+  <div id="data-modal">
+    <div id="data-modal-head">
+      <h3>📂 실거래 데이터 연결</h3>
+      <button onclick="closeDataModal()">×</button>
+    </div>
+    <div class="dm-tabs">
+      <button class="dm-tab active" onclick="switchDmTab('csv',this)">CSV 파일 업로드</button>
+      <button class="dm-tab" onclick="switchDmTab('api',this)">공공데이터 API 연결</button>
+    </div>
+    <div class="dm-body">
+
+      <!-- CSV 탭 -->
+      <div class="dm-section active" id="dm-csv">
+        <div id="csv-dropzone" onclick="document.getElementById('csv-file-input').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleCsvDrop(event)">
+          <div class="dz-icon">📄</div>
+          <div class="dz-label">CSV 파일을 드래그하거나 클릭하여 선택</div>
+          <div class="dz-sub">국토부 실거래가 공개시스템에서 다운로드한 CSV</div>
+          <div class="dz-sub" style="margin-top:4px;color:#1976D2;font-size:10px;">rt.molit.go.kr → 제주 검색 → 엑셀 다운로드 → CSV로 저장</div>
+        </div>
+        <input type="file" id="csv-file-input" accept=".csv,.xlsx,.xls" onchange="handleCsvFile(this.files[0])">
+        <div id="csv-preview"></div>
+
+        <div style="background:#FFF8E1;border-radius:6px;padding:10px 12px;font-size:11px;color:#795548;margin-bottom:10px;">
+          <b>지원 컬럼 형식:</b> 시군구, 단지명, 전용면적, 거래금액, 계약년도, 계약월, 계약일, 도로명<br>
+          위경도가 없는 경우 주소로 자동 변환합니다 (카카오 지오코딩).
+        </div>
+      </div>
+
+      <!-- API 탭 -->
+      <div class="dm-section" id="dm-api">
+        <div class="dm-field">
+          <label>공공데이터포털 API 키 <span style="color:#E53935;">*</span></label>
+          <input type="text" id="api-key-input" placeholder="data.go.kr에서 발급받은 일반 인증키 (Encoding)">
+          <div class="hint">→ data.go.kr 로그인 → 마이페이지 → 인증키 확인</div>
+        </div>
+        <div class="dm-row2">
+          <div class="dm-field">
+            <label>지역 (법정동)</label>
+            <select id="api-region">
+              <option value="all">전체 (제주도)</option>
+              <optgroup label="제주시 전체">
+                <option value="50110">제주시 전체</option>
+              </optgroup>
+              <optgroup label="제주시 동 지역">
+                <option value="50110|일도일동">일도일동</option>
+                <option value="50110|일도이동">일도이동</option>
+                <option value="50110|이도일동">이도일동</option>
+                <option value="50110|이도이동">이도이동</option>
+                <option value="50110|삼도일동">삼도일동</option>
+                <option value="50110|삼도이동">삼도이동</option>
+                <option value="50110|용담일동">용담일동</option>
+                <option value="50110|용담이동">용담이동</option>
+                <option value="50110|건입동">건입동</option>
+                <option value="50110|화북일동">화북일동</option>
+                <option value="50110|화북이동">화북이동</option>
+                <option value="50110|삼양일동">삼양일동</option>
+                <option value="50110|삼양이동">삼양이동</option>
+                <option value="50110|삼양삼동">삼양삼동</option>
+                <option value="50110|봉개동">봉개동</option>
+                <option value="50110|아라일동">아라일동</option>
+                <option value="50110|아라이동">아라이동</option>
+                <option value="50110|오라일동">오라일동</option>
+                <option value="50110|오라이동">오라이동</option>
+                <option value="50110|오라삼동">오라삼동</option>
+                <option value="50110|연동">연동</option>
+                <option value="50110|노형동">노형동</option>
+                <option value="50110|외도일동">외도일동</option>
+                <option value="50110|외도이동">외도이동</option>
+                <option value="50110|이호일동">이호일동</option>
+                <option value="50110|이호이동">이호이동</option>
+                <option value="50110|도두일동">도두일동</option>
+                <option value="50110|도두이동">도두이동</option>
+                <option value="50110|도련일동">도련일동</option>
+                <option value="50110|도련이동">도련이동</option>
+                <option value="50110|용강동">용강동</option>
+                <option value="50110|회천동">회천동</option>
+                <option value="50110|오등동">오등동</option>
+              </optgroup>
+              <optgroup label="제주시 읍·면">
+                <option value="50110|애월읍">애월읍</option>
+                <option value="50110|한림읍">한림읍</option>
+                <option value="50110|한경면">한경면</option>
+                <option value="50110|조천읍">조천읍</option>
+                <option value="50110|구좌읍">구좌읍</option>
+                <option value="50110|우도면">우도면</option>
+                <option value="50110|추자면">추자면</option>
+              </optgroup>
+              <optgroup label="서귀포시 전체">
+                <option value="50130">서귀포시 전체</option>
+              </optgroup>
+              <optgroup label="서귀포시 동 지역">
+                <option value="50130|서귀동">서귀동</option>
+                <option value="50130|서홍동">서홍동</option>
+                <option value="50130|동홍동">동홍동</option>
+                <option value="50130|서호동">서호동</option>
+                <option value="50130|호근동">호근동</option>
+                <option value="50130|법환동">법환동</option>
+                <option value="50130|강정동">강정동</option>
+                <option value="50130|도순동">도순동</option>
+                <option value="50130|회수동">회수동</option>
+                <option value="50130|월평동">월평동</option>
+                <option value="50130|하원동">하원동</option>
+                <option value="50130|색달동">색달동</option>
+                <option value="50130|중문동">중문동</option>
+                <option value="50130|대포동">대포동</option>
+                <option value="50130|예래동">예래동</option>
+                <option value="50130|보목동">보목동</option>
+                <option value="50130|토평동">토평동</option>
+                <option value="50130|상효동">상효동</option>
+                <option value="50130|하효동">하효동</option>
+                <option value="50130|효돈동">효돈동</option>
+                <option value="50130|신효동">신효동</option>
+              </optgroup>
+              <optgroup label="서귀포시 읍·면">
+                <option value="50130|남원읍">남원읍</option>
+                <option value="50130|표선면">표선면</option>
+                <option value="50130|성산읍">성산읍</option>
+                <option value="50130|대정읍">대정읍</option>
+                <option value="50130|안덕면">안덕면</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="dm-field">
+            <label>조회 기간</label>
+            <select id="api-period">
+              <option value="1">최근 1개월</option>
+              <option value="3">최근 3개월</option>
+              <option value="6">최근 6개월</option>
+              <option value="12" selected>최근 12개월</option>
+            </select>
+          </div>
+        </div>
+        <div class="dm-field">
+          <label>거래 유형</label>
+          <select id="api-type">
+            <option value="apt">아파트 매매</option>
+            <option value="offi">오피스텔 매매</option>
+            <option value="house">단독/다가구</option>
+          </select>
+        </div>
+        <div style="background:#E3F2FD;border-radius:6px;padding:10px 12px;font-size:11px;color:#1565C0;margin-bottom:10px;">
+          <b>신청 방법:</b> data.go.kr → "국토교통부 아파트매매 실거래 상세 자료" 검색 → 활용신청 → 키 발급 (즉시~1일)<br>
+          브라우저 CORS 우회를 위해 allorigins.win 프록시를 경유합니다.
+        </div>
+      </div>
+
+      <!-- 공통 진행 표시 -->
+      <div id="dm-progress">
+        <div id="dm-progress-bar-wrap"><div id="dm-progress-bar"></div></div>
+        <div id="dm-progress-text">처리 중...</div>
+      </div>
+    </div>
+    <div id="data-modal-foot">
+      <button class="dm-btn secondary" onclick="closeDataModal()">취소</button>
+      <button class="dm-btn primary" id="dm-load-btn" onclick="loadTradeData()">불러오기</button>
+    </div>
+  </div>
+</div>
+
+
+  <!-- ═══ JavaScript 로드 순서 중요 ═══ -->
+  <script src="./js/intro.js"></script>
+  <script src="./js/config.js"></script>
+  <script src="./js/data.js"></script>
+  <script src="./js/supabase.js"></script>
+  <script src="./js/map.js"></script>
+  <script src="./js/data-modal.js"></script>
+  <script src="./js/bubble.js"></script>
+  <script src="./js/trade.js"></script>
+  <script src="./js/land.js"></script>
+  <script src="./js/unsold.js"></script>
+  <script src="./js/search.js"></script>
+  <script src="./js/migration.js"></script>
+  <script src="./js/jiga.js"></script>
+  <script src="./js/imde.js"></script>
+  <script src="./js/land-stat.js"></script>
+  <script src="./js/deck3d.js"></script>
+</body>
+</html>
