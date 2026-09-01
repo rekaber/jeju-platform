@@ -2,13 +2,19 @@
 /* ═══════════════════════════════════════════════
    주소 검색 (카카오 Geocoder + Places)
 ═══════════════════════════════════════════════ */
-const geocoder = new kakao.maps.services.Geocoder();
-const places   = new kakao.maps.services.Places();
+let geocoder = null;
+let places = null;
 let searchPinOverlay = null;
+
+kakao.maps.load(function() {
+  geocoder = new kakao.maps.services.Geocoder();
+  places   = new kakao.maps.services.Places();
+});
 
 function doSearch() {
   const q = document.getElementById('search-input').value.trim();
   if (!q) return;
+  if (!geocoder || !places) { showToast('검색 서비스 초기화 중입니다. 잠시 후 다시 시도해주세요.'); return; }
 
   // 도로명/지번 주소 우선
   geocoder.addressSearch(q, function(result, status) {
@@ -67,12 +73,10 @@ function selectResultItem(item) {
   document.getElementById('search-results').style.display = 'none';
   document.getElementById('search-input').value = item.name;
 
-  const pos = new kakao.maps.LatLng(item.lat, item.lng);
-  map.setCenter(pos);
-  map.setLevel(4);
+  map.flyTo({ center: [item.lng, item.lat], zoom: 16 });
 
   // 검색 핀
-  if (searchPinOverlay) searchPinOverlay.setMap(null);
+  if (searchPinOverlay) searchPinOverlay.remove();
   const pinEl = document.createElement('div');
   pinEl.className = 'search-pin-el';
   pinEl.innerHTML = `
@@ -81,12 +85,9 @@ function selectResultItem(item) {
       <circle cx="12" cy="8" r="4" fill="#fff"/>
     </svg>
     <div class="pin-label">${item.name}</div>`;
-  searchPinOverlay = new kakao.maps.CustomOverlay({
-    position: pos,
-    content: pinEl,
-    yAnchor: 1.0
-  });
-  searchPinOverlay.setMap(map);
+  searchPinOverlay = new maplibregl.Marker({ element: pinEl, anchor: 'bottom' })
+    .setLngLat([item.lng, item.lat]);
+  searchPinOverlay.addTo(map);
 }
 
 document.getElementById('search-btn').addEventListener('click', doSearch);

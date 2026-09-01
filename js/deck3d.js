@@ -1,43 +1,45 @@
-/* js/deck3d.js - 3D 거래가 히트맵 (Deck.gl + Kakao Maps) */
+/* js/deck3d.js - 3D 거래가 히트맵 (deck.Deck + MapLibre 카메라 완전 동기화) */
 
 let deckInstance = null;
 let deck3dActive = false;
 let deckContainer = null;
+let deckCanvas = null;
 
-/* Kakao 레벨 → Deck.gl zoom 변환 */
-function kakaoLevelToZoom(level) {
-  // Kakao level 1(최근접)~14(최원), deck zoom은 반대 방향
-  return 20 - level;
-}
-
-function getDeckViewState(pitch) {
+/* MapLibre 카메라를 그대로 읽어서 deck.gl에 전달 */
+function getDeckViewState() {
   const center = map.getCenter();
-  const level  = map.getLevel();
   return {
-    latitude:          center.getLat(),
-    longitude:         center.getLng(),
-    zoom:              kakaoLevelToZoom(level),
-    pitch:             pitch !== undefined ? pitch : (deck3dActive ? 50 : 0),
-    bearing:           0,
+    latitude:           center.lat,
+    longitude:          center.lng,
+    zoom:               map.getZoom(),
+    pitch:              map.getPitch(),    // MapLibre pitch 그대로
+    bearing:            map.getBearing(),  // MapLibre bearing 그대로
     transitionDuration: 0
   };
 }
 
 function syncDeckViewport() {
-  if (!deckInstance) return;
+  if (!deckInstance || !deck3dActive) return;
   deckInstance.setProps({ viewState: getDeckViewState() });
 }
 
-/* 데이터 레이어 생성 */
+/* 제주도 육지 범위 필터 (바다 포인트 제거) */
+const JEJU_BBOX = { minLat: 33.10, maxLat: 33.62, minLng: 126.08, maxLng: 126.96 };
+
 function buildLayers() {
   const raw = window.TRADE_DATA || [];
   if (!raw.length) return [];
 
   const data = raw
-    .filter(d => d.lat && d.lng && d.price)
+    .filter(d => {
+      const lat = parseFloat(d.lat), lng = parseFloat(d.lng);
+      return lat && lng && d.price
+        && lat >= JEJU_BBOX.minLat && lat <= JEJU_BBOX.maxLat
+        && lng >= JEJU_BBOX.minLng && lng <= JEJU_BBOX.maxLng;
+    })
     .map(d => ({
       position: [parseFloat(d.lng), parseFloat(d.lat)],
-      price:    parseFloat(d.price) * 10000  // 억 → 만원
+      price:    parseFloat(d.price) * 10000
     }));
 
   return [
@@ -47,34 +49,33 @@ function buildLayers() {
       getPosition:         d => d.position,
       getElevationWeight:  d => d.price,
       elevationAggregation:'MEAN',
-      elevationScale:      0.004,   // 높이 스케일 (값 조정 가능)
+      elevationScale:      0.012,   // 3D 기둥 높이
       extruded:            true,
-      radius:              400,     // 헥사곤 반경 (미터)
+      radius:              350,
       coverage:            0.85,
-      opacity:             0.75,
+      opacity:             0.82,
       colorRange: [
-        [34, 139, 87],
-        [90, 190, 100],
-        [251, 176, 59],
-        [238, 100, 65],
-        [200, 40, 40],
-        [130, 10, 10]
+        [34,  139,  87],
+        [90,  190, 100],
+        [251, 176,  59],
+        [238, 100,  65],
+        [200,  40,  40],
+        [130,  10,  10]
       ],
       material: {
-        ambient: 0.64,
-        diffuse: 0.6,
-        shininess: 32,
+        ambient:       0.64,
+        diffuse:       0.6,
+        shininess:     32,
         specularColor: [51, 51, 51]
       },
-      pickable: true,
-      onHover: info => showDeck3DTooltip(info)
+      pickable: true
     })
   ];
 }
 
 /* 툴팁 */
 let tooltipEl = null;
-function showDeck3DTooltip(info) {
+function showDeck3DTooltip(info, clientX, clientY) {
   if (!tooltipEl) {
     tooltipEl = document.createElement('div');
     tooltipEl.id = 'deck3d-tooltip';
@@ -87,13 +88,12 @@ function showDeck3DTooltip(info) {
     ].join(';');
     document.body.appendChild(tooltipEl);
   }
-
-  if (info.object) {
+  if (info && info.object) {
     const avg = (info.object.elevationValue / 10000).toFixed(2);
     const cnt = info.object.points.length;
     tooltipEl.style.display = 'block';
-    tooltipEl.style.left    = (info.x + 12) + 'px';
-    tooltipEl.style.top     = (info.y - 10) + 'px';
+    tooltipEl.style.left    = (clientX + 14) + 'px';
+    tooltipEl.style.top     = (clientY - 10) + 'px';
     tooltipEl.innerHTML = `
       <div style="color:#fff;margin-bottom:3px;">📍 평균 거래가</div>
       <div style="font-size:15px;">💰 ${avg}억 원</div>
@@ -109,30 +109,53 @@ function initDeck3D() {
   if (deckInstance) return;
 
   const mapDiv = document.getElementById('map');
-  mapDiv.style.position = 'relative';
+  const w = mapDiv.clientWidth;
+  const h = mapDiv.clientHeight;
 
   deckContainer = document.createElement('div');
   deckContainer.id = 'deck-overlay';
   deckContainer.style.cssText = [
     'position:absolute', 'top:0', 'left:0',
-    'width:100%', 'height:100%',
+    `width:${w}px`, `height:${h}px`,
     'pointer-events:none', 'z-index:5'
   ].join(';');
+  mapDiv.style.position = 'relative';
   mapDiv.appendChild(deckContainer);
 
-  deckInstance = new deck.DeckGL({
-    parent:          deckContainer,
-    style:           { position: 'absolute', left: 0, top: 0 },
-    controller:      false,
-    viewState:       getDeckViewState(50),
-    layers:          buildLayers(),
-    parameters:      { depthTest: true }
+  deckCanvas = document.createElement('canvas');
+  deckCanvas.width  = w;
+  deckCanvas.height = h;
+  deckCanvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
+  deckContainer.appendChild(deckCanvas);
+
+  deckInstance = new deck.Deck({
+    canvas:     deckCanvas,
+    width:      w,
+    height:     h,
+    controller: false,
+    viewState:  getDeckViewState(),
+    layers:     [],
+    parameters: { depthTest: true }
   });
 
-  // Kakao 이벤트 동기화
-  kakao.maps.event.addListener(map, 'center_changed', syncDeckViewport);
-  kakao.maps.event.addListener(map, 'zoom_changed',   syncDeckViewport);
-  kakao.maps.event.addListener(map, 'dragend',        syncDeckViewport);
+  // MapLibre 모든 카메라 이벤트 동기화
+  ['move', 'zoom', 'rotate', 'pitch', 'moveend', 'zoomend', 'pitchend', 'rotateend']
+    .forEach(evt => map.on(evt, syncDeckViewport));
+
+  // 툴팁
+  mapDiv.addEventListener('mousemove', e => {
+    if (!deck3dActive || !deckInstance) return;
+    const rect = mapDiv.getBoundingClientRect();
+    const info = deckInstance.pickObject({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+      radius: 6
+    });
+    showDeck3DTooltip(info, e.clientX, e.clientY);
+  });
+  mapDiv.addEventListener('mouseleave', () => {
+    if (tooltipEl) tooltipEl.style.display = 'none';
+  });
 }
 
 /* 토글 */
@@ -141,16 +164,26 @@ function toggleDeck3D(btn) {
   btn.classList.toggle('on', deck3dActive);
 
   if (deck3dActive) {
+    // 1. MapLibre 카메라를 50° 기울임 → 타일도 같이 기울어짐
+    map.easeTo({ pitch: 50, duration: 600 });
+
+    // 2. deck.gl 초기화 및 레이어 세팅 (기울기 완료 후 동기화)
     initDeck3D();
-    deckInstance.setProps({ layers: buildLayers(), viewState: getDeckViewState(50) });
-    if (deckContainer) deckContainer.style.pointerEvents = 'auto';
+    setTimeout(() => {
+      deckInstance.setProps({
+        layers:    buildLayers(),
+        viewState: getDeckViewState()
+      });
+      if (deckContainer) deckContainer.style.display = 'block';
+    }, 650);
+
   } else {
-    if (deckInstance) {
-      deckInstance.setProps({ layers: [] });
-    }
-    if (deckContainer) deckContainer.style.pointerEvents = 'none';
+    if (deckInstance)  deckInstance.setProps({ layers: [] });
+    if (deckContainer) deckContainer.style.display = 'none';
     if (tooltipEl)     tooltipEl.style.display = 'none';
+    // 지도 원래대로
+    map.easeTo({ pitch: 0, duration: 400 });
   }
 
-  updateActiveLayerCount();
+  if (typeof updateActiveLayerCount === 'function') updateActiveLayerCount();
 }

@@ -22,7 +22,7 @@ function toggleBubble(btn) {
 }
 
 function clearBubbles() {
-  bubbleOverlays.forEach(o => o.setMap(null));
+  bubbleOverlays.forEach(o => o.remove());
   bubbleOverlays = [];
 }
 
@@ -111,13 +111,9 @@ function renderBubbles() {
     el.style.transformOrigin = 'bottom center';
     el.title = `${s.sigungu} ${s.dong}\n${periodLabel} ${s.count}건\n평균 ${avgPrice.toFixed(2)}억 · 평당 ${perPyeongStr}`;
 
-    const ov = new kakao.maps.CustomOverlay({
-      position: new kakao.maps.LatLng(s.lat, s.lng),
-      content: el,
-      yAnchor: 1.18,
-      zIndex: 4
-    });
-    ov.setMap(map);
+    const ov = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([s.lng, s.lat]);
+    ov.addTo(map);
     bubbleOverlays.push(ov);
   });
 }

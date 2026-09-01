@@ -1,4 +1,4 @@
-/* js/map.js - 제주 부동산 플랫폼 */
+/* js/map.js - 제주 부동산 플랫폼 (MapLibre GL JS) */
 /* ═══════════════════════════════════════════════
    미분양 실제 확인 데이터
 ═══════════════════════════════════════════════ */
@@ -22,75 +22,141 @@ const UNSOLD_DATA = [
 const TYPE_LABEL = { apt:'아파트', ofc:'오피스텔', villa:'빌라·타운하우스' };
 const VWORLD_KEY = 'E7677C67-87D1-3D51-AE0C-C59B2947A413';
 
-/* ═══════════════════════════════════════════════
-   카카오맵 초기화
-═══════════════════════════════════════════════ */
-const mapContainer = document.getElementById('map');
-const mapOption = {
-  center: new kakao.maps.LatLng(33.3617, 126.5292),
-  level: 10
+/* ═══ MapLibre 초기화 ═══ */
+let map;
+let zoningVisible = false;
+let zoningLayer = null;
+
+const CARTO_VOYAGER = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
+const ESRI_SATELLITE = {
+  version: 8,
+  sources: {
+    satellite: {
+      type: 'raster',
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256,
+      attribution: '© Esri'
+    }
+  },
+  layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }]
 };
-const map = new kakao.maps.Map(mapContainer, mapOption);
 
-// 줌 컨트롤
-const zoomControl = new kakao.maps.ZoomControl();
-map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
-
-// 좌표 표시
-kakao.maps.event.addListener(map, 'mousemove', function(mouseEvent) {
-  const lat = mouseEvent.latLng.getLat().toFixed(6);
-  const lng = mouseEvent.latLng.getLng().toFixed(6);
-  document.getElementById('coord-display').textContent = `위도: ${lat}  경도: ${lng}`;
+// Kakao Services 초기화 (검색/지오코딩만)
+kakao.maps.load(function() {
+  window._kakaoReady = true;
 });
 
-// 지도 이동/줌 시 용도지역 WMS 갱신
-kakao.maps.event.addListener(map, 'idle', function() {
-  if (zoningVisible) updateZoningWMS();
-});
-kakao.maps.event.addListener(map, 'zoom_changed', function() {
-  if (zoningVisible) updateZoningWMS();
+document.addEventListener('DOMContentLoaded', () => {
+  map = new maplibregl.Map({
+    container: 'map',
+    style: CARTO_VOYAGER,
+    center: [126.5292, 33.3617],
+    zoom: 10,
+    pitch: 0,
+    bearing: 0,
+    attributionControl: false
+  });
+  window.map = map;
+
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'right');
+  map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+
+  map.on('mousemove', (e) => {
+    document.getElementById('coord-display').textContent =
+      `위도: ${e.lngLat.lat.toFixed(6)}  경도: ${e.lngLat.lng.toFixed(6)}`;
+  });
+
+  map.on('load', () => {
+    // 용도지역 WMS source 준비
+    map.addSource('vworld-zoning', {
+      type: 'raster',
+      tiles: [
+        `https://api.vworld.kr/req/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap` +
+        `&LAYERS=lt_c_uq111&STYLES=&FORMAT=image/png&TRANSPARENT=true` +
+        `&WIDTH=256&HEIGHT=256&CRS=EPSG:3857` +
+        `&KEY=${VWORLD_KEY}&BBOX={bbox-epsg-3857}`
+      ],
+      tileSize: 256
+    });
+    map.addLayer({
+      id: 'zoning-layer',
+      type: 'raster',
+      source: 'vworld-zoning',
+      paint: { 'raster-opacity': 0.6 },
+      layout: { visibility: 'none' }
+    });
+  });
 });
 
-/* ═══════════════════════════════════════════════
-   지도 타입 전환
-═══════════════════════════════════════════════ */
+/* ═══ 지도 타입 전환 ═══ */
 function setMapType(type, btn) {
-  const types = {
-    'ROADMAP': kakao.maps.MapTypeId.ROADMAP,
-    'SKYVIEW': kakao.maps.MapTypeId.SKYVIEW,
-    'HYBRID':  kakao.maps.MapTypeId.HYBRID
-  };
-  map.setMapTypeId(types[type]);
   document.querySelectorAll('.map-type-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  if (type === 'ROADMAP') {
+    map.setStyle(CARTO_VOYAGER);
+    map.once('style.load', () => restoreZoningSource());
+  } else if (type === 'SKYVIEW' || type === 'HYBRID') {
+    map.setStyle(ESRI_SATELLITE);
+    map.once('style.load', () => restoreZoningSource());
+  }
 }
 
-/* ═══════════════════════════════════════════════
-   레이어 패널 토글
-═══════════════════════════════════════════════ */
+function restoreZoningSource() {
+  if (!map.getSource('vworld-zoning')) {
+    map.addSource('vworld-zoning', {
+      type: 'raster',
+      tiles: [
+        `https://api.vworld.kr/req/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap` +
+        `&LAYERS=lt_c_uq111&STYLES=&FORMAT=image/png&TRANSPARENT=true` +
+        `&WIDTH=256&HEIGHT=256&CRS=EPSG:3857` +
+        `&KEY=${VWORLD_KEY}&BBOX={bbox-epsg-3857}`
+      ],
+      tileSize: 256
+    });
+    map.addLayer({
+      id: 'zoning-layer',
+      type: 'raster',
+      source: 'vworld-zoning',
+      paint: { 'raster-opacity': 0.6 },
+      layout: { visibility: zoningVisible ? 'visible' : 'none' }
+    });
+  }
+}
+
+/* ═══ 용도지역 토글 ═══ */
+let zoningOpacity = 0.6;
+function toggleZoning(btn) {
+  zoningVisible = !zoningVisible;
+  btn.classList.toggle('on', zoningVisible);
+  const legend = document.getElementById('zoning-legend');
+  if (legend) legend.style.display = zoningVisible ? 'block' : 'none';
+  if (map.getLayer('zoning-layer')) {
+    map.setLayoutProperty('zoning-layer', 'visibility', zoningVisible ? 'visible' : 'none');
+  }
+  updateActiveLayerCount();
+}
+function setZoningOpacity(val) {
+  zoningOpacity = val / 100;
+  if (map.getLayer('zoning-layer')) {
+    map.setPaintProperty('zoning-layer', 'raster-opacity', zoningOpacity);
+  }
+}
+
+/* ═══ 레이어 패널 토글 ═══ */
 let panelOpen = true;
 function togglePanel() {
   panelOpen = !panelOpen;
   const panel = document.getElementById('layer-panel');
-  const btn = document.getElementById('panel-toggle');
+  const btn   = document.getElementById('panel-toggle');
   panel.classList.toggle('collapsed', !panelOpen);
-  btn.style.left = panelOpen ? '260px' : '0px';
-  btn.textContent = panelOpen ? '◀' : '▶';
+  btn.style.left   = panelOpen ? '260px' : '0px';
+  btn.textContent  = panelOpen ? '◀' : '▶';
 }
 
 function updateActiveLayerCount() {
-  const cnt = document.querySelectorAll('.layer-toggle.on').length - 1; // 배경지도 제외
+  const cnt = document.querySelectorAll('.layer-toggle.on').length - 1;
   document.getElementById('active-layer-cnt').textContent = Math.max(0, cnt);
 }
 
-/* ═══════════════════════════════════════════════
-   용도지역 레이어 (카카오 지적편집도 + VWorld WMS 병행)
-═══════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════
-   실거래 레이어
-═══════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════
-   데이터 연결 모달 로직
-═══════════════════════════════════════════════ */
 let dmActiveTab = 'csv';
 let csvParsedData = null;

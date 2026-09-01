@@ -15,8 +15,9 @@ let _geocodeStarted = false;
 function geocodeUnsoldByName() {
   if (_geocodeStarted) return;
   _geocodeStarted = true;
-  const ps = new kakao.maps.services.Places();
-  const jejuCenter = new kakao.maps.LatLng(33.3617, 126.5292);
+  function doGeocode() {
+    const ps = new kakao.maps.services.Places();
+    const jejuCenter = new kakao.maps.LatLng(33.3617, 126.5292);
 
   UNSOLD_DATA.forEach((item, idx) => {
     setTimeout(() => {
@@ -32,6 +33,12 @@ function geocodeUnsoldByName() {
       }, { location: jejuCenter, radius: 80000 });
     }, idx * 400); // 400ms 간격으로 rate-limit
   });
+  }
+  if (window._kakaoReady) {
+    doGeocode();
+  } else {
+    kakao.maps.load(doGeocode);
+  }
 }
 
 function applyCoord(item, result, idx) {
@@ -46,7 +53,7 @@ function applyCoord(item, result, idx) {
 
   // 이미 마커가 표시 중이면 위치 갱신
   if (unsoldVisible && unsoldOverlays[idx]) {
-    unsoldOverlays[idx].setPosition(new kakao.maps.LatLng(newLat, newLng));
+    unsoldOverlays[idx].setLngLat([newLng, newLat]);
   }
 
   // 좌표가 크게 바뀐 경우 콘솔에 기록 (디버그용)
@@ -57,7 +64,7 @@ function applyCoord(item, result, idx) {
 }
 
 function drawUnsoldMarkers() {
-  unsoldOverlays.forEach(o => o.setMap(null));
+  unsoldOverlays.forEach(o => o.remove());
   unsoldOverlays.length = 0;
   if (!unsoldVisible) return;
 
@@ -72,15 +79,12 @@ function drawUnsoldMarkers() {
       <div class="unsold-badge">${d.units}</div>`;
     el.addEventListener('click', (e) => {
       e.stopPropagation();
-      showUnsoldPopup(d, new kakao.maps.LatLng(d.lat, d.lng));
+      showUnsoldPopup(d, el);
     });
 
-    const overlay = new kakao.maps.CustomOverlay({
-      position: new kakao.maps.LatLng(d.lat, d.lng),
-      content: el,
-      yAnchor: 1.2
-    });
-    overlay.setMap(map);
+    const overlay = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([d.lng, d.lat]);
+    overlay.addTo(map);
     unsoldOverlays.push(overlay);
   });
 }
@@ -89,7 +93,7 @@ function toggleUnsold(btn) {
   unsoldVisible = btn.classList.toggle('on');
   if (unsoldVisible) drawUnsoldMarkers();
   else {
-    unsoldOverlays.forEach(o => o.setMap(null));
+    unsoldOverlays.forEach(o => o.remove());
     unsoldOverlays.length = 0;
     closeUnsoldPopup();
   }
@@ -101,7 +105,7 @@ function setUnsoldOpacity(val) {
   document.querySelectorAll('.unsold-marker').forEach(el => el.style.opacity = unsoldOpacity);
 }
 
-function showUnsoldPopup(d, latlng) {
+function showUnsoldPopup(d, markerEl) {
   closeUnsoldPopup();
   const popup = document.getElementById('unsold-popup');
   const mapEl = document.getElementById('map-wrap');
@@ -131,11 +135,11 @@ function showUnsoldPopup(d, latlng) {
   `;
 
   // 마커 픽셀 위치 계산
-  const proj = map.getProjection();
-  const point = proj.containerPointFromCoords(latlng);
+  const rect = markerEl ? markerEl.getBoundingClientRect() : { left: 400, top: 300, width: 0 };
+  const mapRect = mapEl.getBoundingClientRect();
   const popW = 300, popH = 260;
-  const left = Math.max(8, Math.min(point.x - popW / 2, mapEl.offsetWidth - popW - 8));
-  const top  = Math.max(8, point.y - popH - 55);
+  const left = Math.max(8, Math.min(rect.left - mapRect.left + rect.width / 2 - popW / 2, mapEl.offsetWidth - popW - 8));
+  const top  = Math.max(8, rect.top - mapRect.top - popH - 10);
   popup.style.left = left + 'px';
   popup.style.top  = top  + 'px';
   popup.style.display = 'block';
@@ -146,9 +150,20 @@ function closeUnsoldPopup() {
 }
 
 // 지도 클릭 시 팝업 닫기
-kakao.maps.event.addListener(map, 'click', function() {
-  closeUnsoldPopup();
-  document.getElementById('search-results').style.display = 'none';
-  document.getElementById('trade-popup').style.display = 'none';
+// 지도 클릭 이벤트는 map 초기화 후 등록
+document.addEventListener('DOMContentLoaded', () => {
+  // map 로드 후 클릭 이벤트 등록
+  const registerClick = () => {
+    if (window.map) {
+      window.map.on('click', function() {
+        closeUnsoldPopup();
+        document.getElementById('search-results').style.display = 'none';
+        document.getElementById('trade-popup').style.display = 'none';
+      });
+    } else {
+      setTimeout(registerClick, 200);
+    }
+  };
+  registerClick();
 });
 

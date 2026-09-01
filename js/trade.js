@@ -60,7 +60,7 @@ function getFilteredTrades() {
 }
 
 function clearTradeMarkers() {
-  tradeOverlays.forEach(o => o.setMap(null));
+  tradeOverlays.forEach(o => o.remove());
   tradeOverlays = [];
 }
 
@@ -78,13 +78,9 @@ function renderTradeMarkers() {
       e.stopPropagation();
       showTradePopup(t, this);
     });
-    const ov = new kakao.maps.CustomOverlay({
-      position: new kakao.maps.LatLng(t.lat, t.lng),
-      content: el,
-      yAnchor: 1.35,
-      zIndex: 3
-    });
-    ov.setMap(map);
+    const ov = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+      .setLngLat([t.lng, t.lat]);
+    ov.addTo(map);
     tradeOverlays.push(ov);
   });
 }

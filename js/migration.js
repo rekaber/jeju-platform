@@ -24,8 +24,7 @@ function toggleMigration(dir, btn) {
     tog.classList.add('on');
     migActiveDir = dir;
     // 한국 전체가 보이는 뷰로 줌 조정 후 화살표 그리기
-    map.setCenter(new kakao.maps.LatLng(36.0, 127.8));
-    map.setLevel(10);
+    map.flyTo({ center: [127.8, 36.0], zoom: 7 });
     setTimeout(() => drawMigrationArrows(dir), 500);
   }
 }
@@ -36,14 +35,8 @@ function clearMigrationArrows() {
 }
 
 function latlngToPixel(lat, lng) {
-  const proj   = map.getProjection();
-  const mapEl  = document.getElementById('map');
-  const center = proj.pointFromCoords(map.getCenter());
-  const pt     = proj.pointFromCoords(new kakao.maps.LatLng(lat, lng));
-  return {
-    x: (pt.x - center.x) + mapEl.offsetWidth  / 2,
-    y: (pt.y - center.y) + mapEl.offsetHeight / 2
-  };
+  const pt = map.project([lng, lat]);
+  return { x: pt.x, y: pt.y };
 }
 
 function drawMigrationArrows(dir) {
@@ -123,8 +116,18 @@ function drawMigrationArrows(dir) {
 }
 
 // 지도 이동/줌 시 화살표 재렌더
-kakao.maps.event.addListener(map, 'idle', function() {
-  if (migActiveDir) drawMigrationArrows(migActiveDir);
+// map 초기화 후 moveend 이벤트 등록
+document.addEventListener('DOMContentLoaded', () => {
+  const registerMove = () => {
+    if (window.map) {
+      window.map.on('moveend', function() {
+        if (migActiveDir) drawMigrationArrows(migActiveDir);
+      });
+    } else {
+      setTimeout(registerMove, 200);
+    }
+  };
+  registerMove();
 });
 
 /* ─── 인구이동 통계 모달 ─── */

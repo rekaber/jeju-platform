@@ -55,7 +55,7 @@ function getLandClass(jimok) {
 
 function clearLandMarkers() {
   renderLandMarkers._token = (renderLandMarkers._token || 0) + 1; // 진행 중 렌더링 취소
-  landOverlays.forEach(o => o.setMap(null));
+  landOverlays.forEach(o => o.remove());
   landOverlays = [];
 }
 
@@ -94,11 +94,9 @@ function renderLandMarkers() {
         e.stopPropagation();
         showLandPopup(td, this);
       }; })(t));
-      const ov = new kakao.maps.CustomOverlay({
-        position: new kakao.maps.LatLng(t.lat, t.lng),
-        content: el, yAnchor: 1.35, zIndex: 3
-      });
-      ov.setMap(map);
+      const ov = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat([t.lng, t.lat]);
+      ov.addTo(map);
       landOverlays.push(ov);
     }
     if (i < lands.length) {
@@ -140,26 +138,11 @@ function showLandPopup(t, el) {
   popup.style.display = 'block';
 }
 
-let zoningVisible = false;
-let zoningOpacity = 0.6;
+// zoningVisible / zoningOpacity는 map.js에서 선언됨
 
-function toggleZoning(btn) {
-  zoningVisible = btn.classList.toggle('on');
-  const legend = document.getElementById('zoning-legend');
-  if (zoningVisible) {
-    map.addOverlayMapTypeId(kakao.maps.MapTypeId.USE_DISTRICT);
-    legend.style.display = 'block';
-  } else {
-    map.removeOverlayMapTypeId(kakao.maps.MapTypeId.USE_DISTRICT);
-    legend.style.display = 'none';
-  }
-  updateActiveLayerCount();
-}
+// toggleZoning은 map.js에서 정의됨
 
-function setZoningOpacity(val) {
-  zoningOpacity = val / 100;
-  document.querySelectorAll('#zoning-overlay img').forEach(img => img.style.opacity = zoningOpacity);
-}
+// setZoningOpacity는 map.js에서 정의됨
 
 let cadastralOpen = false;
 function toggleCadastralPanel() {
@@ -186,11 +169,7 @@ function closeCadastralPanel() {
   updateActiveLayerCount();
 }
 
-function setZoningOpacity(val) {
-  zoningOpacity = val / 100;
-}
-
-// 지도 이동 시 아무 작업 없음 (카카오 내장 레이어는 자동 갱신)
+// setZoningOpacity는 map.js에서 정의됨
 function updateZoningWMS() {}
 
 /* ═══════════════════════════════════════════════
