@@ -26,11 +26,11 @@ function geocodeUnsoldByName() {
           // 결과 없으면 "제주 + 단지명"으로 재시도
           ps.keywordSearch('제주 ' + item.name, function(d2, s2) {
             if (s2 === kakao.maps.services.Status.OK && d2.length) applyCoord(item, d2[0], idx);
-          }, { location: jejuCenter, radius: 80000 });
+          }, { location: jejuCenter, radius: 20000 });
           return;
         }
         applyCoord(item, data[0], idx);
-      }, { location: jejuCenter, radius: 80000 });
+      }, { location: jejuCenter, radius: 20000 });
     }, idx * 400); // 400ms 간격으로 rate-limit
   });
   }
