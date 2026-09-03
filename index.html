@@ -1431,7 +1431,8 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
     <div id="stat-modal">
       <div id="stat-modal-inner">
         <div id="stat-modal-hd">
-          <h2>🏢 제주 아파트 실거래 통계 (2026년)</h2>
+          <h2>🏢 제주 아파트 실거래 통계</h2>
+          <select id="stat-year-select" onchange="setStatYear(this.value)" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;font-size:13px;font-weight:600;padding:3px 8px;border-radius:6px;cursor:pointer;"></select>
           <button class="sm-close" onclick="closeStatModal()">✕</button>
         </div>
         <div id="stat-modal-body">
@@ -5047,9 +5048,27 @@ function renderTradeChart() {
 ═══════════════════════════════════════════════ */
 let statTab    = 'pyung';
 let statRegion = 'all';   // 'all' | 'jeju' | 'seo'
+let statYear   = new Date().getFullYear();
+
+function _getStatYears() {
+  if (!window.TRADE_DATA) return [new Date().getFullYear()];
+  const years = [...new Set(window.TRADE_DATA.map(t => t.date && t.date.slice(0,4)).filter(Boolean))].sort();
+  return years.length ? years : [String(new Date().getFullYear())];
+}
+function _initStatYearSelect() {
+  const sel = document.getElementById('stat-year-select');
+  if (!sel) return;
+  const years = _getStatYears();
+  sel.innerHTML = years.map(y => `<option value="${y}"${String(statYear)===y?' selected':''}>${y}년</option>`).join('');
+}
+function setStatYear(y) {
+  statYear = parseInt(y);
+  renderStatChart();
+}
 
 function openStatModal() {
   document.getElementById('stat-modal').classList.add('open');
+  _initStatYearSelect();
   renderStatChart();
 }
 function closeStatModal() {
@@ -5072,7 +5091,7 @@ function setStatRegion(region, btn) {
 
 function renderStatChart() {
   if (!window.TRADE_DATA || !window.TRADE_DATA.length) return;
-  const allData = window.TRADE_DATA;
+  const allData = window.TRADE_DATA.filter(t => t.date && t.date.startsWith(String(statYear)));
 
   // ── 헬퍼 ──
   function pyungAvg(arr) {
@@ -5113,14 +5132,15 @@ function renderStatChart() {
 
   function pyungAll(arr) { return pyungAvg(arr); }
 
-  // ── 월 시계열 데이터 생성 (데이터 없는 월 제외) ──
+  // ── 월 시계열 데이터 생성 (선택 연도 1월~12월, 데이터 없는 월 제외) ──
   const months = [];
   const now = new Date();
-  for (let m = 11; m >= 0; m--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
-    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-    const lbl = String(d.getMonth()+1) + '월';
-    const yearLbl = m === 11 ? String(d.getFullYear()) : '';
+  const isCurrentYear = statYear === now.getFullYear();
+  const lastMonth = isCurrentYear ? now.getMonth() : 11; // 현재년도면 현재월까지, 과거면 12월까지
+  for (let mo = 0; mo <= lastMonth; mo++) {
+    const key = statYear + '-' + String(mo + 1).padStart(2, '0');
+    const lbl = String(mo + 1) + '월';
+    const yearLbl = mo === 0 ? String(statYear) : '';
 
     const jeju = allData.filter(t => t.date && t.date.startsWith(key) && t.sigungu==='제주시');
     const seo  = allData.filter(t => t.date && t.date.startsWith(key) && t.sigungu==='서귀포시');
