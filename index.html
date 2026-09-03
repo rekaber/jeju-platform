@@ -4809,7 +4809,7 @@ function _getBubbleFilteredForType(type) {
   var cutoff;
   switch(st.bubblePeriod) {
     case 'week':  cutoff = new Date(now - 7*86400000); break;
-    case 'month': cutoff = new Date(now.getFullYear(), now.getMonth(), 1); break;
+    case 'month': cutoff = new Date(now - 30*86400000); break;
     case 'year':  cutoff = new Date(now.getFullYear(), 0, 1); break;
     default: return data;
   }
