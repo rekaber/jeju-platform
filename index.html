@@ -156,10 +156,10 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
   border-left:5px solid transparent; border-right:5px solid transparent;
 }
 .trade-marker:hover { transform: scale(1.12); box-shadow: 0 4px 14px rgba(0,0,0,0.45); z-index: 9999 !important; }
-.trade-cluster { display:flex; align-items:center; justify-content:center; flex-direction:column; border-radius:50%; border:3px solid rgba(255,255,255,0.9); box-shadow:0 2px 10px rgba(0,0,0,0.45); cursor:pointer; color:#fff; font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; font-weight:800; transition:transform 0.12s; }
-.trade-cluster:hover { transform:scale(1.15); z-index:9999 !important; }
-.trade-cluster .tc-cnt { font-size:15px; line-height:1.1; }
-.trade-cluster .tc-lbl { font-size:9px; opacity:0.88; }
+.trade-cluster { display:flex; align-items:center; justify-content:center; gap:3px; border-radius:12px; border:2px solid rgba(255,255,255,0.85); box-shadow:0 2px 8px rgba(0,0,0,0.4); cursor:pointer; color:#fff; font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; font-weight:700; transition:transform 0.12s; padding:4px 8px; white-space:nowrap; }
+.trade-cluster:hover { transform:scale(1.12); z-index:9999 !important; }
+.trade-cluster .tc-cnt { font-size:12px; line-height:1.2; }
+.trade-cluster .tc-lbl { font-size:10px; opacity:0.9; }
 .trade-marker.price-low  { background: #2E7D32; }
 .trade-marker.price-low::after  { border-top: 6px solid #2E7D32; }
 .trade-marker.price-mid  { background: #E65100; }
@@ -4585,9 +4585,9 @@ function renderTradeMarkersForType(type) {
   }
   statusEl.style.display = 'block';
 
-  // 줌 레벨에 따라 클러스터 그리드 크기 결정
+  // 줌 레벨 3 이하에서만 클러스터링 적용 (그 외는 개별 마커)
   var zoomLv = map.getLevel();
-  var gridPx = zoomLv <= 5 ? 80 : zoomLv <= 7 ? 55 : zoomLv <= 9 ? 35 : 0;
+  var gridPx = zoomLv <= 3 ? 80 : 0;
   var items = gridPx > 0 ? _clusterTrades(trades, gridPx) : trades.map(function(t){ return { type:'single', trade:t }; });
 
   var CHUNK = 200, i = 0;
@@ -4604,11 +4604,10 @@ function renderTradeMarkersForType(type) {
         // 클러스터 마커
         var avgPrice = item.trades.reduce(function(s,t){return s+t.price;},0)/item.cnt;
         var bgColor = avgPrice < 3 ? '#2E7D32' : avgPrice < 6 ? '#E65100' : '#B71C1C';
-        var sz = Math.min(54, 36 + Math.sqrt(item.cnt) * 3);
         el = document.createElement('div');
         el.className = 'trade-cluster';
-        el.style.cssText = 'width:'+sz+'px;height:'+sz+'px;background:'+bgColor+';border-left:3px solid '+meta.color+';';
-        el.innerHTML = '<div class="tc-cnt">'+item.cnt+'건</div><div class="tc-lbl">'+avgPrice.toFixed(1)+'억</div>';
+        el.style.cssText = 'background:'+bgColor+';border-left:3px solid '+meta.color+';';
+        el.innerHTML = '<div class="tc-cnt">'+item.cnt+'건</div><div class="tc-lbl">·'+avgPrice.toFixed(1)+'억</div>';
         el.title = meta.label+' '+item.cnt+'건 (평균 '+avgPrice.toFixed(1)+'억)';
         el.addEventListener('click', (function(lat,lng){ return function(e){
           e.stopPropagation();
