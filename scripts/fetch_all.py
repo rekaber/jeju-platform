@@ -1,6 +1,7 @@
 """
 제주 부동산 실거래 데이터 자동 수집 및 Supabase 업로드
 국토교통부 실거래가 API → Supabase (apt_trades, land_trades, house_trades, rht_trades, comm_trades)
+국토교통부 건축인허가 API → Supabase (arch_permits)
 
 환경변수:
   MOLIT_API_KEY      - 국토교통부 공공데이터포털 API 서비스키
@@ -10,7 +11,7 @@
 
 import os, time, json, urllib.request, urllib.parse
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # ── 설정 ────────────────────────────────────────────────
 MOLIT_KEY      = os.environ.get('MOLIT_API_KEY', '')
@@ -245,6 +246,108 @@ def parse_comm(items, sigungu):
         })
     return rows
 
+# ── 건축인허가 ───────────────────────────────────────────
+ARCH_SIGUNGU = [('5011000000', '제주시'), ('5013000000', '서귀포시')]
+
+def arch_fetch_all(sigungu_cd, start_date, end_date):
+    """건축인허가 이력 전체 조회 (세움터 API)"""
+    base = 'https://apis.data.go.kr/1613000/ArchPmsHstService_v2/getApBasisOulnInfo'
+    all_items = []
+    page = 1
+    while True:
+        params = urllib.parse.urlencode({
+            'serviceKey': MOLIT_KEY,
+            'sigunguCd':  sigungu_cd[:5],
+            'bjdongCd':   '00000',
+            'startDate':  start_date,
+            'endDate':    end_date,
+            'numOfRows':  1000,
+            'pageNo':     page,
+        }, quote_via=urllib.parse.quote)
+        url = f'{base}?{params}'
+        try:
+            with urllib.request.urlopen(url, timeout=30) as r:
+                xml_str = r.read().decode('utf-8')
+        except Exception as e:
+            print(f'  건축인허가 API 오류: {e}')
+            break
+        try:
+            root = ET.fromstring(xml_str)
+        except ET.ParseError as e:
+            print(f'  XML 파싱 오류: {e}')
+            break
+        items = root.findall('.//item')
+        all_items.extend(items)
+        total_el = root.find('.//totalCount')
+        total = int(total_el.text) if total_el is not None and total_el.text else 0
+        if not items or page * 1000 >= total:
+            break
+        page += 1
+        time.sleep(0.2)
+    return all_items
+
+def parse_arch(items, sigungu):
+    rows = []
+    for it in items:
+        bld_nm   = text(it, 'bldNm')
+        addr     = text(it, 'platPlc') or text(it, 'newPlatPlc')
+        purps    = text(it, 'mainPurpsCdNm')
+        arch_gb  = text(it, 'archGbCdNm')
+        tot_area = float_or_none(text(it, 'totArea'))
+        hhld_cnt = int_or_none(text(it, 'hhldCnt'))
+        pms_day  = text(it, 'pmsDay')      # 허가일 YYYYMMDD
+        use_day  = text(it, 'useAprDay')   # 사용승인일 YYYYMMDD
+        # 날짜 포맷: YYYYMMDD → YYYY-MM-DD
+        def fmt_day(s):
+            s = (s or '').replace('-','').strip()
+            return f'{s[:4]}-{s[4:6]}-{s[6:8]}' if len(s) >= 8 else None
+        rows.append({
+            'sigungu':     sigungu,
+            'bld_nm':      bld_nm,
+            'addr':        addr,
+            'purps':       purps,
+            'arch_gb':     arch_gb,
+            'tot_area':    tot_area,
+            'hhld_cnt':    hhld_cnt,
+            'pms_day':     fmt_day(pms_day),
+            'use_apr_day': fmt_day(use_day),
+            'lat':         None,
+            'lng':         None,
+        })
+    return rows
+
+def fetch_arch():
+    """건축인허가: 최근 1년치 수집 (날짜 기반)"""
+    print('\n▶ arch_permits 수집 중...')
+    now = datetime.now()
+    end_date   = now.strftime('%Y%m%d')
+    start_date = (now - timedelta(days=365)).strftime('%Y%m%d')
+    print(f'  기간: {start_date} ~ {end_date}')
+
+    all_rows = []
+    for sigungu_cd, sigungu in ARCH_SIGUNGU:
+        print(f'  {sigungu} 조회 중...')
+        items = arch_fetch_all(sigungu_cd, start_date, end_date)
+        rows  = parse_arch(items, sigungu)
+        print(f'  → {len(rows)}건')
+        all_rows.extend(rows)
+        time.sleep(0.5)
+
+    if not all_rows:
+        print('  데이터 없음, 스킵')
+        return
+
+    print(f'  총 {len(all_rows)}건 → Supabase 업로드')
+    # 기존 1년치 삭제 후 재삽입
+    url = f'{SUPABASE_URL}/rest/v1/arch_permits?pms_day=gte.{(datetime.now()-timedelta(days=365)).strftime("%Y-%m-%d")}'
+    req = urllib.request.Request(url, method='DELETE', headers=SUPABASE_HEADERS)
+    try:
+        with urllib.request.urlopen(req, timeout=30): pass
+    except Exception as e:
+        print(f'  삭제 오류: {e}')
+    time.sleep(0.3)
+    sb_insert('arch_permits', all_rows)
+
 # ── 메인 ────────────────────────────────────────────────
 def main():
     months = get_months(MONTHS_BACK)
@@ -278,6 +381,8 @@ def main():
         print(f'  총 {len(all_rows)}건 → Supabase 업로드')
         sb_delete_by_months(table, months)
         sb_insert(table, all_rows)
+
+    fetch_arch()
 
     print('\n✅ 완료!')
 
