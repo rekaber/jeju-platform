@@ -21,7 +21,7 @@ SUPABASE_KEY   = os.environ.get('SUPABASE_SERVICE_KEY', '')
 KAKAO_REST_KEY = os.environ.get('KAKAO_REST_KEY', '')
 
 REGIONS = [('50110', '제주시'), ('50130', '서귀포시')]
-MONTHS_BACK = 3   # 최근 N개월 데이터 갱신
+MONTHS_BACK = 36  # 전체 백필용 (1회 실행 후 3으로 복원)
 
 SUPABASE_HEADERS = {
     'apikey': SUPABASE_KEY,
@@ -153,6 +153,12 @@ def build_jibun_addr(sigungu, dong, main_raw, sub_raw):
         return f"{sigungu} {dong} {main}" + (f"-{sub}" if sub and sub != '0' else '')
     return f"{sigungu} {dong}" if dong else None
 
+def get_jibun(it):
+    """MOLIT API 버전별로 본번/부번 필드명이 다를 수 있어 양쪽 시도"""
+    main = text(it, '본번') or text(it, '법정동본번코드')
+    sub  = text(it, '부번') or text(it, '법정동부번코드')
+    return main.lstrip('0'), sub.lstrip('0')
+
 # ── 데이터 파서 ─────────────────────────────────────────
 def parse_apt(items, sigungu):
     rows = []
@@ -162,8 +168,10 @@ def parse_apt(items, sigungu):
         dong     = text(it, '법정동')
         road     = text(it, '도로명')
         apt_name = text(it, '아파트')
-        road_full  = build_road_addr(sigungu, road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
-        jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
+        # 도로명 필드가 이미 건물번호 포함 ("과원로 11" 등) → 시군구만 앞에 붙이면 완성
+        road_full  = f"{sigungu} {road}" if road else None
+        _jm, _js   = get_jibun(it)
+        jibun_full = build_jibun_addr(sigungu, dong, _jm, _js)
         # 우선순위: 도로명주소 > 도로명+이름 keyword > 동+이름 keyword > 지번
         geo_addrs = []
         if road_full:
@@ -179,7 +187,7 @@ def parse_apt(items, sigungu):
             'addr':       jibun_full or f"{sigungu} {dong}",
             'sigungu':    sigungu,
             'dong':       dong,
-            'roadaddr':   road_full or road,
+            'roadaddr':   road_full or '',
             'type':       'apt',
             'area':       float_or_none(text(it, '전용면적')),
             'price':      price_int(text(it, '거래금액')),
@@ -197,8 +205,13 @@ def parse_house(items, sigungu):
         년 = text(it, '년'); 월 = text(it, '월'); 일 = text(it, '일')
         if not (년 and 월 and 일): continue
         dong = text(it, '법정동')
-        jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
-        geo_addrs = [a for a in [jibun_full, f"{sigungu} {dong}"] if a]
+        road = text(it, '도로명')
+        road_full  = f"{sigungu} {road}" if road else None
+        _jm, _js = get_jibun(it); jibun_full = build_jibun_addr(sigungu, dong, _jm, _js)
+        geo_addrs = []
+        if road_full:  geo_addrs.append((road_full, 'addr'))
+        if jibun_full: geo_addrs.append((jibun_full, 'addr'))
+        geo_addrs.append((f"{sigungu} {dong}", 'addr'))
         rows.append({
             'sigungu':    sigungu,
             'dong':       dong,
@@ -223,8 +236,9 @@ def parse_rht(items, sigungu):
         dong     = text(it, '법정동')
         road     = text(it, '도로명')
         rht_name = text(it, '연립다세대')
-        road_full  = build_road_addr(sigungu, road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
-        jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
+        # 도로명 필드가 이미 건물번호 포함
+        road_full  = f"{sigungu} {road}" if road else None
+        _jm, _js = get_jibun(it); jibun_full = build_jibun_addr(sigungu, dong, _jm, _js)
         geo_addrs = []
         if road_full:
             geo_addrs.append((road_full, 'addr'))
@@ -232,13 +246,12 @@ def parse_rht(items, sigungu):
         if rht_name and dong: geo_addrs.append((f"{sigungu} {dong} {rht_name}", 'keyword'))
         if jibun_full: geo_addrs.append((jibun_full, 'addr'))
         if rht_name: geo_addrs.append((rht_name, 'keyword'))
-        if road: geo_addrs.append((road, 'addr'))
         rows.append({
             'name':       rht_name,
             'sigungu':    sigungu,
             'dong':       dong,
             'addr':       jibun_full or f"{sigungu} {dong}",
-            'roadaddr':   road_full or road,
+            'roadaddr':   road_full or '',
             'area':       float_or_none(text(it, '전용면적')),
             'price':      price_int(text(it, '거래금액')),
             'date':       f'{년}-{int(월):02d}-{int(일):02d}',
@@ -292,8 +305,9 @@ def parse_comm(items, sigungu):
         dong      = text(it, '법정동')
         road      = text(it, '도로명')
         bld_name  = text(it, '건물명')
-        road_full  = build_road_addr(sigungu, road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
-        jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
+        # 도로명 필드가 이미 건물번호 포함
+        road_full  = f"{sigungu} {road}" if road else None
+        _jm, _js = get_jibun(it); jibun_full = build_jibun_addr(sigungu, dong, _jm, _js)
         geo_addrs = []
         if road_full:
             geo_addrs.append((road_full, 'addr'))
