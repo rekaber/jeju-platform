@@ -4574,6 +4574,8 @@ function _getFilteredForType(type) {
     case 'week':  cutoff = new Date(now - 7*86400000); break;
     case 'month': cutoff = new Date(now - 30*86400000); break;
     case 'year':  cutoff = new Date(now.getFullYear(), 0, 1); break;
+    case 'pick':  // 월선택 > 전체: 당해년도만
+      return data.filter(function(t) { return t.date && t.date.startsWith(String(now.getFullYear())); });
     default:      return data;
   }
   return data.filter(function(t) { return t.date && new Date(t.date) >= cutoff; });
