@@ -68,10 +68,18 @@ def molit_fetch(service, lawd_cd, deal_ymd, page=1, rows=1000):
         'numOfRows': rows,
         'pageNo': page,
     })
-    url = f'{base}?serviceKey={urllib.parse.quote(urllib.parse.unquote(MOLIT_KEY), safe="")}&{other}'
+    encoded_key = urllib.parse.quote(urllib.parse.unquote(MOLIT_KEY), safe="")
+    url = f'{base}?serviceKey={encoded_key}&{other}'
+    if page == 1:
+        masked = encoded_key[:20] + '...' + encoded_key[-10:]
+        print(f'  [DEBUG] URL: {base}?serviceKey={masked}&{other}')
     try:
         with urllib.request.urlopen(url, timeout=30) as r:
             return r.read().decode('utf-8')
+    except urllib.error.HTTPError as e:
+        body = e.read().decode('utf-8', errors='ignore')[:300]
+        print(f'  API 오류: {e} | 응답: {body}')
+        return None
     except Exception as e:
         print(f'  API 오류: {e}')
         return None
