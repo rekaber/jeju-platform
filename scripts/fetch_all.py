@@ -68,7 +68,7 @@ def molit_fetch(service, lawd_cd, deal_ymd, page=1, rows=1000):
         'numOfRows': rows,
         'pageNo': page,
     })
-    url = f'{base}?serviceKey={MOLIT_KEY}&{other}'
+    url = f'{base}?serviceKey={urllib.parse.quote(urllib.parse.unquote(MOLIT_KEY), safe="")}&{other}'
     try:
         with urllib.request.urlopen(url, timeout=30) as r:
             return r.read().decode('utf-8')
@@ -348,7 +348,7 @@ def arch_fetch_all(sigungu_cd, start_date, end_date):
             'numOfRows':  1000,
             'pageNo':     page,
         })
-        url = f'{base}?serviceKey={MOLIT_KEY}&{other2}'
+        url = f'{base}?serviceKey={urllib.parse.quote(urllib.parse.unquote(MOLIT_KEY), safe="")}&{other2}'
         try:
             with urllib.request.urlopen(url, timeout=30) as r:
                 xml_str = r.read().decode('utf-8')
