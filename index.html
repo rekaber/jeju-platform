@@ -416,15 +416,25 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
 /* ── 건축인허가 마커 & 팝업 ── */
 .arch-marker {
   display:flex; flex-direction:column; align-items:center; cursor:pointer;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));
+  transition: transform 0.12s;
 }
-.arch-marker-pin {
-  width:14px; height:14px; border-radius:3px; border:2px solid rgba(255,255,255,0.9);
-  box-shadow:0 1px 5px rgba(0,0,0,0.4);
+.arch-marker:hover { transform: scale(1.12); }
+.arch-marker-badge {
+  display:flex; align-items:center; gap:4px;
+  color:#fff; font-size:11px; font-weight:700;
+  padding:4px 8px 4px 6px; border-radius:14px;
+  border:2px solid rgba(255,255,255,0.85);
+  white-space:nowrap; max-width:140px;
+  overflow:hidden; text-overflow:ellipsis;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
 }
-.arch-marker-label {
-  background:rgba(0,0,0,0.72); color:#fff; font-size:11px; font-weight:700;
-  padding:2px 6px; border-radius:3px; margin-top:2px; white-space:nowrap;
-  max-width:120px; overflow:hidden; text-overflow:ellipsis;
+.arch-marker-badge .arch-icon { font-size:13px; flex-shrink:0; }
+.arch-marker-name { overflow:hidden; text-overflow:ellipsis; max-width:100px; }
+.arch-marker-tail {
+  width:0; height:0;
+  border-left:5px solid transparent;
+  border-right:5px solid transparent;
 }
 .arch-popup {
   background:#fff; border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,0.22);
@@ -3738,11 +3748,18 @@ function renderArchMarkers() {
       if (!d.lat || !d.lng) continue;
       const color = ARCH_STATUS_COLOR[d._status] || '#607D8B';
       const el = document.createElement('div');
+      const iconMap = { '허가':'📋', '착공':'🏗', '준공':'✅' };
+      const icon = iconMap[d._status] || '📋';
+      const name = (d.bldNm || d._typeGroup || '건축물').slice(0, 10);
       el.className = 'arch-marker';
-      el.innerHTML = `<div class="arch-marker-pin" style="background:${color};"></div>
-        <div class="arch-marker-label">${d.bldNm || d._typeGroup}</div>`;
+      el.innerHTML = `
+        <div class="arch-marker-badge" style="background:${color};">
+          <span class="arch-icon">${icon}</span>
+          <span class="arch-marker-name">${name}</span>
+        </div>
+        <div class="arch-marker-tail" style="border-top:6px solid ${color};"></div>`;
       el.onclick = () => showArchPopup(d);
-      const ov = new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(d.lat, d.lng), content: el, yAnchor: 1.0, zIndex: 5 });
+      const ov = new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(d.lat, d.lng), content: el, yAnchor: 1.1, zIndex: 5 });
       ov.setMap(map);
       archOverlays.push(ov);
     }
