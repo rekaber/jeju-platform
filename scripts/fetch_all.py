@@ -61,7 +61,7 @@ def text(item, tag):
 
 def molit_fetch(service, lawd_cd, deal_ymd, page=1, rows=1000):
     """국토교통부 API 단일 페이지 조회"""
-    base = f'https://apis.data.go.kr/1613000/RTMSOBJSvc/{service}'
+    base = f'https://apis.data.go.kr/1613000/{service[3:]}'
     other = urllib.parse.urlencode({
         'LAWD_CD': lawd_cd,
         'DEAL_YMD': deal_ymd,
