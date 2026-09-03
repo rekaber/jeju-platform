@@ -2163,9 +2163,17 @@ window.JEJU_BEOPJEONGDONG = [
 })();
 
 // ── 도로명주소 → 좌표 캐시 (localStorage 영속) ──────────────────────────
-const GEOCACHE_KEY = 'jeju_geocache_v1';
+const GEOCACHE_KEY = 'jeju_geocache_v2';  // v2: 제주 범위 밖 항목 자동 제거
 function loadGeoCache() {
-  try { return JSON.parse(localStorage.getItem(GEOCACHE_KEY) || '{}'); } catch(e) { return {}; }
+  try {
+    const raw = JSON.parse(localStorage.getItem(GEOCACHE_KEY) || '{}');
+    // 제주 범위 밖 캐시 항목 제거 (이전 버전 잘못된 좌표 청소)
+    const clean = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (v && isInJeju(v.lat, v.lng)) clean[k] = v;
+    }
+    return clean;
+  } catch(e) { return {}; }
 }
 function saveGeoCache(cache) {
   try { localStorage.setItem(GEOCACHE_KEY, JSON.stringify(cache)); } catch(e) {}
@@ -2291,9 +2299,11 @@ function geocodeTradeData(data, geoCache, uiType) {
     gc.addressSearch('제주특별자치도 ' + addr, function(result, status) {
       if (status === kakao.maps.services.Status.OK && result.length) {
         const lat = parseFloat(result[0].y), lng = parseFloat(result[0].x);
-        geoCache[addr] = { lat, lng };
-        data.forEach(d => { if (d.roadAddr === addr) { d.lat = lat; d.lng = lng; } });
-        newEntries++;
+        if (isInJeju(lat, lng)) {
+          geoCache[addr] = { lat, lng };
+          data.forEach(d => { if (d.roadAddr === addr) { d.lat = lat; d.lng = lng; } });
+          newEntries++;
+        }
       }
       setTimeout(next, 250);
     });
@@ -2409,9 +2419,11 @@ async function sbFetchAll(table, select='*', extraParams='') {
       gc.addressSearch('제주특별자치도 ' + addr, function(result, status) {
         if (status === kakao.maps.services.Status.OK && result.length) {
           const lat = parseFloat(result[0].y), lng = parseFloat(result[0].x);
-          geoCache[addr] = { lat, lng };
-          data.forEach(d => { if (d.roadAddr === addr) { d.lat = lat; d.lng = lng; } });
-          newEntries++;
+          if (isInJeju(lat, lng)) {
+            geoCache[addr] = { lat, lng };
+            data.forEach(d => { if (d.roadAddr === addr) { d.lat = lat; d.lng = lng; } });
+            newEntries++;
+          }
         }
         setTimeout(geocodeNext, 250);
       });

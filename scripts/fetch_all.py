@@ -117,10 +117,10 @@ def sb_delete_by_months(table, months):
     time.sleep(0.3)
 
 def sb_insert(table, rows, batch=400):
-    """Supabase 배치 삽입"""
+    """Supabase 배치 삽입 (_geo_addrs 등 내부 필드 자동 제거)"""
     total, ok = len(rows), 0
     for i in range(0, total, batch):
-        chunk = rows[i:i+batch]
+        chunk = [{k: v for k, v in r.items() if not k.startswith('_')} for r in rows[i:i+batch]]
         data = json.dumps(chunk).encode('utf-8')
         req = urllib.request.Request(
             f'{SUPABASE_URL}/rest/v1/{table}',
@@ -135,25 +135,50 @@ def sb_insert(table, rows, batch=400):
             print(f'  삽입 오류 ({e.code}): {body}')
         time.sleep(0.2)
 
+# ── 주소 조합 유틸 ───────────────────────────────────────
+def build_road_addr(road, b_main_raw, b_sub_raw):
+    """도로명 + 건물번호 → 완전한 도로명주소 (건물번호 없으면 None)"""
+    b_main = (b_main_raw or '').lstrip('0')
+    b_sub  = (b_sub_raw  or '').lstrip('0')
+    if road and b_main:
+        return f"{road} {b_main}" + (f"-{b_sub}" if b_sub and b_sub != '0' else '')
+    return None
+
+def build_jibun_addr(sigungu, dong, main_raw, sub_raw):
+    """시군구 + 법정동 + 지번(본번-부번) → 지번주소"""
+    main = (main_raw or '').lstrip('0')
+    sub  = (sub_raw  or '').lstrip('0')
+    if dong and main:
+        return f"{sigungu} {dong} {main}" + (f"-{sub}" if sub and sub != '0' else '')
+    return f"{sigungu} {dong}" if dong else None
+
 # ── 데이터 파서 ─────────────────────────────────────────
 def parse_apt(items, sigungu):
     rows = []
     for it in items:
         년 = text(it, '년'); 월 = text(it, '월'); 일 = text(it, '일')
         if not (년 and 월 and 일): continue
+        dong     = text(it, '법정동')
+        road     = text(it, '도로명')
+        apt_name = text(it, '아파트')
+        road_full = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
+        jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
+        # 지오코딩 시도 순서: 도로명+건물번호 > 지번 > 아파트명 키워드 > 도로명만
+        geo_addrs = [a for a in [road_full, jibun_full, apt_name, road] if a]
         rows.append({
-            'name':     text(it, '아파트'),
-            'addr':     f"{sigungu} {text(it, '법정동')}",
-            'sigungu':  sigungu,
-            'dong':     text(it, '법정동'),
-            'roadaddr': text(it, '도로명'),
-            'type':     'apt',
-            'area':     float_or_none(text(it, '전용면적')),
-            'price':    price_int(text(it, '거래금액')),
-            'date':     f'{년}-{int(월):02d}-{int(일):02d}',
-            'floor':    int_or_none(text(it, '층')),
-            'built':    int_or_none(text(it, '건축년도')),
-            'lat':      None, 'lng': None,
+            'name':       apt_name,
+            'addr':       jibun_full or f"{sigungu} {dong}",
+            'sigungu':    sigungu,
+            'dong':       dong,
+            'roadaddr':   road_full or road,
+            'type':       'apt',
+            'area':       float_or_none(text(it, '전용면적')),
+            'price':      price_int(text(it, '거래금액')),
+            'date':       f'{년}-{int(월):02d}-{int(일):02d}',
+            'floor':      int_or_none(text(it, '층')),
+            'built':      int_or_none(text(it, '건축년도')),
+            'lat':        None, 'lng': None,
+            '_geo_addrs': geo_addrs,
         })
     return rows
 
@@ -162,10 +187,13 @@ def parse_house(items, sigungu):
     for it in items:
         년 = text(it, '년'); 월 = text(it, '월'); 일 = text(it, '일')
         if not (년 and 월 and 일): continue
+        dong = text(it, '법정동')
+        jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
+        geo_addrs = [a for a in [jibun_full, f"{sigungu} {dong}"] if a]
         rows.append({
             'sigungu':    sigungu,
-            'dong':       text(it, '법정동'),
-            'addr':       f"{sigungu} {text(it, '법정동')}",
+            'dong':       dong,
+            'addr':       jibun_full or f"{sigungu} {dong}",
             'house_type': text(it, '주택유형'),
             'build_use':  text(it, '건물주용도'),
             'area':       float_or_none(text(it, '연면적')),
@@ -174,6 +202,7 @@ def parse_house(items, sigungu):
             'date':       f'{년}-{int(월):02d}-{int(일):02d}',
             'built':      int_or_none(text(it, '건축년도')),
             'lat':        None, 'lng': None,
+            '_geo_addrs': geo_addrs,
         })
     return rows
 
@@ -182,18 +211,25 @@ def parse_rht(items, sigungu):
     for it in items:
         년 = text(it, '년'); 월 = text(it, '월'); 일 = text(it, '일')
         if not (년 and 월 and 일): continue
+        dong     = text(it, '법정동')
+        road     = text(it, '도로명')
+        rht_name = text(it, '연립다세대')
+        road_full = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
+        jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
+        geo_addrs = [a for a in [road_full, jibun_full, rht_name, road] if a]
         rows.append({
-            'name':     text(it, '연립다세대'),
-            'sigungu':  sigungu,
-            'dong':     text(it, '법정동'),
-            'addr':     f"{sigungu} {text(it, '법정동')}",
-            'roadaddr': text(it, '도로명'),
-            'area':     float_or_none(text(it, '전용면적')),
-            'price':    price_int(text(it, '거래금액')),
-            'date':     f'{년}-{int(월):02d}-{int(일):02d}',
-            'floor':    int_or_none(text(it, '층')),
-            'built':    int_or_none(text(it, '건축년도')),
-            'lat':      None, 'lng': None,
+            'name':       rht_name,
+            'sigungu':    sigungu,
+            'dong':       dong,
+            'addr':       jibun_full or f"{sigungu} {dong}",
+            'roadaddr':   road_full or road,
+            'area':       float_or_none(text(it, '전용면적')),
+            'price':      price_int(text(it, '거래금액')),
+            'date':       f'{년}-{int(월):02d}-{int(일):02d}',
+            'floor':      int_or_none(text(it, '층')),
+            'built':      int_or_none(text(it, '건축년도')),
+            'lat':        None, 'lng': None,
+            '_geo_addrs': geo_addrs,
         })
     return rows
 
@@ -202,18 +238,22 @@ def parse_land(items, sigungu):
     for it in items:
         년 = text(it, '년'); 월 = text(it, '월'); 일 = text(it, '일')
         if not (년 and 월 and 일): continue
-        area = float_or_none(text(it, '지분거래구분') or text(it, '면적'))
-        # 토지면적 필드명이 API 버전마다 다를 수 있음
-        for tag in ['면적', '토지면적', '지분거래구분']:
+        area = None
+        for tag in ['면적', '토지면적']:
             v = float_or_none(text(it, tag))
             if v: area = v; break
         price = price_int(text(it, '거래금액'))
         per_m2 = round(price / area, 1) if price and area else None
+        dong  = text(it, '법정동')
+        jibun = text(it, '지번')
+        # 지번이 "123-4" 형태로 이미 있음 → 가장 정확한 주소
+        jibun_addr = f"{sigungu} {dong} {jibun}" if jibun else f"{sigungu} {dong}"
+        geo_addrs = [a for a in [jibun_addr, f"{sigungu} {dong}"] if a]
         rows.append({
-            'addr':       f"{sigungu} {text(it, '법정동')}",
+            'addr':       jibun_addr,
             'sigungu':    sigungu,
-            'dong':       text(it, '법정동'),
-            'jibun':      text(it, '지번'),
+            'dong':       dong,
+            'jibun':      jibun,
             'jimok':      text(it, '지목'),
             'yongdo':     text(it, '용도지역'),
             'doro':       text(it, '도로명'),
@@ -224,6 +264,7 @@ def parse_land(items, sigungu):
             'jibun_type': text(it, '지분거래구분'),
             'trade_type': text(it, '거래유형'),
             'lat':        None, 'lng': None,
+            '_geo_addrs': geo_addrs,
         })
     return rows
 
@@ -232,11 +273,17 @@ def parse_comm(items, sigungu):
     for it in items:
         년 = text(it, '년'); 월 = text(it, '월'); 일 = text(it, '일')
         if not (년 and 월 and 일): continue
+        dong      = text(it, '법정동')
+        road      = text(it, '도로명')
+        bld_name  = text(it, '건물명')
+        road_full = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
+        jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
+        geo_addrs = [a for a in [road_full, jibun_full, bld_name, road] if a]
         rows.append({
             'sigungu':   sigungu,
-            'dong':      text(it, '법정동'),
-            'addr':      f"{sigungu} {text(it, '법정동')}",
-            'name':      text(it, '건물명'),
+            'dong':      dong,
+            'addr':      jibun_full or f"{sigungu} {dong}",
+            'name':      bld_name,
             'build_use': text(it, '건물주용도'),
             'area':      float_or_none(text(it, '전용면적')),
             'land_area': float_or_none(text(it, '대지면적')),
@@ -245,6 +292,7 @@ def parse_comm(items, sigungu):
             'floor':     int_or_none(text(it, '층')),
             'built':     int_or_none(text(it, '건축년도')),
             'lat':       None, 'lng': None,
+            '_geo_addrs': geo_addrs,
         })
     return rows
 
@@ -351,14 +399,22 @@ def fetch_arch():
     sb_insert('arch_permits', all_rows)
 
 # ── 카카오 지오코딩 ──────────────────────────────────────
-_geo_cache = {}  # 주소 → {lat, lng} 세션 캐시
+_geo_cache = {}  # 주소/키워드 → {lat, lng} 세션 캐시
+
+# 제주도 유효 범위
+JEJU_LAT_MIN, JEJU_LAT_MAX = 33.10, 33.62
+JEJU_LNG_MIN, JEJU_LNG_MAX = 126.08, 126.98
+
+def _in_jeju(lat, lng):
+    return JEJU_LAT_MIN <= lat <= JEJU_LAT_MAX and JEJU_LNG_MIN <= lng <= JEJU_LNG_MAX
 
 def kakao_geocode(addr):
-    """카카오 REST API로 주소 → 좌표 변환. 실패 시 None 반환."""
-    if not KAKAO_REST_KEY:
+    """카카오 주소검색 API → 좌표. 제주 범위 밖이면 None."""
+    if not KAKAO_REST_KEY or not addr:
         return None
-    if addr in _geo_cache:
-        return _geo_cache[addr]
+    cache_key = 'addr:' + addr
+    if cache_key in _geo_cache:
+        return _geo_cache[cache_key]
     query = urllib.parse.urlencode({'query': '제주특별자치도 ' + addr})
     url = f'https://dapi.kakao.com/v2/local/search/address.json?{query}'
     req = urllib.request.Request(url, headers={'Authorization': f'KakaoAK {KAKAO_REST_KEY}'})
@@ -367,33 +423,70 @@ def kakao_geocode(addr):
             data = json.loads(r.read().decode('utf-8'))
         docs = data.get('documents', [])
         if docs:
-            result = {'lat': float(docs[0]['y']), 'lng': float(docs[0]['x'])}
-            _geo_cache[addr] = result
+            lat, lng = float(docs[0]['y']), float(docs[0]['x'])
+            result = {'lat': lat, 'lng': lng} if _in_jeju(lat, lng) else None
+            _geo_cache[cache_key] = result
             return result
-    except Exception as e:
+    except Exception:
         pass
-    _geo_cache[addr] = None
+    _geo_cache[cache_key] = None
     return None
 
+def kakao_keyword_search(keyword):
+    """카카오 키워드검색 API → 좌표 (건물명·아파트명 등 POI 검색용)."""
+    if not KAKAO_REST_KEY or not keyword or len(keyword) < 2:
+        return None
+    cache_key = 'kw:' + keyword
+    if cache_key in _geo_cache:
+        return _geo_cache[cache_key]
+    params = urllib.parse.urlencode({'query': '제주 ' + keyword, 'x': '126.5292', 'y': '33.3617', 'radius': 50000})
+    url = f'https://dapi.kakao.com/v2/local/search/keyword.json?{params}'
+    req = urllib.request.Request(url, headers={'Authorization': f'KakaoAK {KAKAO_REST_KEY}'})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            data = json.loads(r.read().decode('utf-8'))
+        docs = data.get('documents', [])
+        if docs:
+            lat, lng = float(docs[0]['y']), float(docs[0]['x'])
+            result = {'lat': lat, 'lng': lng} if _in_jeju(lat, lng) else None
+            _geo_cache[cache_key] = result
+            return result
+    except Exception:
+        pass
+    _geo_cache[cache_key] = None
+    return None
+
+def geocode_row(r):
+    """단일 row를 _geo_addrs 우선순위대로 지오코딩. 성공한 좌표를 r에 직접 저장."""
+    addrs = r.get('_geo_addrs') or []
+    for i, addr in enumerate(addrs):
+        # 마지막 2개는 건물명일 수 있으므로 키워드 검색 사용
+        if i >= len(addrs) - 2 and not any(c.isdigit() for c in addr):
+            coord = kakao_keyword_search(addr)
+        else:
+            coord = kakao_geocode(addr)
+        if coord:
+            r['lat'] = coord['lat']
+            r['lng'] = coord['lng']
+            return True
+        time.sleep(0.05)
+    return False
+
 def geocode_rows(rows, addr_field='roadaddr'):
-    """rows 리스트에서 lat/lng가 없는 항목을 카카오로 지오코딩."""
+    """rows 전체를 지오코딩. _geo_addrs가 있으면 우선 사용, 없으면 addr_field 폴백."""
     if not KAKAO_REST_KEY:
         print('  KAKAO_REST_KEY 없음 → 지오코딩 스킵')
         return
-    todo = [r for r in rows if not r.get('lat') and r.get(addr_field)]
-    addrs = list({r[addr_field] for r in todo})  # 중복 제거
-    print(f'  지오코딩 대상 주소: {len(addrs)}개')
+    todo = [r for r in rows if not r.get('lat')]
+    print(f'  지오코딩 대상: {len(todo)}건')
     success = 0
-    for addr in addrs:
-        coord = kakao_geocode(addr)
-        if coord:
-            for r in rows:
-                if r.get(addr_field) == addr and not r.get('lat'):
-                    r['lat'] = coord['lat']
-                    r['lng'] = coord['lng']
+    for r in todo:
+        if not r.get('_geo_addrs') and r.get(addr_field):
+            r['_geo_addrs'] = [r[addr_field]]
+        if geocode_row(r):
             success += 1
-        time.sleep(0.05)  # 카카오 API rate limit 대응
-    print(f'  지오코딩 완료: {success}/{len(addrs)}개 성공')
+        time.sleep(0.05)
+    print(f'  지오코딩 완료: {success}/{len(todo)}건 성공')
 
 def sb_update_coords(table, rows):
     """lat/lng가 있는 행만 Supabase PATCH로 좌표 업데이트."""
