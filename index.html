@@ -2435,16 +2435,20 @@ async function sbFetchAll(table, select='*', extraParams='') {
   function geocodeByNameFallback(data, geoCache, uiType) {
     if (!window.kakao || !kakao.maps || !kakao.maps.services) return;
     const ps = new kakao.maps.services.Places();
-    // 아직 좌표 없고 이름 있는 항목만
+    // 아직 좌표 없고 이름 있는 항목만. 동 이름 포함 키워드로 정확도 향상
     const todo = data.filter(d => !d.lat && d.name);
-    // 이름 중복 제거
+    // (동+이름) 조합 키 기준으로 그룹화
     const nameMap = {};
-    todo.forEach(d => { if (!nameMap[d.name]) nameMap[d.name] = []; nameMap[d.name].push(d); });
-    const names = Object.keys(nameMap);
-    if (!names.length) return;
+    todo.forEach(d => {
+      const key = (d.sigungu || '') + ' ' + (d.dong || '') + ' ' + d.name;
+      if (!nameMap[key]) nameMap[key] = [];
+      nameMap[key].push(d);
+    });
+    const keys = Object.keys(nameMap);
+    if (!keys.length) return;
     let idx = 0, updated = 0;
     function next() {
-      if (idx >= names.length) {
+      if (idx >= keys.length) {
         if (updated > 0) {
           saveGeoCache(geoCache);
           if (uiType && window._typeState && window._typeState[uiType] && window._typeState[uiType].visible) {
@@ -2453,13 +2457,13 @@ async function sbFetchAll(table, select='*', extraParams='') {
         }
         return;
       }
-      const nm = names[idx++];
-      ps.keywordSearch('제주 ' + nm, function(result, status) {
+      const key = keys[idx++];
+      ps.keywordSearch(key, function(result, status) {
         if (status === kakao.maps.services.Status.OK && result.length) {
           const lat = parseFloat(result[0].y), lng = parseFloat(result[0].x);
           if (isInJeju(lat, lng)) {
-            geoCache['kw:' + nm] = { lat, lng };
-            nameMap[nm].forEach(d => { d.lat = lat; d.lng = lng; });
+            geoCache['kw:' + key] = { lat, lng };
+            nameMap[key].forEach(d => { d.lat = lat; d.lng = lng; });
             updated++;
           }
         }

@@ -163,12 +163,15 @@ def parse_apt(items, sigungu):
         apt_name = text(it, '아파트')
         road_full  = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
         jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
-        # 아파트: 이름 키워드 검색이 POI 기반이라 가장 정확 → 먼저 시도
+        # 아파트: 동+이름 조합 키워드검색 → 도로명+건물번호 → 지번 순
         geo_addrs = []
-        if apt_name: geo_addrs.append((apt_name, 'keyword'))
-        if road_full: geo_addrs.append((road_full, 'addr'))
+        if apt_name and dong:
+            geo_addrs.append((f"{sigungu} {dong} {apt_name}", 'keyword'))  # 가장 구체적
+        if apt_name:
+            geo_addrs.append((apt_name, 'keyword'))  # 이름만 fallback
+        if road_full:  geo_addrs.append((road_full, 'addr'))
         if jibun_full: geo_addrs.append((jibun_full, 'addr'))
-        if road: geo_addrs.append((road, 'addr'))
+        if road:       geo_addrs.append((road, 'addr'))
         rows.append({
             'name':       apt_name,
             'addr':       jibun_full or f"{sigungu} {dong}",
@@ -221,8 +224,9 @@ def parse_rht(items, sigungu):
         road_full  = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
         jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
         geo_addrs = []
+        if rht_name and dong: geo_addrs.append((f"{sigungu} {dong} {rht_name}", 'keyword'))
         if rht_name: geo_addrs.append((rht_name, 'keyword'))
-        if road_full: geo_addrs.append((road_full, 'addr'))
+        if road_full:  geo_addrs.append((road_full, 'addr'))
         if jibun_full: geo_addrs.append((jibun_full, 'addr'))
         if road: geo_addrs.append((road, 'addr'))
         rows.append({
@@ -287,10 +291,11 @@ def parse_comm(items, sigungu):
         road_full  = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
         jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
         geo_addrs = []
+        if bld_name and dong: geo_addrs.append((f"{sigungu} {dong} {bld_name}", 'keyword'))
         if bld_name: geo_addrs.append((bld_name, 'keyword'))
-        if road_full: geo_addrs.append((road_full, 'addr'))
+        if road_full:  geo_addrs.append((road_full, 'addr'))
         if jibun_full: geo_addrs.append((jibun_full, 'addr'))
-        if road: geo_addrs.append((road, 'addr'))
+        if road:       geo_addrs.append((road, 'addr'))
         rows.append({
             'sigungu':   sigungu,
             'dong':      dong,
