@@ -4208,6 +4208,7 @@ function renderBubbles() {
 
     const el = document.createElement('div');
     el.className = `stat-bubble ${colorCls}`;
+    el.style.cursor = 'pointer';
     el.innerHTML =
       `<div class="sb-dong">${s.sigungu.replace('특별자치도','').replace('특별자치시','')} ${s.dong}</div>` +
       `<div class="sb-meta">${periodLabel}</div>` +
@@ -4218,6 +4219,10 @@ function renderBubbles() {
     el.style.transform = `scale(${scale.toFixed(2)})`;
     el.style.transformOrigin = 'bottom center';
     el.title = `${s.sigungu} ${s.dong}\n${periodLabel} ${s.count}건\n평균 ${avgPrice.toFixed(2)}억 · 평당 ${perPyeongStr}`;
+    el.addEventListener('click', (function(stat, tradeList) { return function(e) {
+      e.stopPropagation();
+      showBubbleDetail(stat, tradeList);
+    }; })(s, trades.filter(t => t.sigungu === s.sigungu && t.dong === s.dong)));
 
     const ov = new kakao.maps.CustomOverlay({
       position: new kakao.maps.LatLng(s.lat, s.lng),
@@ -4835,6 +4840,53 @@ function openStatModalForType(type) {
 }
 
 window._tradePopupOverlay = null;
+
+function showBubbleDetail(stat, trades) {
+  var modal = document.getElementById('bubble-detail-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'bubble-detail-modal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:1100;';
+    modal.innerHTML = '<div id="bubble-detail-inner" style="background:#F8FAFB;border-radius:12px;width:min(480px,94vw);max-height:80vh;overflow:auto;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 12px 40px rgba(0,0,0,0.3);"></div>';
+    modal.addEventListener('click', function(e){ if(e.target===modal) modal.style.display='none'; });
+    document.body.appendChild(modal);
+  }
+  var sigShort = (stat.sigungu||'').replace('특별자치도','').replace('특별자치시','');
+  var sorted = trades.slice().sort(function(a,b){ return new Date(b.date) - new Date(a.date); });
+  var rows = sorted.map(function(t) {
+    var pyeong = t.area ? (t.area/3.3058) : 0;
+    var pp = pyeong>0 ? Math.round(t.price*10000/pyeong).toLocaleString()+'만/평' : '-';
+    var typeLabel = t._typeLabel || t.type || '아파트';
+    return '<tr style="border-bottom:1px solid #eee;">' +
+      '<td style="padding:6px 8px;font-size:12px;color:#333;">'+(t.date||'-')+'</td>' +
+      '<td style="padding:6px 8px;font-size:12px;font-weight:600;">'+(t.name||t.dong||'-')+'</td>' +
+      '<td style="padding:6px 8px;font-size:12px;color:#1565C0;font-weight:700;">'+t.price.toFixed(1)+'억</td>' +
+      '<td style="padding:6px 8px;font-size:11px;color:#666;">'+(t.area?Math.round(t.area)+'㎡':'-')+'</td>' +
+      '<td style="padding:6px 8px;font-size:11px;color:#666;">'+pp+'</td>' +
+      '<td style="padding:6px 8px;font-size:11px;color:#888;">'+typeLabel+'</td>' +
+      '</tr>';
+  }).join('');
+  document.getElementById('bubble-detail-inner').innerHTML =
+    '<div style="background:linear-gradient(135deg,#1F4E79,#2E75B6);color:#fff;padding:14px 18px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">' +
+      '<div><div style="font-size:15px;font-weight:700;">📍 '+sigShort+' '+stat.dong+'</div>' +
+      '<div style="font-size:12px;opacity:0.85;margin-top:2px;">총 '+stat.count+'건 · 평균 '+(stat.totalPrice/stat.count).toFixed(1)+'억</div></div>' +
+      '<button onclick="document.getElementById(\'bubble-detail-modal\').style.display=\'none\';" style="background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:28px;height:28px;">✕</button>' +
+    '</div>' +
+    '<div style="padding:12px 16px;overflow-x:auto;">' +
+      '<table style="width:100%;border-collapse:collapse;">' +
+        '<thead><tr style="background:#f0f4f8;">' +
+          '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">날짜</th>' +
+          '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">단지명</th>' +
+          '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">금액</th>' +
+          '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">면적</th>' +
+          '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">평당가</th>' +
+          '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">유형</th>' +
+        '</tr></thead>' +
+        '<tbody>'+rows+'</tbody>' +
+      '</table>' +
+    '</div>';
+  modal.style.display = 'block';
+}
 
 function showTradePopup(t) {
   // 기존 팝업 제거
