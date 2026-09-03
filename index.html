@@ -502,13 +502,19 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
 .dev-radius-btn.active { background:#37474F; color:#fff; border-color:#37474F; }
 /* 토지 실거래 마커 */
 .land-marker {
-  display: flex; align-items: center; justify-content: center;
-  min-width: 38px; height: 20px; border-radius: 3px;
-  border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.35);
-  cursor: pointer; font-size: 9px; font-weight: 700; color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-width: 58px; border-radius: 5px;
+  border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  cursor: pointer; color: #fff;
   font-family: 'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
-  white-space: nowrap; padding: 0 5px; position: relative;
+  white-space: nowrap; padding: 3px 7px 4px; position: relative;
   transition: transform 0.12s;
+}
+.land-marker .lm-dong {
+  font-size: 9px; font-weight: 500; opacity: 0.88; line-height: 1.2; margin-bottom: 1px;
+}
+.land-marker .lm-price {
+  font-size: 12px; font-weight: 800; line-height: 1.2;
 }
 .land-marker::after {
   content:''; position:absolute; bottom:-5px; left:50%;
@@ -5612,7 +5618,9 @@ function renderLandMarkers() {
         : t.perM2.toFixed(1) + '만';
       const el = document.createElement('div');
       el.className = 'land-marker ' + cls;
-      el.textContent = perM2str + '/㎡';
+      const dongShort = (t.dong || t.sigungu || '').replace(/^제주시\s*|^서귀포시\s*/,'');
+      el.innerHTML = '<span class="lm-dong">' + (dongShort || '') + '</span>' +
+                     '<span class="lm-price">' + perM2str + '/㎡</span>';
       el.addEventListener('click', (function(td){ return function(e) {
         e.stopPropagation();
         showLandPopup(td, this);
