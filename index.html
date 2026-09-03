@@ -2631,6 +2631,11 @@ const UNSOLD_DATA = [
 const TYPE_LABEL = { apt:'아파트', ofc:'오피스텔', villa:'빌라·타운하우스' };
 const VWORLD_KEY = 'E7677C67-87D1-3D51-AE0C-C59B2947A413';
 
+// 제주도 범위 벗어난 좌표 필터 (바다에 뜨는 마커 방지)
+function isInJeju(lat, lng) {
+  return lat >= 33.10 && lat <= 33.62 && lng >= 126.08 && lng <= 126.98;
+}
+
 /* ═══════════════════════════════════════════════
    카카오맵 초기화
 ═══════════════════════════════════════════════ */
@@ -3532,7 +3537,7 @@ function renderBidMarkers() {
     const end = Math.min(i + 60, list.length);
     for (; i < end; i++) {
       const d = list[i];
-      if (!d.lat || !d.lng) continue;
+      if (!d.lat || !d.lng || !isInJeju(d.lat, d.lng)) continue;
       const color = BID_STATUS_COLOR[d._status] || '#757575';
       const el = document.createElement('div');
       el.className = 'bid-marker';
@@ -3755,7 +3760,7 @@ function renderArchMarkers() {
     const end = Math.min(i + 80, list.length);
     for (; i < end; i++) {
       const d = list[i];
-      if (!d.lat || !d.lng) continue;
+      if (!d.lat || !d.lng || !isInJeju(d.lat, d.lng)) continue;
       const color = ARCH_STATUS_COLOR[d._status] || '#607D8B';
       const el = document.createElement('div');
       const iconMap = { '허가':'📋', '착공':'🏗', '준공':'✅' };
@@ -4535,7 +4540,7 @@ function renderTradeMarkers() {
     const end = Math.min(i + CHUNK, trades.length);
     for (; i < end; i++) {
       const t = trades[i];
-      if (!t.lat || !t.lng) continue;
+      if (!t.lat || !t.lng || !isInJeju(t.lat, t.lng)) continue;
       const cls = t.price < 3 ? 'price-low' : t.price < 6 ? 'price-mid' : 'price-high';
       const el = document.createElement('div');
       el.className = 'trade-marker ' + cls;
@@ -4629,7 +4634,7 @@ function _clusterTrades(trades, gridPx) {
   var proj = map.getProjection();
   var cells = {};
   trades.forEach(function(t) {
-    if (!t.lat || !t.lng) return;
+    if (!t.lat || !t.lng || !isInJeju(t.lat, t.lng)) return;
     var pt = proj.pointFromCoords(new kakao.maps.LatLng(t.lat, t.lng));
     var cx = Math.floor(pt.x / gridPx);
     var cy = Math.floor(pt.y / gridPx);
@@ -4694,7 +4699,7 @@ function renderTradeMarkersForType(type) {
       } else {
         // 개별 마커
         var t = item.trade;
-        if (!t.lat || !t.lng) continue;
+        if (!t.lat || !t.lng || !isInJeju(t.lat, t.lng)) continue;
         var cls = t.price < 3 ? 'price-low' : t.price < 6 ? 'price-mid' : 'price-high';
         el = document.createElement('div');
         el.className = 'trade-marker ' + cls;
@@ -5662,7 +5667,7 @@ function getFilteredLands() {
   // 월 선택 모드
   if (landPeriod === 'pick') {
     return window.LAND_DATA.filter(t => {
-      if (!t.lat || !t.lng) return false;
+      if (!t.lat || !t.lng || !isInJeju(t.lat, t.lng)) return false;
       if (!jimokFilter(t)) return false;
       if (landMonth === 'all') return true;
       return t.date && t.date.slice(0,4) + t.date.slice(5,7) === landMonth;
@@ -5674,7 +5679,7 @@ function getFilteredLands() {
   else if (landPeriod === 'week')  cutoff.setDate(now.getDate() - 7);
   else if (landPeriod === 'month') cutoff.setDate(now.getDate() - 30);
   return window.LAND_DATA.filter(t => {
-    if (!t.lat || !t.lng) return false;
+    if (!t.lat || !t.lng || !isInJeju(t.lat, t.lng)) return false;
     if (t.date && new Date(t.date) < cutoff) return false;
     return jimokFilter(t);
   });
