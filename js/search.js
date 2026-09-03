@@ -40,7 +40,7 @@ function doSearch() {
         } else {
           showToast('검색 결과가 없습니다');
         }
-      }, { location: new kakao.maps.LatLng(33.3617, 126.5292), radius: 20000 });
+      }, { location: new kakao.maps.LatLng(33.3617, 126.5292), radius: 60000 });
     }
   });
 }

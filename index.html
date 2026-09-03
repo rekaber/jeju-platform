@@ -941,9 +941,9 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <div class="layer-toggle" id="toggle-trade-apt" onclick="toggleTradeType('apt',this)"></div>
         </div>
         <div class="trade-filter-row" id="trade-filter-row-apt" style="opacity:0.4;pointer-events:none;">
-          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('apt','week',this)">주간</button>
+          <button class="trade-filter-btn" onclick="setTradeTypePeriod('apt','week',this)">주간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('apt','month',this)">월간</button>
-          <button class="trade-filter-btn" onclick="setTradeTypePeriod('apt','year',this)">연간</button>
+          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('apt','year',this)">연간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('apt','pick',this)">월 선택</button>
         </div>
         <div id="trade-month-picker-apt" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
@@ -977,13 +977,13 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <div class="layer-toggle" id="toggle-bubble-apt" onclick="toggleBubbleForType('apt',this)"></div>
         </div>
         <div id="bubble-period-wrap-apt" style="padding:2px 6px 6px 25px;display:none;">
+          <div style="font-size:10px;color:#888;margin-bottom:3px;">표시 기간</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
-            <button class="trade-filter-btn active" onclick="setBubblePeriodForType('apt','week',this)">주간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('apt','month',this)">월간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('apt','year',this)">연간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('apt','pick',this)">월 선택</button>
+            <button class="bubble-period-btn active" onclick="setBubblePeriodForType('apt','year',this)">올해</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriodForType('apt','6m',this)">6개월</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriodForType('apt','3m',this)">3개월</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriodForType('apt','month',this)">1개월</button>
           </div>
-          <div id="bubble-month-picker-apt" style="display:none;padding-top:4px;display:flex;gap:3px;flex-wrap:wrap;"></div>
         </div>
       </div>
 
@@ -998,9 +998,9 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <div class="layer-toggle" id="toggle-trade-house" onclick="toggleTradeType('house',this)"></div>
         </div>
         <div class="trade-filter-row" id="trade-filter-row-house" style="opacity:0.4;pointer-events:none;">
-          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('house','week',this)">주간</button>
+          <button class="trade-filter-btn" onclick="setTradeTypePeriod('house','week',this)">주간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('house','month',this)">월간</button>
-          <button class="trade-filter-btn" onclick="setTradeTypePeriod('house','year',this)">연간</button>
+          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('house','year',this)">연간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('house','pick',this)">월 선택</button>
         </div>
         <div id="trade-month-picker-house" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
@@ -1031,13 +1031,13 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <div class="layer-toggle" id="toggle-bubble-house" onclick="toggleBubbleForType('house',this)"></div>
         </div>
         <div id="bubble-period-wrap-house" style="padding:2px 6px 6px 25px;display:none;">
+          <div style="font-size:10px;color:#888;margin-bottom:3px;">표시 기간</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
-            <button class="trade-filter-btn active" onclick="setBubblePeriodForType('house','week',this)">주간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('house','month',this)">월간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('house','year',this)">연간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('house','pick',this)">월 선택</button>
+            <button class="bubble-period-btn active" onclick="setBubblePeriodForType('house','year',this)">올해</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriodForType('house','6m',this)">6개월</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriodForType('house','3m',this)">3개월</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriodForType('house','month',this)">1개월</button>
           </div>
-          <div id="bubble-month-picker-house" style="display:none;padding-top:4px;display:flex;gap:3px;flex-wrap:wrap;"></div>
         </div>
       </div>
 
@@ -1052,9 +1052,9 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <div class="layer-toggle" id="toggle-trade-rht" onclick="toggleTradeType('rht',this)"></div>
         </div>
         <div class="trade-filter-row" id="trade-filter-row-rht" style="opacity:0.4;pointer-events:none;">
-          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('rht','week',this)">주간</button>
+          <button class="trade-filter-btn" onclick="setTradeTypePeriod('rht','week',this)">주간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('rht','month',this)">월간</button>
-          <button class="trade-filter-btn" onclick="setTradeTypePeriod('rht','year',this)">연간</button>
+          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('rht','year',this)">연간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('rht','pick',this)">월 선택</button>
         </div>
         <div id="trade-month-picker-rht" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
@@ -1085,13 +1085,13 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <div class="layer-toggle" id="toggle-bubble-rht" onclick="toggleBubbleForType('rht',this)"></div>
         </div>
         <div id="bubble-period-wrap-rht" style="padding:2px 6px 6px 25px;display:none;">
+          <div style="font-size:10px;color:#888;margin-bottom:3px;">표시 기간</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
-            <button class="trade-filter-btn active" onclick="setBubblePeriodForType('rht','week',this)">주간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('rht','month',this)">월간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('rht','year',this)">연간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('rht','pick',this)">월 선택</button>
+            <button class="bubble-period-btn active" onclick="setBubblePeriodForType('rht','year',this)">올해</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriodForType('rht','6m',this)">6개월</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriodForType('rht','3m',this)">3개월</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriodForType('rht','month',this)">1개월</button>
           </div>
-          <div id="bubble-month-picker-rht" style="display:none;padding-top:4px;display:flex;gap:3px;flex-wrap:wrap;"></div>
         </div>
       </div>
 
@@ -1106,9 +1106,9 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <div class="layer-toggle" id="toggle-trade-comm" onclick="toggleTradeType('comm',this)"></div>
         </div>
         <div class="trade-filter-row" id="trade-filter-row-comm" style="opacity:0.4;pointer-events:none;">
-          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('comm','week',this)">주간</button>
+          <button class="trade-filter-btn" onclick="setTradeTypePeriod('comm','week',this)">주간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('comm','month',this)">월간</button>
-          <button class="trade-filter-btn" onclick="setTradeTypePeriod('comm','year',this)">연간</button>
+          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('comm','year',this)">연간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('comm','pick',this)">월 선택</button>
         </div>
         <div id="trade-month-picker-comm" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
@@ -1139,13 +1139,13 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <div class="layer-toggle" id="toggle-bubble-comm" onclick="toggleBubbleForType('comm',this)"></div>
         </div>
         <div id="bubble-period-wrap-comm" style="padding:2px 6px 6px 25px;display:none;">
+          <div style="font-size:10px;color:#888;margin-bottom:3px;">표시 기간</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;">
-            <button class="trade-filter-btn active" onclick="setBubblePeriodForType('comm','week',this)">주간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('comm','month',this)">월간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('comm','year',this)">연간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('comm','pick',this)">월 선택</button>
+            <button class="bubble-period-btn active" onclick="setBubblePeriodForType('comm','year',this)">올해</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriodForType('comm','6m',this)">6개월</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriodForType('comm','3m',this)">3개월</button>
+            <button class="bubble-period-btn" onclick="setBubblePeriodForType('comm','month',this)">1개월</button>
           </div>
-          <div id="bubble-month-picker-comm" style="display:none;padding-top:4px;display:flex;gap:3px;flex-wrap:wrap;"></div>
         </div>
       </div>
 
@@ -1383,10 +1383,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
     <div id="stat-modal">
       <div id="stat-modal-inner">
         <div id="stat-modal-hd">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <h2>🏢 제주 아파트 실거래 통계</h2>
-            <select id="stat-year-select" onchange="setStatYear(this.value)" style="padding:3px 8px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;background:rgba(255,255,255,0.2);color:#fff;"></select>
-          </div>
+          <h2>🏢 제주 아파트 실거래 통계 (2026년)</h2>
           <button class="sm-close" onclick="closeStatModal()">✕</button>
         </div>
         <div id="stat-modal-body">
@@ -2084,236 +2081,81 @@ function saveGeoCache(cache) {
 
 // ── 제주도 읍면동 중심 좌표 테이블 (Kakao API 없이 즉시 좌표 할당) ──
 const DONG_COORDS = {
-  // ── 제주시 동지역 (행정복지센터 기준 육지 좌표) ──
-  '제주시 일도일동': { lat:33.5080, lng:126.5230 },
-  '제주시 일도이동': { lat:33.5095, lng:126.5270 },
-  '제주시 이도일동': { lat:33.5050, lng:126.5250 },
-  '제주시 이도이동': { lat:33.5010, lng:126.5180 },
-  '제주시 삼도일동': { lat:33.5080, lng:126.5170 },
-  '제주시 삼도이동': { lat:33.5060, lng:126.5140 },
-  '제주시 용담일동': { lat:33.5080, lng:126.5000 },  // 해안 → 남쪽으로 조정
-  '제주시 용담이동': { lat:33.5060, lng:126.4870 },  // 해안 → 남쪽으로 조정
-  '제주시 용담삼동': { lat:33.5070, lng:126.4960 },
-  '제주시 건입동':   { lat:33.5100, lng:126.5370 },  // 항구 → 남쪽으로 조정
-  '제주시 화북일동': { lat:33.5160, lng:126.5590 },  // 해안 → 남쪽으로 조정
-  '제주시 화북이동': { lat:33.5160, lng:126.5640 },  // 해안 → 남쪽으로 조정
-  '제주시 삼양일동': { lat:33.5200, lng:126.5780 },  // 해안 → 남쪽으로 조정
-  '제주시 삼양이동': { lat:33.5200, lng:126.5820 },  // 해안 → 남쪽으로 조정
-  '제주시 삼양삼동': { lat:33.5210, lng:126.5850 },  // 해안 → 남쪽으로 조정
-  '제주시 봉개동':   { lat:33.4940, lng:126.5840 },
+  // 제주시 동지역
+  '제주시 일도일동': { lat:33.5107, lng:126.5220 },
+  '제주시 일도이동': { lat:33.5132, lng:126.5246 },
+  '제주시 이도일동': { lat:33.5067, lng:126.5244 },
+  '제주시 이도이동': { lat:33.5023, lng:126.5160 },
+  '제주시 삼도일동': { lat:33.5121, lng:126.5162 },
+  '제주시 삼도이동': { lat:33.5087, lng:126.5155 },
+  '제주시 용담일동': { lat:33.5194, lng:126.5056 },
+  '제주시 용담이동': { lat:33.5200, lng:126.5070 },
+  '제주시 건입동':   { lat:33.5147, lng:126.5417 },
+  '제주시 화북일동': { lat:33.5234, lng:126.5637 },
+  '제주시 화북이동': { lat:33.5243, lng:126.5650 },
+  '제주시 삼양일동': { lat:33.5320, lng:126.5824 },
+  '제주시 삼양이동': { lat:33.5330, lng:126.5840 },
+  '제주시 삼양삼동': { lat:33.5345, lng:126.5855 },
+  '제주시 봉개동':   { lat:33.4947, lng:126.5844 },
   '제주시 아라일동': { lat:33.4754, lng:126.5296 },
   '제주시 아라이동': { lat:33.4774, lng:126.5316 },
   '제주시 오라일동': { lat:33.4896, lng:126.4887 },
   '제주시 오라이동': { lat:33.4910, lng:126.4900 },
   '제주시 오라삼동': { lat:33.4840, lng:126.4784 },
-  '제주시 이호일동': { lat:33.4990, lng:126.4430 },
-  '제주시 이호이동': { lat:33.4975, lng:126.4410 },
-  '제주시 이호동':   { lat:33.4982, lng:126.4420 },
-  '제주시 도두일동': { lat:33.5010, lng:126.4500 },  // 해안 → 남쪽으로 조정
-  '제주시 도두이동': { lat:33.5010, lng:126.4520 },  // 해안 → 남쪽으로 조정
-  '제주시 노형동':   { lat:33.4820, lng:126.4870 },
+  '제주시 이호일동': { lat:33.5107, lng:126.4650 },
+  '제주시 이호이동': { lat:33.5117, lng:126.4660 },
+  '제주시 도두일동': { lat:33.5089, lng:126.4531 },
+  '제주시 도두이동': { lat:33.5095, lng:126.4545 },
+  '제주시 노형동':   { lat:33.4837, lng:126.4674 },
   '제주시 외도일동': { lat:33.4886, lng:126.4383 },
   '제주시 외도이동': { lat:33.4896, lng:126.4393 },
-  '제주시 내도동':   { lat:33.4970, lng:126.4290 },
+  '제주시 이호동':   { lat:33.5107, lng:126.4650 },
   '제주시 도남동':   { lat:33.4791, lng:126.4986 },
-  '제주시 도평동':   { lat:33.4830, lng:126.4820 },
   '제주시 용강동':   { lat:33.4699, lng:126.4784 },
   '제주시 회천동':   { lat:33.4597, lng:126.5016 },
   '제주시 영평동':   { lat:33.4532, lng:126.5212 },
   '제주시 월평동':   { lat:33.4586, lng:126.4882 },
-  '제주시 해안동':   { lat:33.4580, lng:126.4560 },
   '제주시 도련일동': { lat:33.4765, lng:126.5647 },
   '제주시 도련이동': { lat:33.4775, lng:126.5657 },
   '제주시 화도동':   { lat:33.4730, lng:126.5700 },
-  '제주시 연동':     { lat:33.4945, lng:126.5002 },
-  '제주시 오등동':   { lat:33.4820, lng:126.5100 },
-  // 이도/삼도 단독 키 (DB에서 일/이 없이 올 경우 대비)
-  '제주시 이도동':   { lat:33.5010, lng:126.5180 },
-  '제주시 삼도동':   { lat:33.5060, lng:126.5140 },
-  // ── 제주시 읍면 ──
+  '제주시 이도동':   { lat:33.5023, lng:126.5160 },
+  '제주시 삼도동':   { lat:33.5087, lng:126.5155 },
+  // 제주시 읍면
   '제주시 한림읍':   { lat:33.4150, lng:126.2760 },
-  '제주시 애월읍':   { lat:33.4630, lng:126.3200 },
-  '제주시 구좌읍':   { lat:33.5120, lng:126.7620 },
-  '제주시 조천읍':   { lat:33.5200, lng:126.6470 },
+  '제주시 애월읍':   { lat:33.4650, lng:126.3165 },
+  '제주시 구좌읍':   { lat:33.5275, lng:126.7568 },
+  '제주시 조천읍':   { lat:33.5423, lng:126.6478 },
   '제주시 한경면':   { lat:33.3466, lng:126.2178 },
   '제주시 추자면':   { lat:33.9618, lng:126.3010 },
   '제주시 우도면':   { lat:33.5066, lng:126.9511 },
-  // ── 서귀포시 동지역 ──
-  '서귀포시 송산동': { lat:33.2530, lng:126.5630 },
-  '서귀포시 정방동': { lat:33.2490, lng:126.5670 },
-  '서귀포시 중앙동': { lat:33.2510, lng:126.5615 },
-  '서귀포시 천지동': { lat:33.2480, lng:126.5635 },
-  '서귀포시 효돈동': { lat:33.2380, lng:126.6020 },
-  '서귀포시 영천동': { lat:33.2360, lng:126.6060 },
-  '서귀포시 동홍동': { lat:33.2590, lng:126.5760 },
-  '서귀포시 서홍동': { lat:33.2580, lng:126.5600 },
-  '서귀포시 서호동': { lat:33.2670, lng:126.5760 },  // 혁신도시 인근
-  '서귀포시 대륜동': { lat:33.2560, lng:126.5810 },
-  '서귀포시 대천동': { lat:33.2555, lng:126.5790 },
-  '서귀포시 중문동': { lat:33.2530, lng:126.4140 },
-  '서귀포시 예래동': { lat:33.2460, lng:126.3870 },
-  '서귀포시 강정동': { lat:33.2650, lng:126.5200 },
-  '서귀포시 호근동': { lat:33.2640, lng:126.5185 },
-  '서귀포시 도순동': { lat:33.2600, lng:126.5130 },
+  // 서귀포시 동지역
+  '서귀포시 송산동': { lat:33.2502, lng:126.5623 },
+  '서귀포시 정방동': { lat:33.2458, lng:126.5667 },
+  '서귀포시 중앙동': { lat:33.2477, lng:126.5611 },
+  '서귀포시 천지동': { lat:33.2450, lng:126.5630 },
+  '서귀포시 효돈동': { lat:33.2345, lng:126.6010 },
+  '서귀포시 영천동': { lat:33.2310, lng:126.6050 },
+  '서귀포시 동홍동': { lat:33.2570, lng:126.5741 },
+  '서귀포시 서홍동': { lat:33.2560, lng:126.5590 },
+  '서귀포시 대륜동': { lat:33.2550, lng:126.5800 },
+  '서귀포시 대천동': { lat:33.2540, lng:126.5780 },
+  '서귀포시 중문동': { lat:33.2530, lng:126.4132 },
+  '서귀포시 예래동': { lat:33.2441, lng:126.3850 },
+  '서귀포시 강정동': { lat:33.2630, lng:126.5192 },
+  '서귀포시 호근동': { lat:33.2620, lng:126.5180 },
+  '서귀포시 도순동': { lat:33.2580, lng:126.5120 },
   '서귀포시 상효동': { lat:33.2823, lng:126.5984 },
   '서귀포시 하효동': { lat:33.2655, lng:126.6197 },
   '서귀포시 신효동': { lat:33.2640, lng:126.6250 },
   '서귀포시 토평동': { lat:33.2700, lng:126.5600 },
-  '서귀포시 보목동': { lat:33.2490, lng:126.5920 },
-  '서귀포시 서귀동': { lat:33.2510, lng:126.5615 },
-  '서귀포시 대포동': { lat:33.2500, lng:126.3930 },
-  '서귀포시 법환동': { lat:33.2510, lng:126.5080 },
-  '서귀포시 상예동': { lat:33.2540, lng:126.4270 },
-  '서귀포시 색달동': { lat:33.2540, lng:126.3750 },
-  '서귀포시 영남동': { lat:33.2560, lng:126.3370 },
-  '서귀포시 월평동': { lat:33.2590, lng:126.5320 },
-  '서귀포시 하예동': { lat:33.2380, lng:126.4000 },
-  '서귀포시 하원동': { lat:33.2670, lng:126.4470 },
-  '서귀포시 회수동': { lat:33.2650, lng:126.3630 },
-  // ── 서귀포시 읍면 ──
-  '서귀포시 남원읍': { lat:33.2810, lng:126.7000 },
+  '서귀포시 보목동': { lat:33.2450, lng:126.5900 },
+  '서귀포시 서귀동': { lat:33.2477, lng:126.5611 },
+  // 서귀포시 읍면
+  '서귀포시 남원읍': { lat:33.2810, lng:126.6995 },
   '서귀포시 성산읍': { lat:33.4447, lng:126.9175 },
   '서귀포시 표선면': { lat:33.3243, lng:126.8347 },
-  '서귀포시 대정읍': { lat:33.2400, lng:126.2520 },
-  '서귀포시 안덕면': { lat:33.2540, lng:126.3620 },
-
-  // ── 읍면 내 리(里) 좌표 — house/rht/comm/apt roadAddr 대응 (122개) ──
-  // 제주시 한림읍
-  '제주시 한림읍 한림리':   { lat:33.4150, lng:126.2630 },
-  '제주시 한림읍 협재리':   { lat:33.4530, lng:126.2390 },
-  '제주시 한림읍 금능리':   { lat:33.4540, lng:126.2490 },
-  '제주시 한림읍 귀덕리':   { lat:33.4350, lng:126.2870 },
-  '제주시 한림읍 동명리':   { lat:33.4160, lng:126.2680 },
-  '제주시 한림읍 수원리':   { lat:33.4090, lng:126.2800 },
-  '제주시 한림읍 옹포리':   { lat:33.4440, lng:126.2780 },
-  '제주시 한림읍 대림리':   { lat:33.4250, lng:126.2710 },
-  '제주시 한림읍 상대리':   { lat:33.4420, lng:126.2820 },
-  '제주시 한림읍 명월리':   { lat:33.4090, lng:126.3020 },
-  '제주시 한림읍 금악리':   { lat:33.3830, lng:126.2940 },
-  '제주시 한림읍 상명리':   { lat:33.3940, lng:126.2640 },
-  '제주시 한림읍 월령리':   { lat:33.4580, lng:126.2500 },
-  '제주시 한림읍 월림리':   { lat:33.4030, lng:126.2980 },
-  '제주시 한림읍 한수리':   { lat:33.4010, lng:126.2510 },
-  // 제주시 애월읍
-  '제주시 애월읍 애월리':   { lat:33.4640, lng:126.3100 },
-  '제주시 애월읍 하귀1리':  { lat:33.4720, lng:126.3600 },
-  '제주시 애월읍 하귀2리':  { lat:33.4730, lng:126.3680 },
-  '제주시 애월읍 하귀일리': { lat:33.4720, lng:126.3600 },
-  '제주시 애월읍 하귀이리': { lat:33.4730, lng:126.3680 },
-  '제주시 애월읍 고내리':   { lat:33.4650, lng:126.2940 },
-  '제주시 애월읍 고성리':   { lat:33.4480, lng:126.3020 },
-  '제주시 애월읍 곽지리':   { lat:33.4680, lng:126.2830 },
-  '제주시 애월읍 광령리':   { lat:33.4530, lng:126.3480 },
-  '제주시 애월읍 구엄리':   { lat:33.4700, lng:126.3400 },
-  '제주시 애월읍 금성리':   { lat:33.4320, lng:126.3100 },
-  '제주시 애월읍 납읍리':   { lat:33.4300, lng:126.3260 },
-  '제주시 애월읍 봉성리':   { lat:33.4380, lng:126.3420 },
-  '제주시 애월읍 상가리':   { lat:33.4410, lng:126.3650 },
-  '제주시 애월읍 상귀리':   { lat:33.4760, lng:126.3550 },
-  '제주시 애월읍 소길리':   { lat:33.4420, lng:126.3820 },
-  '제주시 애월읍 수산리':   { lat:33.4290, lng:126.3720 },
-  '제주시 애월읍 신엄리':   { lat:33.4620, lng:126.2940 },
-  '제주시 애월읍 어음리':   { lat:33.4350, lng:126.3950 },
-  '제주시 애월읍 유수암리': { lat:33.4270, lng:126.3550 },
-  '제주시 애월읍 장전리':   { lat:33.4250, lng:126.3800 },
-  '제주시 애월읍 하가리':   { lat:33.4360, lng:126.3310 },
-  // 제주시 구좌읍
-  '제주시 구좌읍 김녕리':   { lat:33.5530, lng:126.7570 },
-  '제주시 구좌읍 세화리':   { lat:33.5190, lng:126.8330 },
-  '제주시 구좌읍 하도리':   { lat:33.5170, lng:126.8620 },
-  '제주시 구좌읍 한동리':   { lat:33.5330, lng:126.8070 },
-  '제주시 구좌읍 행원리':   { lat:33.5430, lng:126.7830 },
-  '제주시 구좌읍 평대리':   { lat:33.5070, lng:126.8200 },
-  '제주시 구좌읍 동복리':   { lat:33.5320, lng:126.7780 },
-  '제주시 구좌읍 덕천리':   { lat:33.4990, lng:126.7680 },
-  '제주시 구좌읍 상도리':   { lat:33.5010, lng:126.7860 },
-  '제주시 구좌읍 송당리':   { lat:33.4780, lng:126.7750 },
-  '제주시 구좌읍 월정리':   { lat:33.5500, lng:126.7680 },
-  '제주시 구좌읍 종달리':   { lat:33.5080, lng:126.9010 },
-  // 제주시 조천읍
-  '제주시 조천읍 함덕리':   { lat:33.5430, lng:126.6690 },
-  '제주시 조천읍 조천리':   { lat:33.5290, lng:126.6440 },
-  '제주시 조천읍 신촌리':   { lat:33.5240, lng:126.6310 },
-  '제주시 조천읍 신흥리':   { lat:33.5190, lng:126.6570 },
-  '제주시 조천읍 북촌리':   { lat:33.5460, lng:126.7070 },
-  '제주시 조천읍 선흘리':   { lat:33.4980, lng:126.6980 },
-  '제주시 조천읍 와흘리':   { lat:33.4870, lng:126.6600 },
-  '제주시 조천읍 대흘리':   { lat:33.4950, lng:126.6300 },
-  '제주시 조천읍 교래리':   { lat:33.4690, lng:126.6860 },
-  '제주시 조천읍 와산리':   { lat:33.4830, lng:126.6300 },
-  // 제주시 한경면
-  '제주시 한경면 고산리':   { lat:33.3050, lng:126.1640 },
-  '제주시 한경면 신창리':   { lat:33.3360, lng:126.2050 },
-  '제주시 한경면 용수리':   { lat:33.3290, lng:126.2270 },
-  '제주시 한경면 두모리':   { lat:33.3520, lng:126.2050 },
-  '제주시 한경면 낙천리':   { lat:33.3610, lng:126.2250 },
-  '제주시 한경면 저지리':   { lat:33.3680, lng:126.2700 },
-  '제주시 한경면 조수리':   { lat:33.3620, lng:126.2000 },
-  '제주시 한경면 청수리':   { lat:33.3620, lng:126.2480 },
-  '제주시 한경면 판포리':   { lat:33.3390, lng:126.2360 },
-  '제주시 한경면 금등리':   { lat:33.3190, lng:126.1760 },
-  // 제주시 추자면
-  '제주시 추자면 대서리':   { lat:33.9610, lng:126.2990 },
-  '제주시 추자면 묵리':     { lat:33.9550, lng:126.3010 },
-  '제주시 추자면 신양리':   { lat:33.9390, lng:126.2790 },
-  '제주시 추자면 영흥리':   { lat:33.9750, lng:126.2900 },
-  '제주시 추자면 예초리':   { lat:33.9490, lng:126.2880 },
-  // 제주시 우도면
-  '제주시 우도면 연평리':   { lat:33.5100, lng:126.9530 },
-  // 서귀포시 남원읍
-  '서귀포시 남원읍 남원리': { lat:33.2810, lng:126.7100 },
-  '서귀포시 남원읍 위미리': { lat:33.2760, lng:126.7380 },
-  '서귀포시 남원읍 태흥리': { lat:33.2980, lng:126.7030 },
-  '서귀포시 남원읍 한남리': { lat:33.3030, lng:126.6680 },
-  '서귀포시 남원읍 하례리': { lat:33.2720, lng:126.6820 },
-  '서귀포시 남원읍 신흥리': { lat:33.2840, lng:126.7550 },
-  '서귀포시 남원읍 신례리': { lat:33.2730, lng:126.6690 },
-  '서귀포시 남원읍 의귀리': { lat:33.3120, lng:126.7120 },
-  '서귀포시 남원읍 수망리': { lat:33.3050, lng:126.7270 },
-  // 서귀포시 성산읍
-  '서귀포시 성산읍 성산리': { lat:33.4690, lng:126.9260 },
-  '서귀포시 성산읍 고성리': { lat:33.4440, lng:126.9150 },
-  '서귀포시 성산읍 오조리': { lat:33.4320, lng:126.9430 },
-  '서귀포시 성산읍 온평리': { lat:33.4250, lng:126.9010 },
-  '서귀포시 성산읍 신산리': { lat:33.4150, lng:126.8950 },
-  '서귀포시 성산읍 신천리': { lat:33.4220, lng:126.8760 },
-  '서귀포시 성산읍 시흥리': { lat:33.4590, lng:126.8950 },
-  '서귀포시 성산읍 수산리': { lat:33.3990, lng:126.8960 },
-  '서귀포시 성산읍 삼달리': { lat:33.3970, lng:126.8800 },
-  '서귀포시 성산읍 난산리': { lat:33.3880, lng:126.8880 },
-  '서귀포시 성산읍 신풍리': { lat:33.4050, lng:126.9100 },
-  // 서귀포시 표선면
-  '서귀포시 표선면 표선리': { lat:33.3230, lng:126.8370 },
-  '서귀포시 표선면 세화리': { lat:33.3630, lng:126.8450 },
-  '서귀포시 표선면 가시리': { lat:33.3790, lng:126.8060 },
-  '서귀포시 표선면 성읍리': { lat:33.3730, lng:126.8010 },
-  '서귀포시 표선면 토산리': { lat:33.3300, lng:126.8150 },
-  '서귀포시 표선면 하천리': { lat:33.3050, lng:126.8050 },
-  // 서귀포시 대정읍
-  '서귀포시 대정읍 하모리': { lat:33.2170, lng:126.2520 },
-  '서귀포시 대정읍 상모리': { lat:33.2300, lng:126.2390 },
-  '서귀포시 대정읍 동일리': { lat:33.2360, lng:126.2700 },
-  '서귀포시 대정읍 안성리': { lat:33.2440, lng:126.2380 },
-  '서귀포시 대정읍 보성리': { lat:33.2490, lng:126.2580 },
-  '서귀포시 대정읍 신도리': { lat:33.2580, lng:126.2430 },
-  '서귀포시 대정읍 구억리': { lat:33.2610, lng:126.2580 },
-  '서귀포시 대정읍 무릉리': { lat:33.2730, lng:126.2630 },
-  '서귀포시 대정읍 신평리': { lat:33.2560, lng:126.2230 },
-  '서귀포시 대정읍 일과리': { lat:33.2690, lng:126.2240 },
-  '서귀포시 대정읍 인성리': { lat:33.2460, lng:126.2120 },
-  '서귀포시 대정읍 영락리': { lat:33.2730, lng:126.2410 },
-  '서귀포시 대정읍 가파리': { lat:33.1720, lng:126.2680 },
-  // 서귀포시 안덕면
-  '서귀포시 안덕면 화순리': { lat:33.2510, lng:126.3890 },
-  '서귀포시 안덕면 사계리': { lat:33.2280, lng:126.3200 },
-  '서귀포시 안덕면 동광리': { lat:33.2850, lng:126.3470 },
-  '서귀포시 안덕면 서광리': { lat:33.2810, lng:126.3050 },
-  '서귀포시 안덕면 창천리': { lat:33.2670, lng:126.3280 },
-  '서귀포시 안덕면 감산리': { lat:33.2630, lng:126.3720 },
-  '서귀포시 안덕면 덕수리': { lat:33.2790, lng:126.3810 },
-  '서귀포시 안덕면 상창리': { lat:33.2720, lng:126.3150 },
-  '서귀포시 안덕면 광평리': { lat:33.2930, lng:126.3620 },
-  '서귀포시 안덕면 상천리': { lat:33.2540, lng:126.3320 },
+  '서귀포시 대정읍': { lat:33.2323, lng:126.2498 },
+  '서귀포시 안덕면': { lat:33.2540, lng:126.3600 },
 };
 
 // 동 좌표 테이블로 즉시 lat/lng 설정 (API geocoding 전에 먼저 적용)
@@ -2324,121 +2166,6 @@ function applyDongCoords(data) {
       d.lng = DONG_COORDS[d.roadAddr].lng;
     }
   });
-}
-
-// ── 아파트 이름 기반 정확 좌표 검색 (Places.keywordSearch) ──
-var _nameGeoCache = null;
-var _NAME_CACHE_KEY = 'jeju_nameGeoCache_v7'; // v7: 3순위 제거 + 2km 거리 제한으로 잘못된 위치 캐싱 방지
-function getNameGeoCache() {
-  if (!_nameGeoCache) {
-    try { _nameGeoCache = JSON.parse(localStorage.getItem(_NAME_CACHE_KEY) || '{}'); }
-    catch(e) { _nameGeoCache = {}; }
-  }
-  return _nameGeoCache;
-}
-function saveNameGeoCache() {
-  try { localStorage.setItem(_NAME_CACHE_KEY, JSON.stringify(_nameGeoCache)); } catch(e) {}
-}
-
-function geocodeByName(data, uiType) {
-  if (!window.kakao || !kakao.maps || !kakao.maps.services) return;
-  const ps = new kakao.maps.services.Places();
-  const cache = getNameGeoCache();
-  const jejuCenter = new kakao.maps.LatLng(33.4891, 126.4983);
-
-  // 캐시에 있는 것 먼저 적용 (name|dong 키)
-  data.forEach(function(d) {
-    if (!d.name) return;
-    var ck = d.name + '|' + (d.dong || '');
-    if (cache[ck]) { d.lat = cache[ck].lat; d.lng = cache[ck].lng; }
-  });
-
-  // 캐시에 없는 unique (name+dong) 쌍만 검색 (sigungu 포함)
-  var seen = {}, todoList = [];
-  data.forEach(function(d) {
-    if (!d.name) return;
-    var cacheKey = d.name + '|' + (d.dong || '');
-    if (!cache[cacheKey] && !seen[cacheKey]) {
-      seen[cacheKey] = true;
-      todoList.push({ name: d.name, dong: d.dong || '', sigungu: d.sigungu || '', cacheKey: cacheKey });
-    }
-  });
-
-  // 캐시에 있는 것 적용 (cacheKey로)
-  data.forEach(function(d) {
-    if (!d.name) return;
-    var cacheKey = d.name + '|' + (d.dong || '');
-    if (cache[cacheKey]) { d.lat = cache[cacheKey].lat; d.lng = cache[cacheKey].lng; }
-  });
-
-  if (!todoList.length) return;
-
-  let idx = 0, newEntries = 0;
-  function next() {
-    if (idx >= todoList.length) {
-      if (newEntries > 0) {
-        saveNameGeoCache();
-        if (uiType && window._typeState && window._typeState[uiType] && window._typeState[uiType].visible) {
-          if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType(uiType);
-        }
-        if (typeof _renderCombinedBubbles === 'function') _renderCombinedBubbles();
-      }
-      return;
-    }
-    var item = todoList[idx++];
-    // 아파트 이름 + 동 이름 + 제주로 검색
-    var query = item.name + (item.dong ? ' ' + item.dong : '') + ' 제주';
-    ps.keywordSearch(query, function(result, status) {
-      if (status === kakao.maps.services.Status.OK && result.length) {
-        // 타입별 우선 카테고리 키워드
-        var isResidential = (uiType === 'apt' || uiType === 'rht' || uiType === 'house');
-        var catKws = isResidential
-          ? ['아파트', '주거시설', '다세대', '연립', '빌라']
-          : ['상업', '업무', '오피스', '빌딩', '근린생활', '판매'];
-        function isJeju(r) { return r.address_name && r.address_name.indexOf('제주') !== -1; }
-        // 1순위: 제주 + 타입별 카테고리
-        var hit = result.find(function(r) {
-          return isJeju(r) && r.category_name && catKws.some(function(kw) {
-            return r.category_name.indexOf(kw) !== -1;
-          });
-        });
-        // 2순위: 제주 + place_name이 검색명과 유사 (카테고리 포함)
-        if (!hit) {
-          hit = result.find(function(r) {
-            return isJeju(r)
-                && r.place_name && r.place_name.indexOf(item.name) !== -1
-                && r.category_name && catKws.some(function(kw) { return r.category_name.indexOf(kw) !== -1; });
-          });
-        }
-        // 카테고리 확인된 결과만 사용 — 없으면 DONG_COORDS 좌표 유지 (3순위 제거)
-        if (hit) {
-          var lat = parseFloat(hit.y), lng = parseFloat(hit.x);
-          // 동 중심 좌표 대비 2km 초과하면 신뢰하지 않음
-          var dongKey = (item.sigungu || '') + ' ' + (item.dong || '');
-          var dongRef = DONG_COORDS[dongKey];
-          var distOk = true;
-          if (dongRef) {
-            var dLat = (lat - dongRef.lat) * Math.PI / 180;
-            var dLng = (lng - dongRef.lng) * Math.PI / 180;
-            var a = Math.sin(dLat/2)*Math.sin(dLat/2)
-                  + Math.cos(dongRef.lat*Math.PI/180)*Math.cos(lat*Math.PI/180)
-                  * Math.sin(dLng/2)*Math.sin(dLng/2);
-            var dist = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            if (dist > 2) distOk = false; // 2km 초과면 무시
-          }
-          if (distOk) {
-            cache[item.cacheKey] = { lat: lat, lng: lng };
-            data.forEach(function(d) {
-              if (d.name === item.name && (d.dong || '') === item.dong) { d.lat = lat; d.lng = lng; }
-            });
-            newEntries++;
-          }
-        }
-      }
-      setTimeout(next, 300);
-    }, { location: jejuCenter, radius: 20000 });
-  }
-  next();
 }
 
 // ── 전역 지오코딩 함수 (모든 타입 공용) ────────────────
@@ -2606,7 +2333,6 @@ async function sbFetchAll(table, select='*', extraParams='') {
       normalizeApt(data);
       const { data: d, geoCache } = applyAptData(data, '로컬');
       geocodeTradeData(d, geoCache, 'apt');
-      geocodeByName(d, 'apt');
     })
     .catch(e => console.log('[실거래] 로컬 JSON 로드 실패:', e.message));
 
@@ -2616,7 +2342,6 @@ async function sbFetchAll(table, select='*', extraParams='') {
       normalizeApt(data);
       const { data: d, geoCache } = applyAptData(data, 'Supabase');
       geocodeTradeData(d, geoCache, 'apt');
-      geocodeByName(d, 'apt');
     })
     .catch(e => console.log('[실거래] Supabase 로드 실패:', e.message));
 })();
@@ -2649,7 +2374,6 @@ async function sbFetchAll(table, select='*', extraParams='') {
     }
     console.log(`[단독/다가구] ${source} 로드 완료: ${data.length}건`);
     geocodeTradeData(data, geoCache, 'house');
-    geocodeByName(data, 'house');
   }
   // 1단계: 로컬 JSON
   fetch('./house_data.json')
@@ -2691,7 +2415,6 @@ async function sbFetchAll(table, select='*', extraParams='') {
     }
     console.log(`[연립/다세대] ${source} 로드 완료: ${data.length}건`);
     geocodeTradeData(data, geoCache, 'rht');
-    geocodeByName(data, 'rht');
   }
   sbFetchAll('rht_trades')
     .then(data => applyRhtData(data, 'Supabase'))
@@ -2726,7 +2449,6 @@ async function sbFetchAll(table, select='*', extraParams='') {
     }
     console.log(`[상업업무용] ${source} 로드 완료: ${data.length}건`);
     geocodeTradeData(data, geoCache, 'comm');
-    geocodeByName(data, 'comm');
   }
   sbFetchAll('comm_trades')
     .then(data => applyCommData(data, 'Supabase'))
@@ -2739,18 +2461,11 @@ async function sbFetchAll(table, select='*', extraParams='') {
     d.perM2     = parseFloat(d.per_m2 ?? d.perM2)  || 0;
     d.jibunType = d.jibun_type  || d.jibunType || '';
     d.tradeType = d.trade_type  || d.tradeType || '';
-    d.price     = parseFloat(d.price_eok ?? d.price) || 0;
+    d.price     = parseFloat(d.price) || 0;
     d.area      = parseFloat(d.area)  || 0;
-    d.date      = d.trade_date || d.date || '';
-    d.jimok     = d.jimok || '';
-    // roadAddr: sigungu + dong 전체 사용 (DONG_COORDS에 리 단위 추가됨)
-    // 예: "한경면 저지리" → "제주시 한경면 저지리" 로 리 수준 좌표 사용
-    const dongTrimmed = (d.dong || '').trim();
-    d.roadAddr = d.sigungu && dongTrimmed ? d.sigungu + ' ' + dongTrimmed : '';
     return d;
   }
   function applyLandData(data, source) {
-    applyDongCoords(data);  // 동 좌표 즉시 할당
     window.LAND_DATA = data;
     const el = document.getElementById('land-data-source');
     if (el) el.textContent = `토지 데이터 · ${data.length.toLocaleString()}건`;
@@ -3373,27 +3088,15 @@ function toggleZoneQueryMode(btn) {
     btn.style.background = '#7B1FA2';
     btn.style.color = '#fff';
     btn.textContent = '📍 조회 ON (클릭)';
-    // 기존 리스너 제거 후 재등록 (함수 참조로 제거)
-    kakao.maps.event.removeListener(map, 'click', onMapZoneQuery);
-    kakao.maps.event.addListener(map, 'click', onMapZoneQuery);
-    _zoneQueryListener = true;
+    _zoneQueryListener = kakao.maps.event.addListener(map, 'click', onMapZoneQuery);
   } else {
-    _turnOffZoneQuery();
-  }
-}
-
-function _turnOffZoneQuery() {
-  _zoneQueryMode = false;
-  const btn = document.getElementById('zone-query-btn');
-  if (btn) {
-    btn.style.background = 'rgba(123,31,162,0.15)';
-    btn.style.color = '#CE93D8';
+    btn.style.background = '#EDE7F6';
+    btn.style.color = '#7B1FA2';
     btn.textContent = '📍 클릭 규제조회';
+    if (_zoneQueryListener) kakao.maps.event.removeListener(map, 'click', _zoneQueryListener);
+    _zoneQueryListener = null;
+    if (_zoneQueryOverlay) { _zoneQueryOverlay.setMap(null); _zoneQueryOverlay = null; }
   }
-  // 함수 참조로 정확히 제거
-  kakao.maps.event.removeListener(map, 'click', onMapZoneQuery);
-  _zoneQueryListener = null;
-  if (_zoneQueryOverlay) { _zoneQueryOverlay.setMap(null); _zoneQueryOverlay = null; }
 }
 
 function onMapZoneQuery(mouseEvent) {
@@ -3423,15 +3126,7 @@ function onMapZoneQuery(mouseEvent) {
 
   if (_zoneQueryOverlay) { _zoneQueryOverlay.setMap(null); _zoneQueryOverlay = null; }
 
-  const eumUrl = `https://www.eum.go.kr`;
-
-  // DOM element로 직접 생성 → 이벤트 안전 연결
-  const popup = document.createElement('div');
-  popup.className = 'zone-query-popup';
-  // 팝업 내 클릭/마우스 이벤트가 지도로 전파되지 않도록 차단
-  ['click','mousedown','mouseup','dblclick','touchstart','touchend'].forEach(function(ev) {
-    popup.addEventListener(ev, function(e) { e.stopPropagation(); });
-  });
+  const eumUrl = `https://www.eum.go.kr/web/ar/lu/luLandDynamic.jsp?lat=${lat.toFixed(5)}&lng=${lng.toFixed(5)}`;
 
   let zonesHtml;
   if (contained.length === 0) {
@@ -3442,35 +3137,32 @@ function onMapZoneQuery(mouseEvent) {
     ).join('');
   }
 
-  popup.innerHTML = `
+  const content = `<div class="zone-query-popup">
+    <button class="zq-close" onclick="this.closest('.zone-query-popup').parentNode._overlay&&this.closest('.zone-query-popup').parentNode._overlay.setMap(null)">✕</button>
     <div class="zq-title">규제구역 조회 (근사)</div>
     <div class="zq-row"><span class="zq-label">좌표</span><span class="zq-val">${lat.toFixed(5)}, ${lng.toFixed(5)}</span></div>
     <hr style="margin:5px 0;border:none;border-top:1px solid #eee;">
     ${zonesHtml}
-    <div class="zq-link" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-      <a href="${eumUrl}" target="_blank">🔗 토지이음 바로가기 ↗</a>
-      <button onclick="navigator.clipboard.writeText('${lat.toFixed(5)},${lng.toFixed(5)}').then(function(){this.textContent='✅ 복사됨';}.bind(this))" style="font-size:9px;padding:2px 6px;border:1px solid #ddd;border-radius:4px;background:#f5f5f5;cursor:pointer;color:#555;">📋 좌표 복사</button>
+    <div class="zq-link">
+      <a href="${eumUrl}" target="_blank">🔗 토지이음에서 정확한 규제 확인 ↗</a>
     </div>
-    <div style="font-size:9px;color:#bbb;margin-top:4px;">※ 토지이음 접속 후 좌표로 검색하세요 (위 좌표 복사 후 지도에서 검색)</div>
-  `;
-
-  // 닫기 버튼 직접 생성 및 이벤트 연결
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'zq-close';
-  closeBtn.textContent = '✕';
-  closeBtn.addEventListener('click', function(e) {
-    e.stopPropagation();
-    if (_zoneQueryOverlay) { _zoneQueryOverlay.setMap(null); _zoneQueryOverlay = null; }
-  });
-  popup.insertBefore(closeBtn, popup.firstChild);
+    <div style="font-size:9px;color:#bbb;margin-top:4px;">※ 위 경계는 근사값입니다</div>
+  </div>`;
 
   _zoneQueryOverlay = new kakao.maps.CustomOverlay({
     position: ll,
-    content: popup,
+    content: content,
     yAnchor: 1.1,
     zIndex: 10
   });
+  // close 버튼에 오버레이 참조 전달을 위해 약간 다른 방식 사용
   _zoneQueryOverlay.setMap(map);
+
+  // close 버튼 이벤트 직접 바인딩
+  setTimeout(() => {
+    const closeBtn = document.querySelector('.zone-query-popup .zq-close');
+    if (closeBtn) closeBtn.onclick = () => { _zoneQueryOverlay && _zoneQueryOverlay.setMap(null); _zoneQueryOverlay = null; };
+  }, 0);
 }
 
 // ── 레이 캐스팅 포인트-인-폴리곤
@@ -4414,13 +4106,12 @@ function renderBubbles() {
         dong, sigungu: sig,
         lat: bjInfo ? bjInfo.lat : t.lat,
         lng: bjInfo ? bjInfo.lng : t.lng,
-        count: 0, totalPrice: 0, totalArea: 0, trades: []
+        count: 0, totalPrice: 0, totalArea: 0
       };
     }
     stats[key].count++;
     stats[key].totalPrice += t.price;
     stats[key].totalArea  += (t.area || 84);
-    stats[key].trades.push(t);
   });
 
   const allCounts = Object.values(stats).map(s => s.count);
@@ -4452,11 +4143,6 @@ function renderBubbles() {
     el.style.transform = `scale(${scale.toFixed(2)})`;
     el.style.transformOrigin = 'bottom center';
     el.title = `${s.sigungu} ${s.dong}\n${periodLabel} ${s.count}건\n평균 ${avgPrice.toFixed(2)}억 · 평당 ${perPyeongStr}`;
-    el.style.cursor = 'pointer';
-    el.addEventListener('click', (function(stat){ return function(e) {
-      e.stopPropagation();
-      showBubbleDongDetail(stat);
-    }; })(s));
 
     const ov = new kakao.maps.CustomOverlay({
       position: new kakao.maps.LatLng(s.lat, s.lng),
@@ -4746,7 +4432,7 @@ var _typeMeta = {
 // 타입별 상태
 window._typeState = {};
 ['apt','house','rht','comm'].forEach(function(t) {
-  window._typeState[t] = { visible:false, period:'week', month:'all', bubbleVisible:false, bubblePeriod:'week', bubbleMonth:'all' };
+  window._typeState[t] = { visible:false, period:'year', month:'all', bubbleVisible:false, bubblePeriod:'year' };
 });
 
 // 타입별 마커 오버레이 배열
@@ -4771,10 +4457,7 @@ function _getFilteredForType(type) {
     case 'week':  cutoff = new Date(now - 7*86400000); break;
     case 'month': cutoff = new Date(now - 30*86400000); break;
     case 'year':  cutoff = new Date(now.getFullYear(), 0, 1); break;
-    default: {    // 'pick'이고 month='all'이면 당해년도만
-      var thisYear = now.getFullYear().toString();
-      return data.filter(function(t) { return t.date && t.date.startsWith(thisYear); });
-    }
+    default:      return data;
   }
   return data.filter(function(t) { return t.date && new Date(t.date) >= cutoff; });
 }
@@ -4804,34 +4487,12 @@ function renderTradeMarkersForType(type) {
   var token = ++renderTradeMarkersForType._token;
   var overlays = window._typeOverlays[type];
 
-  // 겹침 분산: 동일 위치(소수3자리 기준) 마커 수 카운트
-  var posCount = {}, posIdx = {};
-  trades.forEach(function(t) {
-    if (!t.lat || !t.lng) return;
-    var k = t.lat.toFixed(3) + ',' + t.lng.toFixed(3);
-    posCount[k] = (posCount[k] || 0) + 1;
-  });
-
   function renderChunk() {
     if (token !== renderTradeMarkersForType._token) { statusEl.style.display = 'none'; return; }
     var end = Math.min(i + CHUNK, trades.length);
     for (; i < end; i++) {
       var t = trades[i];
       if (!t.lat || !t.lng) continue;
-
-      // 겹침 분산: spiral 배치
-      var k = t.lat.toFixed(3) + ',' + t.lng.toFixed(3);
-      var total = posCount[k] || 1;
-      posIdx[k] = posIdx[k] || 0;
-      var ci = posIdx[k]++;
-      var rLat = t.lat, rLng = t.lng;
-      if (total > 1) {
-        var angle = (ci / total) * 2 * Math.PI;
-        var r = 0.0004 + Math.floor(ci / 8) * 0.0003;
-        rLat = t.lat + r * Math.cos(angle);
-        rLng = t.lng + r * Math.sin(angle) / Math.cos(t.lat * Math.PI / 180);
-      }
-
       var cls = t.price < 3 ? 'price-low' : t.price < 6 ? 'price-mid' : 'price-high';
       var el = document.createElement('div');
       el.className = 'trade-marker ' + cls;
@@ -4839,7 +4500,7 @@ function renderTradeMarkersForType(type) {
       var dateShort = t.date ? t.date.slice(2).replace(/-/g, '.') : '';
       el.innerHTML = '<div class="tm-name">' + (t.name||t.dong||'') + '</div><div class="tm-price">' + t.price.toFixed(1) + '억</div><div class="tm-sub">' + (t.area ? Math.round(t.area)+'㎡' : '') + ' ' + dateShort + '</div>';
       el.addEventListener('click', (function(td){ return function(e) { e.stopPropagation(); showTradePopup(td); }; })(t));
-      var ov = new kakao.maps.CustomOverlay({ position:new kakao.maps.LatLng(rLat,rLng), content:el, yAnchor:1.35, zIndex:3 });
+      var ov = new kakao.maps.CustomOverlay({ position:new kakao.maps.LatLng(t.lat,t.lng), content:el, yAnchor:1.35, zIndex:3 });
       ov.setMap(map);
       overlays.push(ov);
     }
@@ -4985,36 +4646,9 @@ function toggleBubbleForType(type, btn) {
 }
 
 function setBubblePeriodForType(type, period, btn) {
-  var st = window._typeState[type];
-  st.bubblePeriod = period;
-  st.bubbleMonth = 'all';
+  window._typeState[type].bubblePeriod = period;
   var wrap = document.getElementById('bubble-period-wrap-'+type);
-  if (wrap) wrap.querySelectorAll('.trade-filter-btn').forEach(function(b){b.classList.remove('active');});
-  btn.classList.add('active');
-  // 월 선택 피커 표시/숨김
-  var picker = document.getElementById('bubble-month-picker-'+type);
-  if (picker) {
-    if (period === 'pick') {
-      // 당해년도 월 버튼 동적 생성
-      var now = new Date();
-      var html = '';
-      for (var m = 1; m <= now.getMonth()+1; m++) {
-        var ym = now.getFullYear() + String(m).padStart(2,'0');
-        html += '<button class="trade-filter-btn tmp-btn" style="font-size:10px;padding:2px 6px;" onclick="setBubbleMonthForType(\''+type+'\',\''+ym+'\',this)">'+m+'월</button>';
-      }
-      picker.innerHTML = html;
-      picker.style.display = 'flex';
-    } else {
-      picker.style.display = 'none';
-    }
-  }
-  _renderCombinedBubbles();
-}
-
-function setBubbleMonthForType(type, ym, btn) {
-  window._typeState[type].bubbleMonth = ym;
-  var picker = document.getElementById('bubble-month-picker-'+type);
-  if (picker) picker.querySelectorAll('.tmp-btn').forEach(function(b){b.classList.remove('active');});
+  if (wrap) wrap.querySelectorAll('.bubble-period-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   _renderCombinedBubbles();
 }
@@ -5029,20 +4663,9 @@ function _renderCombinedBubbles() {
     var st = window._typeState[type];
     if (!st.bubbleVisible) return;
     var data = _getTypeData(type);
-    var bp = st.bubblePeriod || 'week';
-    var filtered;
-    if (bp === 'pick' && st.bubbleMonth && st.bubbleMonth !== 'all') {
-      var ym = st.bubbleMonth; // 'yyyyMM'
-      var ymDash = ym.slice(0,4) + '-' + ym.slice(4,6);
-      filtered = data.filter(function(t){ return t.date && t.date.startsWith(ymDash); });
-    } else {
-      var cutoff = bp === 'week'  ? new Date(now - 7*86400000)
-                 : bp === 'month' ? new Date(now - 30*86400000)
-                 : bp === 'year'  ? new Date(now.getFullYear(),0,1)
-                 : new Date(now - 7*86400000);
-      filtered = data.filter(function(t){ return t.date && new Date(t.date) >= cutoff; });
-    }
-    merged = merged.concat(filtered);
+    var msMap = {year:new Date(now.getFullYear(),0,1),'6m':new Date(now-180*86400000),'3m':new Date(now-90*86400000),month:new Date(now-30*86400000)};
+    var cutoff = msMap[st.bubblePeriod] || msMap.year;
+    merged = merged.concat(data.filter(function(t){return t.date && new Date(t.date)>=cutoff;}));
   });
   var orig = window.TRADE_DATA;
   window.TRADE_DATA = merged;
@@ -5247,37 +4870,6 @@ function closeDongPopup() {
   document.getElementById('dong-popup').style.display = 'none';
 }
 
-function showBubbleDongDetail(s) {
-  const trades = (s.trades || []).slice().sort((a,b) => b.price - a.price);
-  if (!trades.length) return;
-  const avg = trades.reduce((sum,t) => sum+t.price, 0) / trades.length;
-  const typeLabelMap = { apt:'아파트', house:'단독/다가구', rht:'연립/다세대', offi:'상업용' };
-
-  document.getElementById('dong-popup-title').textContent = `📍 ${s.dong} (버블 기간)`;
-  document.getElementById('dong-popup-summary').innerHTML =
-    `평균 <strong>${avg.toFixed(2)}억</strong> · 총 <strong>${trades.length}건</strong>`;
-  window._dongTrades = trades;
-  document.getElementById('dong-popup-list').innerHTML = trades.slice(0,30).map((t,i) => `
-    <div class="dong-popup-item" onclick="showTradePinOnMap(${i})">
-      <span class="dpi-name">${t.name||''} <span style="font-size:9px;color:#999;">${typeLabelMap[t._tradeType]||''}</span></span>
-      <span class="dpi-area">${t.area?t.area.toFixed(0)+'㎡':''}</span>
-      <span class="dpi-price">${t.price.toFixed(2)}억</span>
-    </div>
-  `).join('');
-
-  if (s.lat && s.lng) {
-    map.setCenter(new kakao.maps.LatLng(s.lat, s.lng));
-    map.setLevel(5);
-  }
-  const panel = document.getElementById('info-panel');
-  const rect  = panel.getBoundingClientRect();
-  const popup = document.getElementById('dong-popup');
-  popup.style.display = 'flex';
-  popup.style.right   = (window.innerWidth - rect.left + 8) + 'px';
-  popup.style.top     = (rect.top + 40) + 'px';
-  popup.style.left    = '';
-}
-
 function showTradePinOnMap(idx) {
   const t = (window._dongTrades || [])[idx];
   if (!t) return;
@@ -5376,26 +4968,9 @@ function renderTradeChart() {
 ═══════════════════════════════════════════════ */
 let statTab    = 'pyung';
 let statRegion = 'all';   // 'all' | 'jeju' | 'seo'
-let statYear   = String(new Date().getFullYear());
 
 function openStatModal() {
-  // 데이터에 있는 연도 목록 추출해서 드롭다운 채우기
-  const sel = document.getElementById('stat-year-select');
-  if (sel && window.TRADE_DATA) {
-    const years = [...new Set(window.TRADE_DATA
-      .filter(t => t.date)
-      .map(t => t.date.slice(0,4))
-    )].sort().reverse();
-    sel.innerHTML = years.map(y =>
-      `<option value="${y}" ${y===statYear?'selected':''} style="background:#1F4E79;color:#fff;">${y}년</option>`
-    ).join('');
-  }
   document.getElementById('stat-modal').classList.add('open');
-  renderStatChart();
-}
-
-function setStatYear(year) {
-  statYear = year;
   renderStatChart();
 }
 function closeStatModal() {
@@ -5418,8 +4993,7 @@ function setStatRegion(region, btn) {
 
 function renderStatChart() {
   if (!window.TRADE_DATA || !window.TRADE_DATA.length) return;
-  // 선택 연도로 먼저 필터링
-  const allData = window.TRADE_DATA.filter(t => t.date && t.date.startsWith(statYear));
+  const allData = window.TRADE_DATA;
 
   // ── 헬퍼 ──
   function pyungAvg(arr) {
@@ -5460,14 +5034,14 @@ function renderStatChart() {
 
   function pyungAll(arr) { return pyungAvg(arr); }
 
-  // ── 월 시계열 데이터 생성 (선택 연도 1~12월) ──
+  // ── 월 시계열 데이터 생성 (데이터 없는 월 제외) ──
   const months = [];
   const now = new Date();
-  const maxMonth = statYear === String(now.getFullYear()) ? now.getMonth() + 1 : 12;
-  for (let mo = 1; mo <= maxMonth; mo++) {
-    const key = statYear + '-' + String(mo).padStart(2,'0');
-    const lbl = mo + '월';
-    const yearLbl = mo === 1 ? statYear : '';
+  for (let m = 11; m >= 0; m--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const lbl = String(d.getMonth()+1) + '월';
+    const yearLbl = m === 11 ? String(d.getFullYear()) : '';
 
     const jeju = allData.filter(t => t.date && t.date.startsWith(key) && t.sigungu==='제주시');
     const seo  = allData.filter(t => t.date && t.date.startsWith(key) && t.sigungu==='서귀포시');
@@ -5952,11 +5526,11 @@ function geocodeUnsoldByName() {
           // 결과 없으면 "제주 + 단지명"으로 재시도
           ps.keywordSearch('제주 ' + item.name, function(d2, s2) {
             if (s2 === kakao.maps.services.Status.OK && d2.length) applyCoord(item, d2[0], idx);
-          }, { location: jejuCenter, radius: 20000 });
+          }, { location: jejuCenter, radius: 80000 });
           return;
         }
         applyCoord(item, data[0], idx);
-      }, { location: jejuCenter, radius: 20000 });
+      }, { location: jejuCenter, radius: 80000 });
     }, idx * 400); // 400ms 간격으로 rate-limit
   });
 }
@@ -6114,7 +5688,7 @@ function doSearch() {
         } else {
           showToast('검색 결과가 없습니다');
         }
-      }, { location: new kakao.maps.LatLng(33.3617, 126.5292), radius: 20000 });
+      }, { location: new kakao.maps.LatLng(33.3617, 126.5292), radius: 60000 });
     }
   });
 }
