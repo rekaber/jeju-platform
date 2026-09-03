@@ -561,7 +561,7 @@ def main():
     print(f'지역: {[r[1] for r in REGIONS]}')
 
     tasks = [
-        ('getRTMSDataSvcAptTradeDev', 'apt_trades',   parse_apt),
+        ('getRTMSDataSvcAptTrade',    'apt_trades',   parse_apt),
         ('getRTMSDataSvcSHTrade',     'house_trades',  parse_house),
         ('getRTMSDataSvcRHTrade',     'rht_trades',    parse_rht),
         ('getRTMSDataSvcLandTrade',   'land_trades',   parse_land),
