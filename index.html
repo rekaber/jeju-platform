@@ -975,15 +975,27 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <div class="layer-dot" style="background:#00897B;border-radius:50%;"></div>
           <span class="layer-label">지역별 거래 건수</span>
           <div class="layer-toggle" id="toggle-bubble-apt" onclick="toggleBubbleForType('apt',this)"></div>
-        </div>
         <div id="bubble-period-wrap-apt" style="padding:2px 6px 6px 25px;display:none;">
-          <div style="font-size:10px;color:#888;margin-bottom:3px;">표시 기간</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap;">
-            <button class="bubble-period-btn active" onclick="setBubblePeriodForType('apt','year',this)">올해</button>
-            <button class="bubble-period-btn" onclick="setBubblePeriodForType('apt','6m',this)">6개월</button>
-            <button class="bubble-period-btn" onclick="setBubblePeriodForType('apt','3m',this)">3개월</button>
-            <button class="bubble-period-btn" onclick="setBubblePeriodForType('apt','month',this)">1개월</button>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:2px;">
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('apt','week',this)">주간</button>
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('apt','month',this)">월간</button>
+            <button class="trade-filter-btn active" onclick="setBubblePeriodForType('apt','year',this)">연간</button>
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('apt','pick',this)">월선택</button>
           </div>
+          <div id="bubble-month-picker-apt" style="display:none;">
+            <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">
+              <button class="tmp-btn active" onclick="setBubbleMonthForType('apt','all',this)">전체</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202601',this)">1월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202602',this)">2월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202603',this)">3월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202604',this)">4월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202605',this)">5월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202606',this)">6월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202607',this)">7월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202608',this)">8월</button>
+            </div>
+          </div>
+        </div>
         </div>
       </div>
 
@@ -1029,15 +1041,27 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <div class="layer-dot" style="background:#00897B;border-radius:50%;"></div>
           <span class="layer-label">지역별 거래 건수</span>
           <div class="layer-toggle" id="toggle-bubble-house" onclick="toggleBubbleForType('house',this)"></div>
-        </div>
         <div id="bubble-period-wrap-house" style="padding:2px 6px 6px 25px;display:none;">
-          <div style="font-size:10px;color:#888;margin-bottom:3px;">표시 기간</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap;">
-            <button class="bubble-period-btn active" onclick="setBubblePeriodForType('house','year',this)">올해</button>
-            <button class="bubble-period-btn" onclick="setBubblePeriodForType('house','6m',this)">6개월</button>
-            <button class="bubble-period-btn" onclick="setBubblePeriodForType('house','3m',this)">3개월</button>
-            <button class="bubble-period-btn" onclick="setBubblePeriodForType('house','month',this)">1개월</button>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:2px;">
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('house','week',this)">주간</button>
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('house','month',this)">월간</button>
+            <button class="trade-filter-btn active" onclick="setBubblePeriodForType('house','year',this)">연간</button>
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('house','pick',this)">월선택</button>
           </div>
+          <div id="bubble-month-picker-house" style="display:none;">
+            <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">
+              <button class="tmp-btn active" onclick="setBubbleMonthForType('house','all',this)">전체</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202601',this)">1월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202602',this)">2월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202603',this)">3월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202604',this)">4월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202605',this)">5월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202606',this)">6월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202607',this)">7월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202608',this)">8월</button>
+            </div>
+          </div>
+        </div>
         </div>
       </div>
 
@@ -1083,15 +1107,27 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <div class="layer-dot" style="background:#00897B;border-radius:50%;"></div>
           <span class="layer-label">지역별 거래 건수</span>
           <div class="layer-toggle" id="toggle-bubble-rht" onclick="toggleBubbleForType('rht',this)"></div>
-        </div>
         <div id="bubble-period-wrap-rht" style="padding:2px 6px 6px 25px;display:none;">
-          <div style="font-size:10px;color:#888;margin-bottom:3px;">표시 기간</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap;">
-            <button class="bubble-period-btn active" onclick="setBubblePeriodForType('rht','year',this)">올해</button>
-            <button class="bubble-period-btn" onclick="setBubblePeriodForType('rht','6m',this)">6개월</button>
-            <button class="bubble-period-btn" onclick="setBubblePeriodForType('rht','3m',this)">3개월</button>
-            <button class="bubble-period-btn" onclick="setBubblePeriodForType('rht','month',this)">1개월</button>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:2px;">
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('rht','week',this)">주간</button>
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('rht','month',this)">월간</button>
+            <button class="trade-filter-btn active" onclick="setBubblePeriodForType('rht','year',this)">연간</button>
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('rht','pick',this)">월선택</button>
           </div>
+          <div id="bubble-month-picker-rht" style="display:none;">
+            <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">
+              <button class="tmp-btn active" onclick="setBubbleMonthForType('rht','all',this)">전체</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202601',this)">1월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202602',this)">2월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202603',this)">3월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202604',this)">4월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202605',this)">5월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202606',this)">6월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202607',this)">7월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202608',this)">8월</button>
+            </div>
+          </div>
+        </div>
         </div>
       </div>
 
@@ -1137,15 +1173,27 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <div class="layer-dot" style="background:#00897B;border-radius:50%;"></div>
           <span class="layer-label">지역별 거래 건수</span>
           <div class="layer-toggle" id="toggle-bubble-comm" onclick="toggleBubbleForType('comm',this)"></div>
-        </div>
         <div id="bubble-period-wrap-comm" style="padding:2px 6px 6px 25px;display:none;">
-          <div style="font-size:10px;color:#888;margin-bottom:3px;">표시 기간</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap;">
-            <button class="bubble-period-btn active" onclick="setBubblePeriodForType('comm','year',this)">올해</button>
-            <button class="bubble-period-btn" onclick="setBubblePeriodForType('comm','6m',this)">6개월</button>
-            <button class="bubble-period-btn" onclick="setBubblePeriodForType('comm','3m',this)">3개월</button>
-            <button class="bubble-period-btn" onclick="setBubblePeriodForType('comm','month',this)">1개월</button>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:2px;">
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('comm','week',this)">주간</button>
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('comm','month',this)">월간</button>
+            <button class="trade-filter-btn active" onclick="setBubblePeriodForType('comm','year',this)">연간</button>
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('comm','pick',this)">월선택</button>
           </div>
+          <div id="bubble-month-picker-comm" style="display:none;">
+            <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">
+              <button class="tmp-btn active" onclick="setBubbleMonthForType('comm','all',this)">전체</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202601',this)">1월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202602',this)">2월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202603',this)">3월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202604',this)">4월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202605',this)">5월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202606',this)">6월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202607',this)">7월</button>
+      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202608',this)">8월</button>
+            </div>
+          </div>
+        </div>
         </div>
       </div>
 
@@ -4432,7 +4480,7 @@ var _typeMeta = {
 // 타입별 상태
 window._typeState = {};
 ['apt','house','rht','comm'].forEach(function(t) {
-  window._typeState[t] = { visible:false, period:'year', month:'all', bubbleVisible:false, bubblePeriod:'year' };
+  window._typeState[t] = { visible:false, period:'year', month:'all', bubbleVisible:false, bubblePeriod:'year', bubbleMonth:'all' };
 });
 
 // 타입별 마커 오버레이 배열
@@ -4622,6 +4670,7 @@ function setTradeTypePeriod(type, period, btn) {
   }
   if (period !== 'pick') st.month = 'all';
   if (st.visible) { renderTradeMarkersForType(type); renderTradeChartForType(type); }
+  if (st.bubbleVisible) _renderCombinedBubbles();
 }
 
 function setTradeTypeMonth(type, month, btn) {
@@ -4631,6 +4680,7 @@ function setTradeTypeMonth(type, month, btn) {
   if (picker) picker.querySelectorAll('.tmp-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   if (st.visible) { renderTradeMarkersForType(type); renderTradeChartForType(type); }
+  if (st.bubbleVisible) _renderCombinedBubbles();
 }
 
 function toggleBubbleForType(type, btn) {
@@ -4646,26 +4696,55 @@ function toggleBubbleForType(type, btn) {
 }
 
 function setBubblePeriodForType(type, period, btn) {
-  window._typeState[type].bubblePeriod = period;
+  var st = window._typeState[type];
+  st.bubblePeriod = period;
   var wrap = document.getElementById('bubble-period-wrap-'+type);
-  if (wrap) wrap.querySelectorAll('.bubble-period-btn').forEach(function(b){b.classList.remove('active');});
+  if (wrap) wrap.querySelectorAll('.trade-filter-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  var picker = document.getElementById('bubble-month-picker-'+type);
+  if (picker) picker.style.display = (period === 'pick') ? 'block' : 'none';
+  if (period !== 'pick') st.bubbleMonth = 'all';
+  _renderCombinedBubbles();
+}
+
+function setBubbleMonthForType(type, month, btn) {
+  window._typeState[type].bubbleMonth = month;
+  var picker = document.getElementById('bubble-month-picker-'+type);
+  if (picker) picker.querySelectorAll('.tmp-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   _renderCombinedBubbles();
+}
+
+function _getBubbleFilteredForType(type) {
+  var data = _getTypeData(type);
+  if (!data.length) return [];
+  var st = window._typeState[type];
+  var now = new Date();
+  if (st.bubblePeriod === 'pick') {
+    if (st.bubbleMonth && st.bubbleMonth !== 'all') {
+      var ym = st.bubbleMonth;
+      return data.filter(function(t){ return t.date && t.date.replace(/-/g,'').slice(0,6) === ym; });
+    }
+    return data.filter(function(t){ return t.date && new Date(t.date).getFullYear() === now.getFullYear(); });
+  }
+  var cutoff;
+  switch(st.bubblePeriod) {
+    case 'week':  cutoff = new Date(now - 7*86400000); break;
+    case 'month': cutoff = new Date(now.getFullYear(), now.getMonth(), 1); break;
+    case 'year':  cutoff = new Date(now.getFullYear(), 0, 1); break;
+    default: return data;
+  }
+  return data.filter(function(t){ return t.date && new Date(t.date) >= cutoff; });
 }
 
 function _renderCombinedBubbles() {
   clearBubbles();
   var anyBubble = ['apt','house','rht','comm'].some(function(t){return window._typeState[t].bubbleVisible;});
   if (!anyBubble) return;
-  var now = new Date();
   var merged = [];
   ['apt','house','rht','comm'].forEach(function(type) {
-    var st = window._typeState[type];
-    if (!st.bubbleVisible) return;
-    var data = _getTypeData(type);
-    var msMap = {year:new Date(now.getFullYear(),0,1),'6m':new Date(now-180*86400000),'3m':new Date(now-90*86400000),month:new Date(now-30*86400000)};
-    var cutoff = msMap[st.bubblePeriod] || msMap.year;
-    merged = merged.concat(data.filter(function(t){return t.date && new Date(t.date)>=cutoff;}));
+    if (!window._typeState[type].bubbleVisible) return;
+    merged = merged.concat(_getBubbleFilteredForType(type));
   });
   var orig = window.TRADE_DATA;
   window.TRADE_DATA = merged;
