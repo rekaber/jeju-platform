@@ -136,12 +136,13 @@ def sb_insert(table, rows, batch=400):
         time.sleep(0.2)
 
 # ── 주소 조합 유틸 ───────────────────────────────────────
-def build_road_addr(road, b_main_raw, b_sub_raw):
-    """도로명 + 건물번호 → 완전한 도로명주소 (건물번호 없으면 None)"""
+def build_road_addr(sigungu, road, b_main_raw, b_sub_raw):
+    """시군구 + 도로명 + 건물번호 → 카카오 geocode용 완전한 도로명주소"""
     b_main = (b_main_raw or '').lstrip('0')
     b_sub  = (b_sub_raw  or '').lstrip('0')
     if road and b_main:
-        return f"{road} {b_main}" + (f"-{b_sub}" if b_sub and b_sub != '0' else '')
+        base = f"{sigungu} {road} {b_main}"
+        return base + (f"-{b_sub}" if b_sub and b_sub != '0' else '')
     return None
 
 def build_jibun_addr(sigungu, dong, main_raw, sub_raw):
@@ -161,17 +162,18 @@ def parse_apt(items, sigungu):
         dong     = text(it, '법정동')
         road     = text(it, '도로명')
         apt_name = text(it, '아파트')
-        road_full  = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
+        road_full  = build_road_addr(sigungu, road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
         jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
-        # 아파트: 동+이름 조합 키워드검색 → 도로명+건물번호 → 지번 순
+        # 우선순위: 도로명주소 > 도로명+이름 keyword > 동+이름 keyword > 지번
         geo_addrs = []
+        if road_full:
+            geo_addrs.append((road_full, 'addr'))                          # 1) 완전한 도로명주소
+            if apt_name:
+                geo_addrs.append((f"{road_full} {apt_name}", 'keyword'))   # 2) 도로명+이름 (가장 정확)
         if apt_name and dong:
-            geo_addrs.append((f"{sigungu} {dong} {apt_name}", 'keyword'))  # 가장 구체적
-        if apt_name:
-            geo_addrs.append((apt_name, 'keyword'))  # 이름만 fallback
-        if road_full:  geo_addrs.append((road_full, 'addr'))
-        if jibun_full: geo_addrs.append((jibun_full, 'addr'))
-        if road:       geo_addrs.append((road, 'addr'))
+            geo_addrs.append((f"{sigungu} {dong} {apt_name}", 'keyword')) # 3) 동+이름
+        if jibun_full: geo_addrs.append((jibun_full, 'addr'))             # 4) 지번주소
+        if apt_name:   geo_addrs.append((apt_name, 'keyword'))            # 5) 이름만
         rows.append({
             'name':       apt_name,
             'addr':       jibun_full or f"{sigungu} {dong}",
@@ -221,13 +223,15 @@ def parse_rht(items, sigungu):
         dong     = text(it, '법정동')
         road     = text(it, '도로명')
         rht_name = text(it, '연립다세대')
-        road_full  = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
+        road_full  = build_road_addr(sigungu, road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
         jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
         geo_addrs = []
+        if road_full:
+            geo_addrs.append((road_full, 'addr'))
+            if rht_name: geo_addrs.append((f"{road_full} {rht_name}", 'keyword'))
         if rht_name and dong: geo_addrs.append((f"{sigungu} {dong} {rht_name}", 'keyword'))
-        if rht_name: geo_addrs.append((rht_name, 'keyword'))
-        if road_full:  geo_addrs.append((road_full, 'addr'))
         if jibun_full: geo_addrs.append((jibun_full, 'addr'))
+        if rht_name: geo_addrs.append((rht_name, 'keyword'))
         if road: geo_addrs.append((road, 'addr'))
         rows.append({
             'name':       rht_name,
@@ -288,14 +292,15 @@ def parse_comm(items, sigungu):
         dong      = text(it, '법정동')
         road      = text(it, '도로명')
         bld_name  = text(it, '건물명')
-        road_full  = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
+        road_full  = build_road_addr(sigungu, road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
         jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
         geo_addrs = []
+        if road_full:
+            geo_addrs.append((road_full, 'addr'))
+            if bld_name: geo_addrs.append((f"{road_full} {bld_name}", 'keyword'))
         if bld_name and dong: geo_addrs.append((f"{sigungu} {dong} {bld_name}", 'keyword'))
-        if bld_name: geo_addrs.append((bld_name, 'keyword'))
-        if road_full:  geo_addrs.append((road_full, 'addr'))
         if jibun_full: geo_addrs.append((jibun_full, 'addr'))
-        if road:       geo_addrs.append((road, 'addr'))
+        if bld_name:   geo_addrs.append((bld_name, 'keyword'))
         rows.append({
             'sigungu':   sigungu,
             'dong':      dong,
@@ -432,7 +437,9 @@ def kakao_geocode(addr):
     cache_key = 'addr:' + addr
     if cache_key in _geo_cache:
         return _geo_cache[cache_key]
-    query = urllib.parse.urlencode({'query': '제주특별자치도 ' + addr})
+    # 시군구 포함 여부에 따라 prefix 결정 (중복 방지)
+    full_addr = addr if ('제주시' in addr or '서귀포시' in addr) else '제주특별자치도 ' + addr
+    query = urllib.parse.urlencode({'query': full_addr})
     url = f'https://dapi.kakao.com/v2/local/search/address.json?{query}'
     req = urllib.request.Request(url, headers={'Authorization': f'KakaoAK {KAKAO_REST_KEY}'})
     try:
@@ -456,7 +463,8 @@ def kakao_keyword_search(keyword):
     cache_key = 'kw:' + keyword
     if cache_key in _geo_cache:
         return _geo_cache[cache_key]
-    params = urllib.parse.urlencode({'query': '제주 ' + keyword, 'x': '126.5292', 'y': '33.3617', 'radius': 50000})
+    kw_query = keyword if ('제주시' in keyword or '서귀포시' in keyword) else '제주 ' + keyword
+    params = urllib.parse.urlencode({'query': kw_query, 'x': '126.5292', 'y': '33.3617', 'radius': 50000})
     url = f'https://dapi.kakao.com/v2/local/search/keyword.json?{params}'
     req = urllib.request.Request(url, headers={'Authorization': f'KakaoAK {KAKAO_REST_KEY}'})
     try:
