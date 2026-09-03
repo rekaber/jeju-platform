@@ -4386,7 +4386,7 @@ function renderLandBubbles() {
         var dongTrades = lands.filter(function(t){ return (t.sigungu||'')+'|'+(t.dong||'') === key; });
         showLandBubbleDetail(stat, dongTrades);
       });
-    })(s, sig + '|' + s.dong);
+    })(s, s.sigungu + '|' + s.dong);
 
     const ov = new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(s.lat, s.lng), content: el, yAnchor: 1.18, zIndex: 4 });
     ov.setMap(map);
