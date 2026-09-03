@@ -1285,18 +1285,21 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         </div>
         <div id="land-bubble-period-wrap" style="display:none;">
           <div class="trade-filter-row">
-            <button class="trade-filter-btn active" onclick="setLandBubblePeriod('week',this)">주간</button>
+            <button class="trade-filter-btn" onclick="setLandBubblePeriod('week',this)">주간</button>
             <button class="trade-filter-btn" onclick="setLandBubblePeriod('month',this)">월간</button>
-            <button class="trade-filter-btn" onclick="setLandBubblePeriod('year',this)">연간</button>
+            <button class="trade-filter-btn active" onclick="setLandBubblePeriod('year',this)">연간</button>
             <button class="trade-filter-btn" onclick="setLandBubblePeriod('pick',this)">월선택</button>
           </div>
-          <div id="land-bubble-month-picker" style="display:none;padding:4px 6px 2px;display:none;flex-wrap:wrap;gap:3px;">
+          <div id="land-bubble-month-picker" style="display:none;padding:4px 6px 2px;flex-wrap:wrap;gap:3px;">
             <button class="tmp-btn active" onclick="setLandBubbleMonth('all',this)">전체</button>
-            <button class="tmp-btn" onclick="setLandBubbleMonth('202608',this)">8월</button>
-            <button class="tmp-btn" onclick="setLandBubbleMonth('202607',this)">7월</button>
-            <button class="tmp-btn" onclick="setLandBubbleMonth('202606',this)">6월</button>
-            <button class="tmp-btn" onclick="setLandBubbleMonth('202605',this)">5월</button>
+            <button class="tmp-btn" onclick="setLandBubbleMonth('202601',this)">1월</button>
+            <button class="tmp-btn" onclick="setLandBubbleMonth('202602',this)">2월</button>
+            <button class="tmp-btn" onclick="setLandBubbleMonth('202603',this)">3월</button>
             <button class="tmp-btn" onclick="setLandBubbleMonth('202604',this)">4월</button>
+            <button class="tmp-btn" onclick="setLandBubbleMonth('202605',this)">5월</button>
+            <button class="tmp-btn" onclick="setLandBubbleMonth('202606',this)">6월</button>
+            <button class="tmp-btn" onclick="setLandBubbleMonth('202607',this)">7월</button>
+            <button class="tmp-btn" onclick="setLandBubbleMonth('202608',this)">8월</button>
           </div>
         </div>
       </div>
@@ -4282,7 +4285,7 @@ function renderBubbles() {
 // ── 토지 지역별 건수 버블 ──────────────────────────────
 let landBubbleVisible = false;
 let landBubbleOverlays = [];
-let landBubblePeriod = 'week';
+let landBubblePeriod = 'year';
 let landBubbleMonth  = 'all';
 
 function setLandBubblePeriod(p, btn) {
