@@ -2431,6 +2431,44 @@ async function sbFetchAll(table, select='*', extraParams='') {
     geocodeNext();
   }
 
+  // 건물명 키워드 검색 fallback (아파트·연립 등 이름 있는 건물)
+  function geocodeByNameFallback(data, geoCache, uiType) {
+    if (!window.kakao || !kakao.maps || !kakao.maps.services) return;
+    const ps = new kakao.maps.services.Places();
+    // 아직 좌표 없고 이름 있는 항목만
+    const todo = data.filter(d => !d.lat && d.name);
+    // 이름 중복 제거
+    const nameMap = {};
+    todo.forEach(d => { if (!nameMap[d.name]) nameMap[d.name] = []; nameMap[d.name].push(d); });
+    const names = Object.keys(nameMap);
+    if (!names.length) return;
+    let idx = 0, updated = 0;
+    function next() {
+      if (idx >= names.length) {
+        if (updated > 0) {
+          saveGeoCache(geoCache);
+          if (uiType && window._typeState && window._typeState[uiType] && window._typeState[uiType].visible) {
+            if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType(uiType);
+          }
+        }
+        return;
+      }
+      const nm = names[idx++];
+      ps.keywordSearch('제주 ' + nm, function(result, status) {
+        if (status === kakao.maps.services.Status.OK && result.length) {
+          const lat = parseFloat(result[0].y), lng = parseFloat(result[0].x);
+          if (isInJeju(lat, lng)) {
+            geoCache['kw:' + nm] = { lat, lng };
+            nameMap[nm].forEach(d => { d.lat = lat; d.lng = lng; });
+            updated++;
+          }
+        }
+        setTimeout(next, 300);
+      }, { location: new kakao.maps.LatLng(33.3617, 126.5292), radius: 50000 });
+    }
+    next();
+  }
+
   // 1단계: 로컬 JSON 즉시 로드
   fetch('./trade_data.json')
     .then(r => r.json())
@@ -2438,6 +2476,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
       normalizeApt(data);
       const { data: d, geoCache } = applyAptData(data, '로컬');
       geocodeTradeData(d, geoCache, 'apt');
+      setTimeout(() => geocodeByNameFallback(d, geoCache, 'apt'), 3000);
     })
     .catch(e => console.log('[실거래] 로컬 JSON 로드 실패:', e.message));
 
@@ -2447,6 +2486,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
       normalizeApt(data);
       const { data: d, geoCache } = applyAptData(data, 'Supabase');
       geocodeTradeData(d, geoCache, 'apt');
+      setTimeout(() => geocodeByNameFallback(d, geoCache, 'apt'), 5000);
     })
     .catch(e => console.log('[실거래] Supabase 로드 실패:', e.message));
 })();
@@ -2455,9 +2495,9 @@ async function sbFetchAll(table, select='*', extraParams='') {
 (function loadHouseData() {
   function applyHouseData(data, source) {
     data.forEach(d => {
-      d.roadAddr = (d.sigungu && d.dong)
-        ? d.sigungu + ' ' + d.dong
-        : (d.addr || d.roadaddr || '');
+      // addr에 지번주소(시군구+동+지번)가 있으면 우선 사용
+      d.roadAddr = d.addr || d.roadaddr
+        || ((d.sigungu && d.dong) ? d.sigungu + ' ' + d.dong : '');
       d.price    = parseFloat(d.price) || 0;
       d.area     = parseFloat(d.area)  || 0;
       if (!d._tradeType) { d._tradeType = 'house'; d._typeColor = '#00695C'; d._typeLabel = '단독/다가구'; }
@@ -2479,6 +2519,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
     }
     console.log(`[단독/다가구] ${source} 로드 완료: ${data.length}건`);
     geocodeTradeData(data, geoCache, 'house');
+    setTimeout(() => geocodeByNameFallback(data, geoCache, 'house'), 4000);
   }
   // 1단계: 로컬 JSON
   fetch('./house_data.json')
@@ -2495,10 +2536,9 @@ async function sbFetchAll(table, select='*', extraParams='') {
 (function loadRhtData() {
   function applyRhtData(data, source) {
     data.forEach(d => {
-      // geocoding은 동 레벨로
-      d.roadAddr = (d.sigungu && d.dong)
-        ? d.sigungu + ' ' + d.dong
-        : (d.addr || d.roadaddr || '');
+      // roadaddr(도로명+건물번호) 또는 addr(지번) 우선, 없으면 동 수준
+      d.roadAddr = d.roadaddr || d.addr
+        || ((d.sigungu && d.dong) ? d.sigungu + ' ' + d.dong : '');
       d.price    = parseFloat(d.price) || 0;
       d.area     = parseFloat(d.area)  || 0;
       if (!d._tradeType) { d._tradeType = 'rht'; d._typeColor = '#E65100'; d._typeLabel = '연립/다세대'; }
@@ -2520,6 +2560,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
     }
     console.log(`[연립/다세대] ${source} 로드 완료: ${data.length}건`);
     geocodeTradeData(data, geoCache, 'rht');
+    setTimeout(() => geocodeByNameFallback(data, geoCache, 'rht'), 4000);
   }
   sbFetchAll('rht_trades')
     .then(data => applyRhtData(data, 'Supabase'))
@@ -2530,9 +2571,9 @@ async function sbFetchAll(table, select='*', extraParams='') {
 (function loadCommData() {
   function applyCommData(data, source) {
     data.forEach(d => {
-      d.roadAddr = (d.sigungu && d.dong)
-        ? d.sigungu + ' ' + d.dong
-        : (d.addr || d.roadaddr || '');
+      // roadaddr(도로명+건물번호) 또는 addr(지번) 우선
+      d.roadAddr = d.roadaddr || d.addr
+        || ((d.sigungu && d.dong) ? d.sigungu + ' ' + d.dong : '');
       d.price    = parseFloat(d.price) || 0;
       d.area     = parseFloat(d.area)  || 0;
       if (!d._tradeType) { d._tradeType = 'offi'; d._typeColor = '#7B1FA2'; d._typeLabel = '상업용'; }
@@ -2554,6 +2595,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
     }
     console.log(`[상업업무용] ${source} 로드 완료: ${data.length}건`);
     geocodeTradeData(data, geoCache, 'comm');
+    setTimeout(() => geocodeByNameFallback(data, geoCache, 'comm'), 4000);
   }
   sbFetchAll('comm_trades')
     .then(data => applyCommData(data, 'Supabase'))

@@ -161,10 +161,14 @@ def parse_apt(items, sigungu):
         dong     = text(it, '법정동')
         road     = text(it, '도로명')
         apt_name = text(it, '아파트')
-        road_full = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
+        road_full  = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
         jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
-        # 지오코딩 시도 순서: 도로명+건물번호 > 지번 > 아파트명 키워드 > 도로명만
-        geo_addrs = [a for a in [road_full, jibun_full, apt_name, road] if a]
+        # 아파트: 이름 키워드 검색이 POI 기반이라 가장 정확 → 먼저 시도
+        geo_addrs = []
+        if apt_name: geo_addrs.append((apt_name, 'keyword'))
+        if road_full: geo_addrs.append((road_full, 'addr'))
+        if jibun_full: geo_addrs.append((jibun_full, 'addr'))
+        if road: geo_addrs.append((road, 'addr'))
         rows.append({
             'name':       apt_name,
             'addr':       jibun_full or f"{sigungu} {dong}",
@@ -214,9 +218,13 @@ def parse_rht(items, sigungu):
         dong     = text(it, '법정동')
         road     = text(it, '도로명')
         rht_name = text(it, '연립다세대')
-        road_full = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
+        road_full  = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
         jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
-        geo_addrs = [a for a in [road_full, jibun_full, rht_name, road] if a]
+        geo_addrs = []
+        if rht_name: geo_addrs.append((rht_name, 'keyword'))
+        if road_full: geo_addrs.append((road_full, 'addr'))
+        if jibun_full: geo_addrs.append((jibun_full, 'addr'))
+        if road: geo_addrs.append((road, 'addr'))
         rows.append({
             'name':       rht_name,
             'sigungu':    sigungu,
@@ -276,9 +284,13 @@ def parse_comm(items, sigungu):
         dong      = text(it, '법정동')
         road      = text(it, '도로명')
         bld_name  = text(it, '건물명')
-        road_full = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
+        road_full  = build_road_addr(road, text(it,'도로명건물본번호코드'), text(it,'도로명건물부번호코드'))
         jibun_full = build_jibun_addr(sigungu, dong, text(it,'법정동본번코드'), text(it,'법정동부번코드'))
-        geo_addrs = [a for a in [road_full, jibun_full, bld_name, road] if a]
+        geo_addrs = []
+        if bld_name: geo_addrs.append((bld_name, 'keyword'))
+        if road_full: geo_addrs.append((road_full, 'addr'))
+        if jibun_full: geo_addrs.append((jibun_full, 'addr'))
+        if road: geo_addrs.append((road, 'addr'))
         rows.append({
             'sigungu':   sigungu,
             'dong':      dong,
@@ -457,14 +469,18 @@ def kakao_keyword_search(keyword):
     return None
 
 def geocode_row(r):
-    """단일 row를 _geo_addrs 우선순위대로 지오코딩. 성공한 좌표를 r에 직접 저장."""
-    addrs = r.get('_geo_addrs') or []
-    for i, addr in enumerate(addrs):
-        # 마지막 2개는 건물명일 수 있으므로 키워드 검색 사용
-        if i >= len(addrs) - 2 and not any(c.isdigit() for c in addr):
-            coord = kakao_keyword_search(addr)
+    """단일 row를 _geo_addrs 우선순위대로 지오코딩.
+    _geo_addrs: [(주소, 'addr'|'keyword'), ...] 형태.
+    'keyword'는 카카오 키워드(POI) 검색, 'addr'는 주소 검색."""
+    entries = r.get('_geo_addrs') or []
+    for entry in entries:
+        if isinstance(entry, tuple):
+            addr, mode = entry
         else:
-            coord = kakao_geocode(addr)
+            addr, mode = entry, 'addr'
+        if not addr:
+            continue
+        coord = kakao_keyword_search(addr) if mode == 'keyword' else kakao_geocode(addr)
         if coord:
             r['lat'] = coord['lat']
             r['lng'] = coord['lng']
