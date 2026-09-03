@@ -155,7 +155,11 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
   transform:translateX(-50%);
   border-left:5px solid transparent; border-right:5px solid transparent;
 }
-.trade-marker:hover { transform: scale(1.12); box-shadow: 0 4px 14px rgba(0,0,0,0.45); }
+.trade-marker:hover { transform: scale(1.12); box-shadow: 0 4px 14px rgba(0,0,0,0.45); z-index: 9999 !important; }
+.trade-cluster { display:flex; align-items:center; justify-content:center; flex-direction:column; border-radius:50%; border:3px solid rgba(255,255,255,0.9); box-shadow:0 2px 10px rgba(0,0,0,0.45); cursor:pointer; color:#fff; font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; font-weight:800; transition:transform 0.12s; }
+.trade-cluster:hover { transform:scale(1.15); z-index:9999 !important; }
+.trade-cluster .tc-cnt { font-size:15px; line-height:1.1; }
+.trade-cluster .tc-lbl { font-size:9px; opacity:0.88; }
 .trade-marker.price-low  { background: #2E7D32; }
 .trade-marker.price-low::after  { border-top: 6px solid #2E7D32; }
 .trade-marker.price-mid  { background: #E65100; }
@@ -4538,6 +4542,28 @@ function clearTradeMarkersForType(type) {
   window._typeOverlays[type] = [];
 }
 
+// ── 픽셀 거리 기반 클러스터링 ──────────────────────────
+function _clusterTrades(trades, gridPx) {
+  if (!window.map) return trades.map(function(t){ return { type:'single', trade:t }; });
+  var proj = map.getProjection();
+  var cells = {};
+  trades.forEach(function(t) {
+    if (!t.lat || !t.lng) return;
+    var pt = proj.pointFromCoords(new kakao.maps.LatLng(t.lat, t.lng));
+    var cx = Math.floor(pt.x / gridPx);
+    var cy = Math.floor(pt.y / gridPx);
+    var key = cx + '_' + cy;
+    if (!cells[key]) cells[key] = { trades:[], lat:0, lng:0, cnt:0 };
+    cells[key].trades.push(t);
+    cells[key].lat += t.lat; cells[key].lng += t.lng; cells[key].cnt++;
+  });
+  return Object.values(cells).map(function(c) {
+    return c.cnt === 1
+      ? { type:'single', trade:c.trades[0] }
+      : { type:'cluster', lat:c.lat/c.cnt, lng:c.lng/c.cnt, cnt:c.cnt, trades:c.trades };
+  });
+}
+
 function renderTradeMarkersForType(type) {
   clearTradeMarkersForType(type);
   var meta = _typeMeta[type];
@@ -4554,35 +4580,61 @@ function renderTradeMarkersForType(type) {
   }
   statusEl.style.display = 'block';
 
+  // 줌 레벨에 따라 클러스터 그리드 크기 결정
+  var zoomLv = map.getLevel();
+  var gridPx = zoomLv <= 5 ? 80 : zoomLv <= 7 ? 55 : zoomLv <= 9 ? 35 : 0;
+  var items = gridPx > 0 ? _clusterTrades(trades, gridPx) : trades.map(function(t){ return { type:'single', trade:t }; });
+
   var CHUNK = 200, i = 0;
   var token = ++renderTradeMarkersForType._token;
   var overlays = window._typeOverlays[type];
 
   function renderChunk() {
     if (token !== renderTradeMarkersForType._token) { statusEl.style.display = 'none'; return; }
-    var end = Math.min(i + CHUNK, trades.length);
+    var end = Math.min(i + CHUNK, items.length);
     for (; i < end; i++) {
-      var t = trades[i];
-      if (!t.lat || !t.lng) continue;
-      var cls = t.price < 3 ? 'price-low' : t.price < 6 ? 'price-mid' : 'price-high';
-      var el = document.createElement('div');
-      el.className = 'trade-marker ' + cls;
-      el.style.borderLeft = '3px solid ' + meta.color;
-      var dateShort = t.date ? t.date.slice(2).replace(/-/g, '.') : '';
-      el.innerHTML = '<div class="tm-name">' + (t.name||t.dong||'') + '</div><div class="tm-price">' + t.price.toFixed(1) + '억</div><div class="tm-sub">' + (t.area ? Math.round(t.area)+'㎡' : '') + ' ' + dateShort + '</div>';
-      el.addEventListener('click', (function(td){ return function(e) { e.stopPropagation(); showTradePopup(td); }; })(t));
-      var ov = new kakao.maps.CustomOverlay({ position:new kakao.maps.LatLng(t.lat,t.lng), content:el, yAnchor:1.35, zIndex:3 });
+      var item = items[i];
+      var el, ov;
+      if (item.type === 'cluster') {
+        // 클러스터 마커
+        var avgPrice = item.trades.reduce(function(s,t){return s+t.price;},0)/item.cnt;
+        var bgColor = avgPrice < 3 ? '#2E7D32' : avgPrice < 6 ? '#E65100' : '#B71C1C';
+        var sz = Math.min(54, 36 + Math.sqrt(item.cnt) * 3);
+        el = document.createElement('div');
+        el.className = 'trade-cluster';
+        el.style.cssText = 'width:'+sz+'px;height:'+sz+'px;background:'+bgColor+';border-left:3px solid '+meta.color+';';
+        el.innerHTML = '<div class="tc-cnt">'+item.cnt+'건</div><div class="tc-lbl">'+avgPrice.toFixed(1)+'억</div>';
+        el.title = meta.label+' '+item.cnt+'건 (평균 '+avgPrice.toFixed(1)+'억)';
+        el.addEventListener('click', (function(lat,lng){ return function(e){
+          e.stopPropagation();
+          map.setCenter(new kakao.maps.LatLng(lat,lng));
+          map.setLevel(Math.max(1, map.getLevel()-3));
+        }; })(item.lat, item.lng));
+        ov = new kakao.maps.CustomOverlay({ position:new kakao.maps.LatLng(item.lat,item.lng), content:el, yAnchor:0.5, zIndex:4 });
+      } else {
+        // 개별 마커
+        var t = item.trade;
+        if (!t.lat || !t.lng) continue;
+        var cls = t.price < 3 ? 'price-low' : t.price < 6 ? 'price-mid' : 'price-high';
+        el = document.createElement('div');
+        el.className = 'trade-marker ' + cls;
+        el.style.borderLeft = '3px solid ' + meta.color;
+        var dateShort = t.date ? t.date.slice(2).replace(/-/g, '.') : '';
+        el.innerHTML = '<div class="tm-name">'+(t.name||t.dong||'')+'</div><div class="tm-price">'+t.price.toFixed(1)+'억</div><div class="tm-sub">'+(t.area?Math.round(t.area)+'㎡':'')+' '+dateShort+'</div>';
+        el.addEventListener('click', (function(td){ return function(e){ e.stopPropagation(); showTradePopup(td); }; })(t));
+        ov = new kakao.maps.CustomOverlay({ position:new kakao.maps.LatLng(t.lat,t.lng), content:el, yAnchor:1.35, zIndex:3 });
+      }
       ov.setMap(map);
       overlays.push(ov);
     }
-    if (i < trades.length) {
-      statusEl.textContent = meta.label + ' 마커 로딩… ' + i + ' / ' + trades.length;
+    if (i < items.length) {
+      statusEl.textContent = meta.label + ' 마커 로딩… ' + i + ' / ' + items.length;
       setTimeout(renderChunk, 0);
     } else {
       statusEl.style.display = 'none';
     }
   }
-  statusEl.textContent = meta.label + ' 마커 로딩… 0 / ' + trades.length;
+  statusEl.textContent = meta.label + ' 마커 로딩…';
   setTimeout(renderChunk, 0);
 }
 renderTradeMarkersForType._token = 0;
@@ -5933,6 +5985,15 @@ function makeDraggable(innerId, hdId) {
     obs.observe(modal, { attributes: true, attributeFilter: ['class'] });
   }
 }
+
+// 줌 변경 시 클러스터 재렌더링
+kakao.maps.event.addListener(map, 'zoom_changed', function() {
+  ['apt','house','rht','comm'].forEach(function(type) {
+    if (window._typeState && window._typeState[type] && window._typeState[type].visible) {
+      renderTradeMarkersForType(type);
+    }
+  });
+});
 
 // 모달에 드래그 적용
 makeDraggable('stat-modal-inner',      'stat-modal-hd');
