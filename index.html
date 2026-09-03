@@ -1441,8 +1441,10 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
     <div id="stat-modal">
       <div id="stat-modal-inner">
         <div id="stat-modal-hd">
-          <h2>🏢 제주 아파트 실거래 통계</h2>
-          <select id="stat-year-select" onchange="setStatYear(this.value)" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;font-size:13px;font-weight:600;padding:3px 8px;border-radius:6px;cursor:pointer;"></select>
+          <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+            <h2 id="stat-modal-title">🏢 제주 아파트 실거래 통계</h2>
+            <select id="stat-year-select" onchange="setStatYear(this.value)" style="background:#0d3460;border:1px solid rgba(255,255,255,0.5);color:#fff;font-size:13px;font-weight:600;padding:3px 10px;border-radius:6px;cursor:pointer;flex-shrink:0;"></select>
+          </div>
           <button class="sm-close" onclick="closeStatModal()">✕</button>
         </div>
         <div id="stat-modal-body">
@@ -1471,7 +1473,10 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
     <div id="land-stat-modal">
       <div id="land-stat-modal-inner">
         <div id="land-stat-modal-hd">
-          <h2>🌾 제주 토지 실거래 통계 (2026년)</h2>
+          <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+            <h2>🌾 제주 토지 실거래 통계</h2>
+            <select id="land-stat-year-select" onchange="setLandStatYear(this.value)" style="background:#0d3460;border:1px solid rgba(255,255,255,0.5);color:#fff;font-size:13px;font-weight:600;padding:3px 10px;border-radius:6px;cursor:pointer;flex-shrink:0;"></select>
+          </div>
           <button class="sm-close" onclick="closeLandStatModal()">✕</button>
         </div>
         <div id="land-stat-modal-body">
@@ -4837,10 +4842,12 @@ function _renderCombinedBubbles() {
   window.TRADE_DATA = orig;
 }
 
+var _statTypeLabels = { apt:'🏢 아파트', house:'🏠 단독/다가구', rht:'🏘 연립/다세대', comm:'🏬 상업용' };
 function openStatModalForType(type) {
-  // 해당 타입 데이터를 TRADE_DATA로 임시 설정 후 통계 모달 오픈
   var data = _getTypeData(type);
   if (data.length) window.TRADE_DATA = data;
+  var titleEl = document.getElementById('stat-modal-title');
+  if (titleEl) titleEl.textContent = '제주 ' + (_statTypeLabels[type]||'') + ' 실거래 통계';
   openStatModal();
 }
 
@@ -6600,9 +6607,23 @@ function renderImdeChart(){
 let landStatTab    = 'perm2';
 let landStatRegion = 'all';
 let landStatJimok  = 'all';
+let landStatYear   = new Date().getFullYear();
+
+function _initLandStatYearSelect() {
+  const sel = document.getElementById('land-stat-year-select');
+  if (!sel || !window.LAND_DATA) return;
+  const years = [...new Set(window.LAND_DATA.map(t => t.date && t.date.slice(0,4)).filter(Boolean))].sort();
+  const list = years.length ? years : [String(new Date().getFullYear())];
+  sel.innerHTML = list.map(y => `<option value="${y}"${String(landStatYear)===y?' selected':''}>${y}년</option>`).join('');
+}
+function setLandStatYear(y) {
+  landStatYear = parseInt(y);
+  renderLandStatChart();
+}
 
 function openLandStatModal() {
   document.getElementById('land-stat-modal').classList.add('open');
+  _initLandStatYearSelect();
   renderLandStatChart();
 }
 function closeLandStatModal() {
@@ -6651,7 +6672,8 @@ function renderLandStatChart() {
     return arr.length ? parseFloat((arr.reduce((s,r) => s + r.price, 0) / arr.length).toFixed(2)) : null;
   }
 
-  const baseData = filterByJimok(window.LAND_DATA);
+  const yearFiltered = window.LAND_DATA.filter(r => r.date && r.date.startsWith(String(landStatYear)));
+  const baseData = filterByJimok(yearFiltered);
   const jejuAll  = baseData.filter(r => r.sigungu === '제주시');
   const seoAll   = baseData.filter(r => r.sigungu === '서귀포시');
 
