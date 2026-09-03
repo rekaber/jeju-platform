@@ -4,9 +4,10 @@
 국토교통부 건축인허가 API → Supabase (arch_permits)
 
 환경변수:
-  MOLIT_API_KEY      - 국토교통부 공공데이터포털 API 서비스키
-  SUPABASE_URL       - Supabase 프로젝트 URL
+  MOLIT_API_KEY        - 국토교통부 공공데이터포털 API 서비스키
+  SUPABASE_URL         - Supabase 프로젝트 URL
   SUPABASE_SERVICE_KEY - Supabase 서비스롤 키
+  KAKAO_REST_KEY       - 카카오 REST API 키 (지오코딩용)
 """
 
 import os, time, json, urllib.request, urllib.parse
@@ -17,6 +18,7 @@ from datetime import datetime, timedelta
 MOLIT_KEY      = os.environ.get('MOLIT_API_KEY', '')
 SUPABASE_URL   = os.environ.get('SUPABASE_URL', 'https://boukipzpoapqotvauzrj.supabase.co')
 SUPABASE_KEY   = os.environ.get('SUPABASE_SERVICE_KEY', '')
+KAKAO_REST_KEY = os.environ.get('KAKAO_REST_KEY', '')
 
 REGIONS = [('50110', '제주시'), ('50130', '서귀포시')]
 MONTHS_BACK = 3   # 최근 N개월 데이터 갱신
@@ -348,6 +350,76 @@ def fetch_arch():
     time.sleep(0.3)
     sb_insert('arch_permits', all_rows)
 
+# ── 카카오 지오코딩 ──────────────────────────────────────
+_geo_cache = {}  # 주소 → {lat, lng} 세션 캐시
+
+def kakao_geocode(addr):
+    """카카오 REST API로 주소 → 좌표 변환. 실패 시 None 반환."""
+    if not KAKAO_REST_KEY:
+        return None
+    if addr in _geo_cache:
+        return _geo_cache[addr]
+    query = urllib.parse.urlencode({'query': '제주특별자치도 ' + addr})
+    url = f'https://dapi.kakao.com/v2/local/search/address.json?{query}'
+    req = urllib.request.Request(url, headers={'Authorization': f'KakaoAK {KAKAO_REST_KEY}'})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            data = json.loads(r.read().decode('utf-8'))
+        docs = data.get('documents', [])
+        if docs:
+            result = {'lat': float(docs[0]['y']), 'lng': float(docs[0]['x'])}
+            _geo_cache[addr] = result
+            return result
+    except Exception as e:
+        pass
+    _geo_cache[addr] = None
+    return None
+
+def geocode_rows(rows, addr_field='roadaddr'):
+    """rows 리스트에서 lat/lng가 없는 항목을 카카오로 지오코딩."""
+    if not KAKAO_REST_KEY:
+        print('  KAKAO_REST_KEY 없음 → 지오코딩 스킵')
+        return
+    todo = [r for r in rows if not r.get('lat') and r.get(addr_field)]
+    addrs = list({r[addr_field] for r in todo})  # 중복 제거
+    print(f'  지오코딩 대상 주소: {len(addrs)}개')
+    success = 0
+    for addr in addrs:
+        coord = kakao_geocode(addr)
+        if coord:
+            for r in rows:
+                if r.get(addr_field) == addr and not r.get('lat'):
+                    r['lat'] = coord['lat']
+                    r['lng'] = coord['lng']
+            success += 1
+        time.sleep(0.05)  # 카카오 API rate limit 대응
+    print(f'  지오코딩 완료: {success}/{len(addrs)}개 성공')
+
+def sb_update_coords(table, rows):
+    """lat/lng가 있는 행만 Supabase PATCH로 좌표 업데이트."""
+    if not KAKAO_REST_KEY:
+        return
+    updated = [r for r in rows if r.get('lat') and r.get('lng')]
+    print(f'  Supabase 좌표 업데이트: {len(updated)}건')
+    ok = 0
+    for r in updated:
+        # addr 기준으로 PATCH (roadaddr 또는 addr 컬럼)
+        addr_val = r.get('roadaddr') or r.get('addr') or r.get('platPlc') or ''
+        if not addr_val:
+            continue
+        addr_col = 'roadaddr' if 'roadaddr' in r else 'addr'
+        encoded = urllib.parse.quote(addr_val)
+        url = f'{SUPABASE_URL}/rest/v1/{table}?{addr_col}=eq.{encoded}&lat=is.null'
+        payload = json.dumps({'lat': r['lat'], 'lng': r['lng']}).encode('utf-8')
+        headers = {**SUPABASE_HEADERS, 'Content-Type': 'application/json', 'Prefer': 'return=minimal'}
+        req = urllib.request.Request(url, data=payload, method='PATCH', headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=15): ok += 1
+        except Exception as e:
+            pass
+        time.sleep(0.05)
+    print(f'  좌표 업데이트 완료: {ok}건')
+
 # ── 메인 ────────────────────────────────────────────────
 def main():
     months = get_months(MONTHS_BACK)
@@ -378,9 +450,18 @@ def main():
             print(f'  데이터 없음, 스킵')
             continue
 
+        # 주소 필드 결정
+        addr_field = 'roadaddr' if table in ('apt_trades','rht_trades','comm_trades') else 'addr'
+        # 지오코딩 (주소 → 좌표)
+        geocode_rows(all_rows, addr_field)
+
         print(f'  총 {len(all_rows)}건 → Supabase 업로드')
         sb_delete_by_months(table, months)
         sb_insert(table, all_rows)
+
+    # 토지는 지번주소 기반 (jibun+dong 조합)
+    # land_trades 별도 지오코딩: addr = "시군구 법정동"
+    # (land의 roadaddr이 없으므로 addr 필드 사용, 이미 geocode_rows에서 처리됨)
 
     fetch_arch()
 
