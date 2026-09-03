@@ -1740,13 +1740,22 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <button onclick="openImdeModal()" style="background:rgba(245,124,0,0.15);border:1px solid rgba(245,124,0,0.4);color:#FFB74D;font-size:10px;padding:5px 4px;border-radius:5px;cursor:pointer;text-align:left;">
             🏢 상업용 임대
           </button>
-          <button onclick="openStatModal()" style="background:rgba(25,118,210,0.15);border:1px solid rgba(25,118,210,0.4);color:#64B5F6;font-size:10px;padding:5px 4px;border-radius:5px;cursor:pointer;text-align:left;">
-            🏠 아파트 통계
+          <button onclick="openStatModalForType('apt')" style="background:rgba(25,118,210,0.15);border:1px solid rgba(25,118,210,0.4);color:#64B5F6;font-size:10px;padding:5px 4px;border-radius:5px;cursor:pointer;text-align:left;">
+            🏢 아파트 통계
+          </button>
+          <button onclick="openStatModalForType('house')" style="background:rgba(0,105,92,0.15);border:1px solid rgba(0,105,92,0.4);color:#4DB6AC;font-size:10px;padding:5px 4px;border-radius:5px;cursor:pointer;text-align:left;">
+            🏠 단독/다가구
+          </button>
+          <button onclick="openStatModalForType('rht')" style="background:rgba(230,81,0,0.15);border:1px solid rgba(230,81,0,0.4);color:#FF8A65;font-size:10px;padding:5px 4px;border-radius:5px;cursor:pointer;text-align:left;">
+            🏘 연립/다세대
+          </button>
+          <button onclick="openStatModalForType('comm')" style="background:rgba(123,31,162,0.15);border:1px solid rgba(123,31,162,0.4);color:#CE93D8;font-size:10px;padding:5px 4px;border-radius:5px;cursor:pointer;text-align:left;">
+            🏬 상업용 통계
           </button>
           <button onclick="openLandStatModal()" style="background:rgba(93,64,55,0.25);border:1px solid rgba(93,64,55,0.6);color:#A1887F;font-size:10px;padding:5px 4px;border-radius:5px;cursor:pointer;text-align:left;">
             🌱 토지 통계
           </button>
-          <button onclick="openVisitorModal()" style="background:rgba(2,119,189,0.15);border:1px solid rgba(2,119,189,0.4);color:#4FC3F7;font-size:10px;padding:5px 4px;border-radius:5px;cursor:pointer;text-align:left;grid-column:1/-1;">
+          <button onclick="openVisitorModal()" style="background:rgba(2,119,189,0.15);border:1px solid rgba(2,119,189,0.4);color:#4FC3F7;font-size:10px;padding:5px 4px;border-radius:5px;cursor:pointer;text-align:left;">
             ✈️ 입도객 통계
           </button>
         </div>
