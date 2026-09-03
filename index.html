@@ -4336,7 +4336,8 @@ function getLandBubbleFiltered() {
 function renderLandBubbles() {
   clearLandBubbles();
   const lands = getLandBubbleFiltered();
-  const periodLabels = { year: '올해', '6m': '최근 6개월', '3m': '최근 3개월', month: '최근 1개월' };
+  const now2 = new Date();
+  const periodLabels = { week:'최근 7일', month:'최근 30일', year:now2.getFullYear()+'년', pick: landBubbleMonth !== 'all' ? landBubbleMonth.slice(0,4)+'년 '+parseInt(landBubbleMonth.slice(4))+'월' : now2.getFullYear()+'년 전체' };
   const periodLabel = periodLabels[landBubblePeriod] || '';
   if (!lands.length) return;
 
@@ -4367,6 +4368,7 @@ function renderLandBubbles() {
     const el = document.createElement('div');
     el.className = `stat-bubble ${colorCls}`;
     el.style.background = ratio < 0.3 ? 'rgba(121,85,72,0.85)' : ratio < 0.65 ? 'rgba(93,64,55,0.90)' : 'rgba(62,39,35,0.88)';
+    el.style.cursor = 'pointer';
     el.innerHTML =
       `<div class="sb-dong">${s.sigungu.replace('특별자치도','').replace('특별자치시','')} ${s.dong}</div>` +
       `<div class="sb-meta">${periodLabel}</div>` +
@@ -4375,6 +4377,13 @@ function renderLandBubbles() {
     const scale = 0.78 + ratio * 0.5;
     el.style.transform = `scale(${scale.toFixed(2)})`;
     el.style.transformOrigin = 'bottom center';
+    (function(stat, key) {
+      el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var dongTrades = lands.filter(function(t){ return (t.sigungu||'')+'|'+(t.dong||'') === key; });
+        showLandBubbleDetail(stat, dongTrades);
+      });
+    })(s, sig + '|' + s.dong);
 
     const ov = new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(s.lat, s.lng), content: el, yAnchor: 1.18, zIndex: 4 });
     ov.setMap(map);
@@ -4946,6 +4955,53 @@ function showBubbleDetail(stat, trades) {
           '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">면적</th>' +
           '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">평당가</th>' +
           '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">유형</th>' +
+        '</tr></thead>' +
+        '<tbody>'+rows+'</tbody>' +
+      '</table>' +
+    '</div>';
+  modal.style.display = 'block';
+}
+
+function showLandBubbleDetail(stat, trades) {
+  var modal = document.getElementById('bubble-detail-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'bubble-detail-modal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:1100;';
+    modal.innerHTML = '<div id="bubble-detail-inner" style="background:#F8FAFB;border-radius:12px;width:min(680px,96vw);max-height:80vh;overflow:auto;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 12px 40px rgba(0,0,0,0.3);"></div>';
+    modal.addEventListener('click', function(e){ if(e.target===modal) modal.style.display='none'; });
+    document.body.appendChild(modal);
+  }
+  var sorted = trades.slice().sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
+  var sigShort = (stat.sigungu||'').replace('제주특별자치도 ','').replace('특별자치도','');
+  var avgPerM2 = stat.m2cnt > 0 ? Math.round(stat.totalPerM2 / stat.m2cnt) : 0;
+  var rows = sorted.map(function(t) {
+    var pm2 = t.perM2 ? Math.round(t.perM2).toLocaleString()+'만/㎡' : '-';
+    var price = typeof t.price === 'number' ? t.price.toFixed(1)+'억' : (t.price||'-');
+    return '<tr style="border-bottom:1px solid #eee;">' +
+      '<td style="padding:6px 8px;font-size:12px;color:#333;">'+(t.date||'-')+'</td>' +
+      '<td style="padding:6px 8px;font-size:12px;font-weight:600;white-space:nowrap;">'+(t.jimok||'-')+'</td>' +
+      '<td style="padding:6px 8px;font-size:12px;color:#5D4037;font-weight:700;">'+price+'</td>' +
+      '<td style="padding:6px 8px;font-size:11px;color:#666;">'+(t.area?Math.round(t.area)+'㎡':'-')+'</td>' +
+      '<td style="padding:6px 8px;font-size:11px;color:#666;">'+pm2+'</td>' +
+      '<td style="padding:6px 8px;font-size:11px;color:#888;">'+(t.yongdo||'-')+'</td>' +
+      '</tr>';
+  }).join('');
+  document.getElementById('bubble-detail-inner').innerHTML =
+    '<div style="background:linear-gradient(135deg,#4E342E,#795548);color:#fff;padding:14px 18px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">' +
+      '<div><div style="font-size:15px;font-weight:700;">📍 '+sigShort+' '+stat.dong+'</div>' +
+      '<div style="font-size:12px;opacity:0.85;margin-top:2px;">총 '+stat.count+'건 · 평균 '+avgPerM2.toLocaleString()+'만/㎡</div></div>' +
+      '<button onclick="document.getElementById(\'bubble-detail-modal\').style.display=\'none\';" style="background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:28px;height:28px;">✕</button>' +
+    '</div>' +
+    '<div style="padding:12px 16px;overflow-x:auto;">' +
+      '<table style="width:100%;border-collapse:collapse;">' +
+        '<thead><tr style="background:#f0f4f8;">' +
+          '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">날짜</th>' +
+          '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">지목</th>' +
+          '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">금액</th>' +
+          '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">면적</th>' +
+          '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">㎡당가</th>' +
+          '<th style="padding:6px 8px;font-size:11px;text-align:left;color:#555;">용도지역</th>' +
         '</tr></thead>' +
         '<tbody>'+rows+'</tbody>' +
       '</table>' +
