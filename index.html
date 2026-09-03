@@ -2515,12 +2515,26 @@ async function sbFetchAll(table, select='*', extraParams='') {
     return d;
   }
   function applyLandData(data, source) {
-    // lat/lng 없는 레코드에 DONG_COORDS fallback 적용
+    // lat/lng 없는 레코드에 기존 LAND_DATA 좌표 or DONG_COORDS fallback 적용
+    var prevCache = {};
+    if (window.LAND_DATA) {
+      window.LAND_DATA.forEach(function(d) {
+        if (d.lat && d.lng) {
+          var k = (d.sigungu||'') + '|' + (d.dong||'') + '|' + (d.jibun||'');
+          prevCache[k] = { lat: d.lat, lng: d.lng };
+        }
+      });
+    }
     data.forEach(function(d) {
       if (!d.lat || !d.lng) {
-        var key = (d.sigungu || '') + ' ' + (d.dong || '');
-        var ref = window.DONG_COORDS && window.DONG_COORDS[key];
-        if (ref) { d.lat = ref.lat; d.lng = ref.lng; }
+        var k = (d.sigungu||'') + '|' + (d.dong||'') + '|' + (d.jibun||'');
+        if (prevCache[k]) {
+          d.lat = prevCache[k].lat; d.lng = prevCache[k].lng;
+        } else {
+          var key = (d.sigungu || '') + ' ' + (d.dong || '');
+          var ref = typeof DONG_COORDS !== 'undefined' && DONG_COORDS[key];
+          if (ref) { d.lat = ref.lat; d.lng = ref.lng; }
+        }
       }
     });
     window.LAND_DATA = data;
