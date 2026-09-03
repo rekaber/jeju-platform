@@ -1651,11 +1651,11 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
       <div class="stat-chip">
         <div class="sc-lbl">아파트 평균매매가 / 실거래 건수 (2026 상반기)</div>
         <div style="display:flex;align-items:baseline;gap:8px;">
-          <div class="sc-val">3.29억</div>
+          <div class="sc-val" id="ip-apt-price">-</div>
           <div style="color:rgba(125,211,200,0.5);font-size:12px;">/</div>
-          <div class="sc-val">1,370건</div>
+          <div class="sc-val" id="ip-apt-count">-</div>
         </div>
-        <div class="sc-chg" style="color:#888">제주시 3.47억·1,029건 · 서귀포시 2.77억·341건</div>
+        <div class="sc-chg" style="color:#888" id="ip-apt-detail">데이터 로딩 중...</div>
       </div>
       <div class="area-rank">
         <div class="ar-title">🏠 실거래 평균가 TOP 5 <span style="font-weight:400;color:#7dd3c8;opacity:0.7">클릭 → 지도 이동</span></div>
@@ -2364,6 +2364,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
     if (srcEl) srcEl.textContent = `실거래 데이터 · ${data.length.toLocaleString()}건`;
     if (typeof computeRankCache === 'function') { window._rankCache = null; computeRankCache(); }
     if (typeof renderAreaRank  === 'function') renderAreaRank();
+    if (typeof updateInfoPanelApt === 'function') updateInfoPanelApt();
     if (typeof tradeVisible !== 'undefined' && tradeVisible) {
       clearTradeMarkers(); renderTradeMarkers(); renderTradeChart();
     }
@@ -5021,6 +5022,43 @@ function computeRankCache() {
     month: buildTop5(periods.month),
     week:  buildTop5(periods.week)
   };
+}
+
+function updateInfoPanelApt() {
+  var data = (window.MULTI_DATA && window.MULTI_DATA.apt) ? window.MULTI_DATA.apt : (window.TRADE_DATA || []);
+  if (!data.length) return;
+  var now = new Date();
+  var curYear = String(now.getFullYear());
+  var yearData = data.filter(function(t){ return t.date && t.date.startsWith(curYear); });
+  if (!yearData.length) yearData = data;
+
+  var total = yearData.length;
+  var jejuData = yearData.filter(function(t){ return t.sigungu === '제주시'; });
+  var seoData  = yearData.filter(function(t){ return t.sigungu === '서귀포시'; });
+
+  function avgPrice(arr) {
+    if (!arr.length) return null;
+    return arr.reduce(function(s,t){ return s+t.price; }, 0) / arr.length;
+  }
+  var totalAvg = avgPrice(yearData);
+  var jejuAvg  = avgPrice(jejuData);
+  var seoAvg   = avgPrice(seoData);
+
+  var priceEl  = document.getElementById('ip-apt-price');
+  var countEl  = document.getElementById('ip-apt-count');
+  var detailEl = document.getElementById('ip-apt-detail');
+
+  if (priceEl)  priceEl.textContent  = totalAvg ? totalAvg.toFixed(2) + '억' : '-';
+  if (countEl)  countEl.textContent  = total.toLocaleString() + '건';
+  if (detailEl) {
+    var jejuTxt = jejuAvg  ? '제주시 ' + jejuAvg.toFixed(2)  + '억·' + jejuData.length.toLocaleString() + '건' : '';
+    var seoTxt  = seoAvg   ? '서귀포시 ' + seoAvg.toFixed(2) + '억·' + seoData.length.toLocaleString() + '건'  : '';
+    detailEl.textContent = [jejuTxt, seoTxt].filter(Boolean).join(' · ');
+  }
+
+  // 라벨 년도도 업데이트
+  var lblEl = document.querySelector('#ip-apt-price')?.closest('.stat-chip')?.querySelector('.sc-lbl');
+  if (lblEl) lblEl.textContent = '아파트 평균매매가 / 실거래 건수 (' + curYear + '년)';
 }
 
 function renderAreaRank() {
