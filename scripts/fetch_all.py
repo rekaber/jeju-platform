@@ -62,14 +62,13 @@ def text(item, tag):
 def molit_fetch(service, lawd_cd, deal_ymd, page=1, rows=1000):
     """국토교통부 API 단일 페이지 조회"""
     base = f'https://apis.data.go.kr/1613000/RTMSOBJSvc/{service}'
-    params = urllib.parse.urlencode({
-        'serviceKey': MOLIT_KEY,
+    other = urllib.parse.urlencode({
         'LAWD_CD': lawd_cd,
         'DEAL_YMD': deal_ymd,
         'numOfRows': rows,
         'pageNo': page,
-    }, quote_via=urllib.parse.quote)
-    url = f'{base}?{params}'
+    })
+    url = f'{base}?serviceKey={MOLIT_KEY}&{other}'
     try:
         with urllib.request.urlopen(url, timeout=30) as r:
             return r.read().decode('utf-8')
@@ -341,16 +340,15 @@ def arch_fetch_all(sigungu_cd, start_date, end_date):
     all_items = []
     page = 1
     while True:
-        params = urllib.parse.urlencode({
-            'serviceKey': MOLIT_KEY,
+        other2 = urllib.parse.urlencode({
             'sigunguCd':  sigungu_cd[:5],
             'bjdongCd':   '00000',
             'startDate':  start_date,
             'endDate':    end_date,
             'numOfRows':  1000,
             'pageNo':     page,
-        }, quote_via=urllib.parse.quote)
-        url = f'{base}?{params}'
+        })
+        url = f'{base}?serviceKey={MOLIT_KEY}&{other2}'
         try:
             with urllib.request.urlopen(url, timeout=30) as r:
                 xml_str = r.read().decode('utf-8')
