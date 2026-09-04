@@ -487,7 +487,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
   background: rgba(255,255,255,0.25); display: inline-block; margin-bottom: 4px;
 }
 .dev-popup-name { font-size: 14px; font-weight: 800; line-height: 1.3; }
-.dev-popup-body { padding: 10px 12px; }
+.dev-popup-body { padding: 10px 12px; max-height: 420px; overflow-y: auto; }
 .dev-popup-area { font-size: 10px; color: #888; margin-bottom: 6px; }
 .dev-popup-desc { font-size: 11px; color: #444; line-height: 1.55; }
 .dev-popup-close {
@@ -4170,10 +4170,20 @@ function showDevPopup(p) {
     const list = el.querySelector('.dev-trade-list');
     if (list) list.innerHTML = renderTradeList(km, tab);
     const chart = el.querySelector('.dev-chart-area');
-    if (chart) chart.innerHTML = renderDevChart(km, tab);
+    if (chart && chart.style.display !== 'none') chart.innerHTML = renderDevChart(km, tab);
+    else if (chart) chart.innerHTML = ''; // 초기화만
     el.querySelectorAll('.dev-km-btn').forEach(b => b.classList.toggle('active', b.dataset.km == km));
     el.querySelectorAll('.dev-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   }
+
+  // 차트 버튼 클릭 시 차트 렌더링 (처음 열 때만)
+  el.addEventListener('click', function(e) {
+    const btn = e.target.closest('button');
+    if (btn && btn.textContent.includes('월별 가격 통계')) {
+      const chart = el.querySelector('.dev-chart-area');
+      if (chart && !chart.innerHTML.trim()) chart.innerHTML = renderDevChart(curKm, curTab);
+    }
+  }, true);
 
   let curKm = 2, curTab = 'apt';
   el.innerHTML = `
@@ -4198,9 +4208,10 @@ function showDevPopup(p) {
           <button class="dev-km-btn active" data-km="2" style="font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid #546E7A;background:#546E7A;color:#fff;cursor:pointer;">2km</button>
           <button class="dev-km-btn" data-km="5" style="font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid #ccc;background:#f5f7fa;color:#555;cursor:pointer;">5km</button>
         </div>
-        <div class="dev-chart-area" style="margin-bottom:8px;">${renderDevChart(curKm, curTab)}</div>
+        <button onclick="(function(btn){var c=btn.closest('.dev-popup-body').querySelector('.dev-chart-area');if(c.style.display==='none'){c.style.display='block';btn.textContent='📉 통계 접기';}else{c.style.display='none';btn.textContent='📈 월별 가격 통계';}})(this)" style="width:100%;font-size:10px;font-weight:700;padding:5px 0;border-radius:6px;border:1px solid #ddd;background:#f5f7fa;color:#1976D2;cursor:pointer;margin-bottom:6px;">📈 월별 가격 통계</button>
+        <div class="dev-chart-area" style="display:none;margin-bottom:8px;"></div>
         <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:4px;">최근 실거래</div>
-        <div class="dev-trade-list" style="max-height:140px;overflow-y:auto;">${renderTradeList(curKm, curTab)}</div>
+        <div class="dev-trade-list" style="max-height:160px;overflow-y:auto;">${renderTradeList(curKm, curTab)}</div>
       </div>
     </div>
     <div class="dev-popup-arrow" style="border-top-color:${color};"></div>`;
