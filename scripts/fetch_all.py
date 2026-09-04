@@ -102,8 +102,6 @@ def molit_fetch_all(service, lawd_cd, deal_ymd):
         except ET.ParseError as e:
             print(f'  XML 파싱 오류: {e}')
             break
-        if page == 1:
-            print(f'  [DEBUG XML] {xml_str[:800]}')
         items = root.findall('.//item')
         all_items.extend(items)
         total_el = root.find('.//totalCount')
@@ -226,12 +224,20 @@ def parse_apt(items, sigungu):
 def parse_house(items, sigungu):
     rows = []
     for it in items:
-        년 = text(it, '년'); 월 = text(it, '월'); 일 = text(it, '일')
+        년 = text(it, '년') or text(it, 'dealYear')
+        월 = text(it, '월') or text(it, 'dealMonth')
+        일 = text(it, '일') or text(it, 'dealDay')
         if not (년 and 월 and 일): continue
-        dong = text(it, '법정동')
-        road = text(it, '도로명')
+        dong = text(it, '법정동') or text(it, 'umdNm')
+        road = text(it, '도로명') or text(it, 'roadNm') or ''
         road_full  = f"{sigungu} {road}" if road else None
-        _jm, _js = get_jibun(it); jibun_full = build_jibun_addr(sigungu, dong, _jm, _js)
+        jibun_raw = text(it, 'jibun')
+        if jibun_raw:
+            parts = jibun_raw.split('-')
+            _jm = parts[0].lstrip('0'); _js = parts[1].lstrip('0') if len(parts)>1 else ''
+        else:
+            _jm, _js = get_jibun(it)
+        jibun_full = build_jibun_addr(sigungu, dong, _jm, _js)
         geo_addrs = []
         if road_full:  geo_addrs.append((road_full, 'addr'))
         if jibun_full: geo_addrs.append((jibun_full, 'addr'))
@@ -240,13 +246,13 @@ def parse_house(items, sigungu):
             'sigungu':    sigungu,
             'dong':       dong,
             'addr':       jibun_full or f"{sigungu} {dong}",
-            'house_type': text(it, '주택유형'),
-            'build_use':  text(it, '건물주용도'),
-            'area':       float_or_none(text(it, '연면적')),
-            'land_area':  float_or_none(text(it, '대지면적')),
-            'price':      price_eok(text(it, '거래금액')),
+            'house_type': text(it, '주택유형') or text(it, 'buildingType'),
+            'build_use':  text(it, '건물주용도') or text(it, 'buildingUse'),
+            'area':       float_or_none(text(it, '연면적') or text(it, 'totalFloorAr') or text(it, 'buildingAr')),
+            'land_area':  float_or_none(text(it, '대지면적') or text(it, 'plottageAr')),
+            'price':      price_eok(text(it, '거래금액') or text(it, 'dealAmount')),
             'date':       f'{년}-{int(월):02d}-{int(일):02d}',
-            'built':      int_or_none(text(it, '건축년도')),
+            'built':      int_or_none(text(it, '건축년도') or text(it, 'buildYear')),
             'lat':        None, 'lng': None,
             '_geo_addrs': geo_addrs,
         })
@@ -255,14 +261,21 @@ def parse_house(items, sigungu):
 def parse_rht(items, sigungu):
     rows = []
     for it in items:
-        년 = text(it, '년'); 월 = text(it, '월'); 일 = text(it, '일')
+        년 = text(it, '년') or text(it, 'dealYear')
+        월 = text(it, '월') or text(it, 'dealMonth')
+        일 = text(it, '일') or text(it, 'dealDay')
         if not (년 and 월 and 일): continue
-        dong     = text(it, '법정동')
-        road     = text(it, '도로명')
-        rht_name = text(it, '연립다세대')
-        # 도로명 필드가 이미 건물번호 포함
+        dong     = text(it, '법정동') or text(it, 'umdNm')
+        road     = text(it, '도로명') or text(it, 'roadNm') or ''
+        rht_name = text(it, '연립다세대') or text(it, 'aptNm') or text(it, 'mhouseNm')
         road_full  = f"{sigungu} {road}" if road else None
-        _jm, _js = get_jibun(it); jibun_full = build_jibun_addr(sigungu, dong, _jm, _js)
+        jibun_raw = text(it, 'jibun')
+        if jibun_raw:
+            parts = jibun_raw.split('-')
+            _jm = parts[0].lstrip('0'); _js = parts[1].lstrip('0') if len(parts)>1 else ''
+        else:
+            _jm, _js = get_jibun(it)
+        jibun_full = build_jibun_addr(sigungu, dong, _jm, _js)
         geo_addrs = []
         if road_full:
             geo_addrs.append((road_full, 'addr'))
@@ -276,11 +289,11 @@ def parse_rht(items, sigungu):
             'dong':       dong,
             'addr':       jibun_full or f"{sigungu} {dong}",
             'roadaddr':   road_full or '',
-            'area':       float_or_none(text(it, '전용면적')),
-            'price':      price_eok(text(it, '거래금액')),
+            'area':       float_or_none(text(it, '전용면적') or text(it, 'excluUseAr')),
+            'price':      price_eok(text(it, '거래금액') or text(it, 'dealAmount')),
             'date':       f'{년}-{int(월):02d}-{int(일):02d}',
-            'floor':      int_or_none(text(it, '층')),
-            'built':      int_or_none(text(it, '건축년도')),
+            'floor':      int_or_none(text(it, '층') or text(it, 'floor')),
+            'built':      int_or_none(text(it, '건축년도') or text(it, 'buildYear')),
             'lat':        None, 'lng': None,
             '_geo_addrs': geo_addrs,
         })
@@ -289,13 +302,15 @@ def parse_rht(items, sigungu):
 def parse_land(items, sigungu):
     rows = []
     for it in items:
-        년 = text(it, '년'); 월 = text(it, '월'); 일 = text(it, '일')
+        년 = text(it, '년') or text(it, 'dealYear')
+        월 = text(it, '월') or text(it, 'dealMonth')
+        일 = text(it, '일') or text(it, 'dealDay')
         if not (년 and 월 and 일): continue
         area = None
-        for tag in ['면적', '토지면적']:
+        for tag in ['면적', '토지면적', 'landAr', 'officialLandPriceAr']:
             v = float_or_none(text(it, tag))
             if v: area = v; break
-        price = price_eok(text(it, '거래금액'))
+        price = price_eok(text(it, '거래금액') or text(it, 'dealAmount'))
         per_m2 = round(price * 10000 / area, 1) if price and area else None  # 만원/m²
         dong  = text(it, '법정동')
         jibun = text(it, '지번')
@@ -324,14 +339,21 @@ def parse_land(items, sigungu):
 def parse_comm(items, sigungu):
     rows = []
     for it in items:
-        년 = text(it, '년'); 월 = text(it, '월'); 일 = text(it, '일')
+        년 = text(it, '년') or text(it, 'dealYear')
+        월 = text(it, '월') or text(it, 'dealMonth')
+        일 = text(it, '일') or text(it, 'dealDay')
         if not (년 and 월 and 일): continue
-        dong      = text(it, '법정동')
-        road      = text(it, '도로명')
-        bld_name  = text(it, '건물명')
-        # 도로명 필드가 이미 건물번호 포함
-        road_full  = f"{sigungu} {road}" if road else None
-        _jm, _js = get_jibun(it); jibun_full = build_jibun_addr(sigungu, dong, _jm, _js)
+        dong     = text(it, '법정동') or text(it, 'umdNm')
+        road     = text(it, '도로명') or text(it, 'roadNm') or ''
+        bld_name = text(it, '건물명') or text(it, 'bldNm') or ''
+        road_full = f"{sigungu} {road}" if road else None
+        jibun_raw = text(it, 'jibun')
+        if jibun_raw:
+            parts = jibun_raw.split('-')
+            _jm = parts[0].lstrip('0'); _js = parts[1].lstrip('0') if len(parts)>1 else ''
+        else:
+            _jm, _js = get_jibun(it)
+        jibun_full = build_jibun_addr(sigungu, dong, _jm, _js)
         geo_addrs = []
         if road_full:
             geo_addrs.append((road_full, 'addr'))
@@ -344,13 +366,13 @@ def parse_comm(items, sigungu):
             'dong':      dong,
             'addr':      jibun_full or f"{sigungu} {dong}",
             'name':      bld_name,
-            'build_use': text(it, '건물주용도'),
-            'area':      float_or_none(text(it, '전용면적')),
-            'land_area': float_or_none(text(it, '대지면적')),
-            'price':     price_eok(text(it, '거래금액')),
+            'build_use': text(it, '건물주용도') or text(it, 'buildingUse'),
+            'area':      float_or_none(text(it, '전용면적') or text(it, 'buildingAr')),
+            'land_area': float_or_none(text(it, '대지면적') or text(it, 'plottageAr')),
+            'price':     price_eok(text(it, '거래금액') or text(it, 'dealAmount')),
             'date':      f'{년}-{int(월):02d}-{int(일):02d}',
-            'floor':     int_or_none(text(it, '층')),
-            'built':     int_or_none(text(it, '건축년도')),
+            'floor':     int_or_none(text(it, '층') or text(it, 'floor')),
+            'built':     int_or_none(text(it, '건축년도') or text(it, 'buildYear')),
             'lat':       None, 'lng': None,
             '_geo_addrs': geo_addrs,
         })
