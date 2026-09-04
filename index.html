@@ -2372,7 +2372,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.apt = data;
     const aptBadge = document.getElementById('trade-badge-apt');
-    if (aptBadge) aptBadge.textContent = data.length + "건";
+    if (aptBadge && window._typeState && window._typeState.apt && window._typeState.apt.visible) aptBadge.textContent = data.length + '건';
     const srcEl = document.getElementById('trade-data-source');
     if (srcEl) srcEl.textContent = `실거래 데이터 · ${data.length.toLocaleString()}건`;
     if (typeof computeRankCache === 'function') { window._rankCache = null; computeRankCache(); }
@@ -2509,7 +2509,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.house = data;
     const badge = document.getElementById('trade-badge-house');
-    if (badge) badge.textContent = data.length + "건";
+    if (badge && window._typeState && window._typeState.house && window._typeState.house.visible) badge.textContent = data.length + '건';
     if (window._typeState && window._typeState.house && window._typeState.house.visible) {
       if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType('house');
       if (typeof renderTradeChartForType   === 'function') renderTradeChartForType('house');
@@ -2550,7 +2550,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.rht = data;
     const badge = document.getElementById('trade-badge-rht');
-    if (badge) badge.textContent = data.length + "건";
+    if (badge && window._typeState && window._typeState.rht && window._typeState.rht.visible) badge.textContent = data.length + '건';
     if (window._typeState && window._typeState.rht && window._typeState.rht.visible) {
       if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType('rht');
       if (typeof renderTradeChartForType   === 'function') renderTradeChartForType('rht');
@@ -2585,7 +2585,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.offi = data;
     const badge = document.getElementById('trade-badge-comm');
-    if (badge) badge.textContent = data.length + "건";
+    if (badge && window._typeState && window._typeState.comm && window._typeState.comm.visible) badge.textContent = data.length + '건';
     if (window._typeState && window._typeState.comm && window._typeState.comm.visible) {
       if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType('comm');
       if (typeof renderTradeChartForType   === 'function') renderTradeChartForType('comm');
