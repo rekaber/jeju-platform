@@ -2035,74 +2035,10 @@ window.JEJU_BEOPJEONGDONG = [
 ];
 
 (function() {
-  const now = new Date();
-  const BJ = window.JEJU_BEOPJEONGDONG;
-  // 법정동별 가격 범위 (시세 반영)
-  const priceMap = {
-    '연동':5.2,'노형동':5.5,'이도이동':4.8,'이도일동':4.5,'삼도일동':4.2,'삼도이동':4.1,
-    '일도일동':4.0,'일도이동':3.9,'건입동':3.8,'용담이동':4.3,'용담일동':4.1,
-    '화북일동':3.8,'화북이동':3.7,'아라일동':4.2,'아라이동':4.0,'오라일동':3.9,
-    '오라이동':3.8,'오라삼동':3.7,'도련일동':3.5,'도련이동':3.4,'봉개동':3.2,
-    '외도일동':3.8,'외도이동':3.6,'이호일동':4.1,'이호이동':4.0,'도두일동':3.8,'도두이동':3.7,
-    '용강동':3.5,'회천동':3.3,'오등동':3.2,'삼양일동':3.4,'삼양이동':3.3,'삼양삼동':3.2,
-    '애월읍':4.8,'한림읍':3.2,'한경면':2.8,'조천읍':3.8,'구좌읍':3.0,'우도면':3.5,'추자면':1.8,
-    '서귀동':4.2,'서홍동':4.5,'동홍동':4.3,'서호동':3.8,'호근동':3.6,'법환동':3.5,
-    '강정동':3.4,'도순동':3.2,'회수동':3.1,'월평동':3.3,'하원동':3.0,'색달동':5.8,
-    '중문동':5.5,'대포동':4.8,'예래동':4.2,'보목동':3.6,'토평동':3.8,'상효동':3.2,
-    '하효동':3.1,'효돈동':3.0,'신효동':3.1,'남원읍':3.2,'표선면':2.8,'성산읍':3.5,
-    '대정읍':3.0,'안덕면':3.2,
-  };
-  const types = ['아파트','아파트','아파트','오피스텔','빌라','단독'];
-  const areas = [33,49,59,75,84,101,112,132,148,178,200];
-  const TRADE_DATA = [];
-  let id = 1;
-  for (let d = 0; d < 365; d++) {
-    const dt = new Date(now); dt.setDate(dt.getDate() - d);
-    const count = d < 7 ? 4 : d < 30 ? 3 : 2;
-    for (let c = 0; c < count; c++) {
-      const bj = BJ[Math.floor(Math.random()*BJ.length)];
-      const base = priceMap[bj.dong] || 3.5;
-      const price = Math.round((base + (Math.random()-0.5)*1.6) * 10) / 10;
-      const type = types[Math.floor(Math.random()*types.length)];
-      const area = areas[Math.floor(Math.random()*areas.length)];
-      const jitter = (Math.random()-0.5)*0.008;
-      TRADE_DATA.push({
-        id: id++,
-        name: bj.dong + ' ' + type,
-        addr: bj.sigungu + ' ' + bj.dong,
-        sigungu: bj.sigungu,
-        dong: bj.dong,
-        code: bj.code,
-        lawdCd: bj.lawdCd,
-        lat: bj.lat + jitter, lng: bj.lng + jitter,
-        type, area, price: Math.max(0.5, price),
-        date: dt.toISOString().slice(0,10)
-      });
-    }
-  }
-  // 샘플 데이터 타입별 태그 및 분리
-  const _typeMap = {
-    '아파트': { key:'apt',  color:'#1976D2', label:'아파트' },
-    '오피스텔':{ key:'offi', color:'#7B1FA2', label:'상업용' },
-    '빌라':   { key:'rht',  color:'#E65100', label:'연립/다세대' },
-    '단독':   { key:'house',color:'#00695C', label:'단독/다가구' },
-  };
-  TRADE_DATA.forEach(t => {
-    const m = _typeMap[t.type] || _typeMap['아파트'];
-    t._tradeType = m.key; t._typeColor = m.color; t._typeLabel = m.label;
-  });
-  window.MULTI_DATA = window.MULTI_DATA || {};
-  window.MULTI_DATA.apt  = TRADE_DATA.filter(t => t._tradeType === 'apt');
-  window.MULTI_DATA.offi = TRADE_DATA.filter(t => t._tradeType === 'offi');
-  window.MULTI_DATA.rht  = TRADE_DATA.filter(t => t._tradeType === 'rht');
-  window.MULTI_DATA.house= TRADE_DATA.filter(t => t._tradeType === 'house');
-  window.TRADE_DATA = window.MULTI_DATA.apt; // 기본값은 아파트
-  // 배지 초기화: 토글 OFF 상태이므로 0건 유지 (토글 ON 시 갱신)
-  // TOP 5 지연 렌더 (맵 초기화 방해 방지)
-  setTimeout(() => {
-    if (typeof computeRankCache === 'function') { window._rankCache = null; computeRankCache(); }
-    if (typeof renderAreaRank  === 'function') renderAreaRank();
-  }, 500);
+  // Supabase 전용: 샘플/로컬 JSON 없음. 로드 전·빈 DB는 빈 배열
+  window.MULTI_DATA = { apt: [], offi: [], rht: [], house: [] };
+  window.TRADE_DATA = [];
+  window.LAND_DATA = [];
 })();
 
 // ── 도로명주소 → 좌표 캐시 (localStorage 영속) ──────────────────────────
@@ -2304,11 +2240,21 @@ function formatTradeCount(n) {
 function setTradeBadge(type, total, filtered) {
   const badge = document.getElementById('trade-badge-' + type);
   if (!badge) return;
+  badge.removeAttribute('data-loading');
+  if (!total) {
+    badge.textContent = '데이터 없음';
+    return;
+  }
   if (filtered != null && filtered !== total) {
     badge.textContent = formatTradeCount(filtered) + '/' + formatTradeCount(total);
   } else {
     badge.textContent = formatTradeCount(total);
   }
+}
+
+function setEmptyTradeSource(msg) {
+  const el = document.getElementById('trade-data-source');
+  if (el) el.textContent = msg || '데이터 없음';
 }
 
 function escHtml(s) {
@@ -2361,10 +2307,13 @@ function escHtml(s) {
     // 타입별 시스템에도 반영
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.apt = data;
-    const aptBadge = document.getElementById('trade-badge-apt');
-    if (aptBadge) setTradeBadge('apt', data.length);
+    setTradeBadge('apt', data.length);
     const srcEl = document.getElementById('trade-data-source');
-    if (srcEl) srcEl.textContent = `실거래 데이터 · ${data.length.toLocaleString()}건`;
+    if (srcEl) {
+      srcEl.textContent = data.length
+        ? `실거래 데이터 · ${data.length.toLocaleString()}건`
+        : '데이터 없음';
+    }
     if (typeof computeRankCache === 'function') { window._rankCache = null; computeRankCache(); }
     if (typeof renderAreaRank  === 'function') renderAreaRank();
     if (typeof updateInfoPanelApt === 'function') updateInfoPanelApt();
@@ -2456,36 +2405,24 @@ function escHtml(s) {
     next();
   }
 
-  let _aptGen = 0;
-  // 1단계: 로컬 JSON 즉시 로드 (지오코딩은 Supabase 확정 후)
-  fetch('./trade_data.json')
-    .then(r => r.json())
-    .then(data => {
-      const gen = ++_aptGen;
-      normalizeApt(data);
-      if (gen !== _aptGen) return;
-      applyAptData(data, '로컬');
-    })
-    .catch(e => console.log('[실거래] 로컬 JSON 로드 실패:', e.message));
-
-  // 2단계: Supabase 백그라운드 갱신
+  // Supabase만 사용 (로컬 JSON 없음)
   sbFetchAll('apt_trades')
     .then(data => {
-      const gen = ++_aptGen;
       normalizeApt(data);
-      if (gen !== _aptGen) return;
       const { data: d, geoCache } = applyAptData(data, 'Supabase');
-      geocodeTradeData(d, geoCache, 'apt');
-      setTimeout(() => window.geocodeByNameFallback && window.geocodeByNameFallback(d, geoCache, 'apt'), 3000);
+      if (d.length) {
+        geocodeTradeData(d, geoCache, 'apt');
+        setTimeout(() => window.geocodeByNameFallback && window.geocodeByNameFallback(d, geoCache, 'apt'), 3000);
+      }
     })
     .catch(e => {
       console.log('[실거래] Supabase 로드 실패:', e.message);
-      const el = document.getElementById('trade-data-source');
-      if (el && /로딩|—/.test(el.textContent)) el.textContent = 'Supabase 로드 실패 · 로컬 데이터 유지';
+      applyAptData([], 'Supabase');
+      setEmptyTradeSource('데이터 없음');
     });
 })();
 
-// 단독/다가구 실거래 로드 — house_data.json
+// 단독/다가구 실거래 로드 — Supabase house_trades
 (function loadHouseData() {
   function applyHouseData(data, source) {
     data.forEach(d => {
@@ -2509,24 +2446,23 @@ function escHtml(s) {
     });
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.house = data;
-    const badge = document.getElementById('trade-badge-house');
-    if (badge) setTradeBadge('house', data.length);
+    setTradeBadge('house', data.length);
     if (window._typeState && window._typeState.house && window._typeState.house.visible) {
       if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType('house');
       if (typeof renderTradeChartForType   === 'function') renderTradeChartForType('house');
     }
     console.log(`[단독/다가구] ${source} 로드 완료: ${data.length}건`);
-    geocodeTradeData(data, geoCache, 'house');
-    setTimeout(() => window.geocodeByNameFallback && window.geocodeByNameFallback(data, geoCache, 'house'), 4000);
+    if (data.length) {
+      geocodeTradeData(data, geoCache, 'house');
+      setTimeout(() => window.geocodeByNameFallback && window.geocodeByNameFallback(data, geoCache, 'house'), 4000);
+    }
   }
-  let _houseGen = 0;
-  fetch('./house_data.json')
-    .then(r => r.json())
-    .then(data => { const g = ++_houseGen; applyHouseData(data, '로컬'); })
-    .catch(e => console.log('[단독/다가구] JSON 로드 실패:', e.message));
   sbFetchAll('house_trades')
-    .then(data => { const g = ++_houseGen; applyHouseData(data, 'Supabase'); })
-    .catch(e => console.log('[단독/다가구] Supabase 로드 실패:', e.message));
+    .then(data => applyHouseData(data, 'Supabase'))
+    .catch(e => {
+      console.log('[단독/다가구] Supabase 로드 실패:', e.message);
+      applyHouseData([], 'Supabase');
+    });
 })();
 
 // 연립/다세대 실거래 로드 — Supabase
@@ -2553,19 +2489,23 @@ function escHtml(s) {
     });
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.rht = data;
-    const badge = document.getElementById('trade-badge-rht');
-    if (badge) setTradeBadge('rht', data.length);
+    setTradeBadge('rht', data.length);
     if (window._typeState && window._typeState.rht && window._typeState.rht.visible) {
       if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType('rht');
       if (typeof renderTradeChartForType   === 'function') renderTradeChartForType('rht');
     }
     console.log(`[연립/다세대] ${source} 로드 완료: ${data.length}건`);
-    geocodeTradeData(data, geoCache, 'rht');
-    setTimeout(() => window.geocodeByNameFallback && window.geocodeByNameFallback(data, geoCache, 'rht'), 4000);
+    if (data.length) {
+      geocodeTradeData(data, geoCache, 'rht');
+      setTimeout(() => window.geocodeByNameFallback && window.geocodeByNameFallback(data, geoCache, 'rht'), 4000);
+    }
   }
   sbFetchAll('rht_trades')
     .then(data => applyRhtData(data, 'Supabase'))
-    .catch(e => console.log('[연립/다세대] Supabase 로드 실패:', e.message));
+    .catch(e => {
+      console.log('[연립/다세대] Supabase 로드 실패:', e.message);
+      applyRhtData([], 'Supabase');
+    });
 })();
 
 // 상업업무용 실거래 로드 — Supabase comm_trades
@@ -2592,22 +2532,26 @@ function escHtml(s) {
     });
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.offi = data;
-    const badge = document.getElementById('trade-badge-comm');
-    if (badge) setTradeBadge('comm', data.length);
+    setTradeBadge('comm', data.length);
     if (window._typeState && window._typeState.comm && window._typeState.comm.visible) {
       if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType('comm');
       if (typeof renderTradeChartForType   === 'function') renderTradeChartForType('comm');
     }
     console.log(`[상업업무용] ${source} 로드 완료: ${data.length}건`);
-    geocodeTradeData(data, geoCache, 'comm');
-    setTimeout(() => window.geocodeByNameFallback && window.geocodeByNameFallback(data, geoCache, 'comm'), 4000);
+    if (data.length) {
+      geocodeTradeData(data, geoCache, 'comm');
+      setTimeout(() => window.geocodeByNameFallback && window.geocodeByNameFallback(data, geoCache, 'comm'), 4000);
+    }
   }
   sbFetchAll('comm_trades')
     .then(data => applyCommData(data, 'Supabase'))
-    .catch(e => console.log('[상업업무용] Supabase 로드 실패:', e.message));
+    .catch(e => {
+      console.log('[상업업무용] Supabase 로드 실패:', e.message);
+      applyCommData([], 'Supabase');
+    });
 })();
 
-// 토지 실거래 로드 — 로컬 JSON 우선(빠름), 이후 Supabase로 백그라운드 갱신
+// 토지 실거래 로드 — Supabase land_trades
 (function loadLandData() {
   function normalizeLand(d) {
     d.perM2     = parseFloat(d.per_m2 ?? d.perM2)  || 0;
@@ -2642,31 +2586,29 @@ function escHtml(s) {
     });
     window.LAND_DATA = data;
     const el = document.getElementById('land-data-source');
-    if (el) el.textContent = `토지 데이터 · ${data.length.toLocaleString()}건`;
+    if (el) {
+      el.textContent = data.length
+        ? `토지 데이터 · ${data.length.toLocaleString()}건`
+        : '데이터 없음';
+    }
+    const badge = document.getElementById('land-cnt-badge');
+    if (badge) badge.textContent = data.length ? String(data.length) : '데이터 없음';
     if (typeof landVisible !== 'undefined' && landVisible) {
       clearLandMarkers(); renderLandMarkers();
     }
     console.log(`[토지] ${source} 로드: ${data.length}건`);
   }
 
-  // 1단계: 로컬 JSON 즉시 로드
-  fetch('./land_data.json')
-    .then(r => r.json())
-    .then(data => {
-      data.forEach(normalizeLand);
-      applyLandData(data, '로컬');
-    })
-    .catch(e => console.log('[토지] 로컬 JSON 로드 실패:', e.message));
-
-  // 2단계: Supabase 백그라운드 갱신 (최신 데이터로 조용히 교체)
-  let _landGen = 0;
+  // Supabase만 사용 (로컬 JSON 없음)
   sbFetchAll('land_trades')
     .then(data => {
-      const g = ++_landGen;
       data.forEach(normalizeLand);
       applyLandData(data, 'Supabase');
     })
-    .catch(e => console.log('[토지] Supabase 로드 실패:', e.message));
+    .catch(e => {
+      console.log('[토지] Supabase 로드 실패:', e.message);
+      applyLandData([], 'Supabase');
+    });
 })();
 
 /* ═══════════════════════════════════════════════
@@ -5933,7 +5875,10 @@ function renderLandMarkers() {
   clearLandMarkers();
   const lands = getFilteredLands();
   const badge = document.getElementById('land-cnt-badge');
-  if (badge) badge.textContent = lands.length;
+  if (badge) {
+    const total = (window.LAND_DATA && window.LAND_DATA.length) || 0;
+    badge.textContent = total ? String(lands.length) : '데이터 없음';
+  }
   if (!lands.length) return;
 
   // 로딩 상태 표시
