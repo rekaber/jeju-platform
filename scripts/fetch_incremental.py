@@ -1,15 +1,16 @@
 """
 제주 부동산 실거래 증분/백필 스크립트 (자동화용)
 - 기본: 최근 3개월 DELETE→INSERT
-- --months N: N개월 수집 (백필 시 36 = 3년)
-- --clear: 실거래 테이블 전체 비운 뒤 수집 (3년치만 남길 때 사용)
+- --months N: 최근 N개월 수집
+- --from YYYYMM: 해당 월부터 당월까지 수집 (예: --from 202401 → 2024-01~오늘)
+- --clear: 실거래 테이블 전체 비운 뒤 수집
 - 지오코딩: 지번주소 우선 → 도로명 → 단지명 키워드
 - 필수 환경변수: MOLIT_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY, KAKAO_REST_KEY
 
 실행 예시:
   python scripts/fetch_incremental.py
   python scripts/fetch_incremental.py --months 1
-  python scripts/fetch_incremental.py --months 36 --clear   # 3년치만 재적재
+  python scripts/fetch_incremental.py --from 202401 --clear
 """
 
 import os, sys, time, json, urllib.request, urllib.parse
@@ -17,7 +18,8 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 
 # ── CLI 옵션 ─────────────────────────────────────────────
-MONTHS_BACK = 3  # 기본값: 최근 3개월
+MONTHS_BACK = 3  # 기본값: 최근 3개월 (--from 없을 때)
+FROM_YM = None   # --from 202401
 CLEAR_TABLES = False
 args = sys.argv[1:]
 for i, arg in enumerate(args):
@@ -26,6 +28,13 @@ for i, arg in enumerate(args):
             MONTHS_BACK = max(1, int(args[i + 1]))
         except ValueError:
             pass
+    elif arg == '--from' and i + 1 < len(args):
+        raw = args[i + 1].strip().replace('-', '')
+        if len(raw) == 6 and raw.isdigit():
+            FROM_YM = raw
+        else:
+            print(f'[ERROR] --from 형식은 YYYYMM 입니다: {args[i + 1]}')
+            sys.exit(1)
     elif arg == '--clear':
         CLEAR_TABLES = True
 
@@ -67,6 +76,35 @@ def get_months(n):
             m += 12; y -= 1
         result.append(f'{y}{m:02d}')
     return result
+
+def get_months_from(from_ym):
+    """from_ym(YYYYMM) ~ 당월 inclusive, 최신→과거 순"""
+    now = datetime.now()
+    end_y, end_m = now.year, now.month
+    y, m = int(from_ym[:4]), int(from_ym[4:6])
+    if y < 2000 or m < 1 or m > 12:
+        raise ValueError(f'잘못된 --from: {from_ym}')
+    asc = []
+    while (y < end_y) or (y == end_y and m <= end_m):
+        asc.append(f'{y}{m:02d}')
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+        if len(asc) > 240:  # 안전장치
+            break
+    if not asc:
+        raise ValueError(f'--from {from_ym} 이 당월보다 미래입니다')
+    return list(reversed(asc))
+
+def resolve_months():
+    if FROM_YM:
+        months = get_months_from(FROM_YM)
+        label = f'{FROM_YM} ~ {months[0]} ({len(months)}개월)'
+        return months, label
+    months = get_months(MONTHS_BACK)
+    label = f'{months[-1]} ~ {months[0]} ({MONTHS_BACK}개월)'
+    return months, label
 
 def price_int(s):
     try: return int(str(s).replace(',', '').strip())
@@ -536,11 +574,11 @@ def safe_upload_by_month(table, month_rows_map, skip_delete=False):
 def main():
     preflight()
 
-    months = get_months(MONTHS_BACK)
+    months, period_label = resolve_months()
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
     print(f'\n{"="*50}')
     print(f'제주 부동산 데이터 업데이트 ({now_str})')
-    print(f'처리 기간: {months[-1]} ~ {months[0]} ({MONTHS_BACK}개월)')
+    print(f'처리 기간: {period_label}')
     print(f'지역: {[r[1] for r in REGIONS]}')
     print(f'전체 초기화(--clear): {CLEAR_TABLES}')
     print(f'{"="*50}')

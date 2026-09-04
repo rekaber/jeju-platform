@@ -3,16 +3,11 @@ name: 제주 부동산 전체 백필 (수동)
 on:
   workflow_dispatch:
     inputs:
-      months:
-        description: '백필 개월 수 (36=3년)'
+      from_ym:
+        description: '시작 월 (YYYYMM). 이 달부터 당월까지'
         required: true
-        default: '36'
-        type: choice
-        options:
-          - '6'
-          - '12'
-          - '24'
-          - '36'
+        default: '202401'
+        type: string
       clear:
         description: '기존 실거래 테이블 비우고 재적재'
         required: true
@@ -45,17 +40,17 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
-      - name: 3년치 실거래 백필 (지번 지오코딩)
+      - name: 실거래 백필 (지번 지오코딩)
         env:
           MOLIT_API_KEY: ${{ secrets.MOLIT_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
         run: |
-          MONTHS="${{ github.event.inputs.months }}"
+          FROM_YM="${{ github.event.inputs.from_ym }}"
           CLEAR_FLAG=""
           if [ "${{ github.event.inputs.clear }}" = "true" ]; then
             CLEAR_FLAG="--clear"
           fi
-          echo "Backfill months=$MONTHS clear=$CLEAR_FLAG"
-          python scripts/fetch_incremental.py --months "$MONTHS" $CLEAR_FLAG
+          echo "Backfill from=$FROM_YM clear=$CLEAR_FLAG"
+          python scripts/fetch_incremental.py --from "$FROM_YM" $CLEAR_FLAG
