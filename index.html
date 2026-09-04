@@ -462,18 +462,32 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
   display: flex; flex-direction: column; align-items: center; cursor: pointer;
 }
 .dev-marker-pin {
-  width: 44px; height: 44px; border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg); border: 2px solid rgba(255,255,255,0.9);
-  box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+  width: 56px; height: 56px; border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg); border: 3px solid rgba(255,255,255,0.95);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.45);
   display: flex; align-items: center; justify-content: center;
 }
 .dev-marker-icon {
-  transform: rotate(45deg); font-size: 20px; line-height: 1;
+  transform: rotate(45deg); font-size: 26px; line-height: 1;
 }
 .dev-marker-label {
-  background: rgba(0,0,0,0.72); color: #fff; font-size: 9px; font-weight: 700;
-  padding: 2px 5px; border-radius: 4px; margin-top: 3px; white-space: nowrap;
-  max-width: 90px; overflow: hidden; text-overflow: ellipsis;
+  background: rgba(0,0,0,0.78); color: #fff; font-size: 11px; font-weight: 700;
+  padding: 3px 7px; border-radius: 5px; margin-top: 4px; white-space: nowrap;
+  max-width: 110px; overflow: hidden; text-overflow: ellipsis;
+}
+.dev-tab-btn {
+  font-size:10px; padding:3px 9px; border-radius:10px; border:1px solid #ccc;
+  background:#f0f2f5; color:#666; cursor:pointer; font-weight:600; transition:all 0.15s;
+}
+.dev-tab-btn.active {
+  border-color:#1565C0; background:#1565C0; color:#fff;
+}
+.dev-km-btn {
+  font-size:10px; padding:3px 9px; border-radius:10px; border:1px solid #ccc;
+  background:#f0f2f5; color:#666; cursor:pointer; font-weight:600; transition:all 0.15s;
+}
+.dev-km-btn.active {
+  border-color:#37474F; background:#37474F; color:#fff;
 }
 .dev-popup {
   background: #fff; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.22);
@@ -4171,17 +4185,19 @@ function showDevPopup(p) {
     if (list) list.innerHTML = renderTradeList(km, tab);
     const chart = el.querySelector('.dev-chart-area');
     if (chart && chart.style.display !== 'none') chart.innerHTML = renderDevChart(km, tab);
-    else if (chart) chart.innerHTML = ''; // 초기화만
+    else if (chart) chart.innerHTML = '';
     el.querySelectorAll('.dev-km-btn').forEach(b => b.classList.toggle('active', b.dataset.km == km));
     el.querySelectorAll('.dev-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   }
 
-  // 차트 버튼 클릭 시 차트 렌더링 (처음 열 때만)
+  // 통계 버튼 클릭 시 차트 렌더링
   el.addEventListener('click', function(e) {
-    const btn = e.target.closest('button');
-    if (btn && btn.textContent.includes('월별 가격 통계')) {
+    const btn = e.target.closest('.dev-stat-btn');
+    if (btn) {
       const chart = el.querySelector('.dev-chart-area');
-      if (chart && !chart.innerHTML.trim()) chart.innerHTML = renderDevChart(curKm, curTab);
+      if (chart && chart.style.display !== 'none' && !chart.innerHTML.trim()) {
+        chart.innerHTML = renderDevChart(curKm, curTab);
+      }
     }
   }, true);
 
@@ -4193,24 +4209,26 @@ function showDevPopup(p) {
       <div class="dev-popup-name">${p.name}</div>
     </div>
     <div class="dev-popup-body">
-      <div class="dev-popup-area">📍 ${p.area} · ${p.category}</div>
-      <div class="dev-popup-desc">${p.desc}</div>
-      <div style="margin-top:10px;border-top:1px solid #eee;padding-top:8px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-          <div style="font-size:10px;font-weight:700;color:#555;">주변 실거래</div>
-          <div style="display:flex;gap:3px;">
-            <button class="dev-tab-btn" data-tab="apt" style="font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid #1976D2;background:#1976D2;color:#fff;cursor:pointer;">아파트</button>
-            <button class="dev-tab-btn" data-tab="land" style="font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid #ccc;background:#f5f7fa;color:#555;cursor:pointer;">토지</button>
+      <div class="dev-popup-area" style="font-size:11px;">📍 ${p.area} · ${p.category}</div>
+      <button onclick="(function(btn){var d=btn.nextElementSibling;if(d.style.display==='none'){d.style.display='block';btn.style.color='#888';btn.textContent='▲ 사업내용 접기';}else{d.style.display='none';btn.style.color=''+(btn.getAttribute('data-c'));btn.textContent='📋 사업내용 보기';}})(this)"
+        data-c="${color}" style="width:100%;text-align:left;font-size:11px;font-weight:700;padding:5px 0 3px;border:none;background:none;color:${color};cursor:pointer;margin-top:4px;">📋 사업내용 보기</button>
+      <div class="dev-popup-desc" style="display:none;font-size:11px;line-height:1.6;color:#333;background:#f8f9fa;border-radius:6px;padding:8px;margin-bottom:6px;">${p.desc}</div>
+      <div style="margin-top:6px;border-top:1px solid #eee;padding-top:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-size:11px;font-weight:700;color:#444;">주변 실거래</div>
+          <div style="display:flex;gap:4px;">
+            <button class="dev-tab-btn active" data-tab="apt">아파트</button>
+            <button class="dev-tab-btn" data-tab="land">토지</button>
           </div>
         </div>
-        <div style="display:flex;gap:3px;margin-bottom:6px;">
-          <button class="dev-km-btn" data-km="1" style="font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid #ccc;background:#f5f7fa;color:#555;cursor:pointer;">1km</button>
-          <button class="dev-km-btn active" data-km="2" style="font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid #546E7A;background:#546E7A;color:#fff;cursor:pointer;">2km</button>
-          <button class="dev-km-btn" data-km="5" style="font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid #ccc;background:#f5f7fa;color:#555;cursor:pointer;">5km</button>
+        <div style="display:flex;gap:4px;margin-bottom:8px;">
+          <button class="dev-km-btn" data-km="1">1km</button>
+          <button class="dev-km-btn active" data-km="2">2km</button>
+          <button class="dev-km-btn" data-km="5">5km</button>
         </div>
-        <button onclick="(function(btn){var c=btn.closest('.dev-popup-body').querySelector('.dev-chart-area');if(c.style.display==='none'){c.style.display='block';btn.textContent='📉 통계 접기';}else{c.style.display='none';btn.textContent='📈 월별 가격 통계';}})(this)" style="width:100%;font-size:10px;font-weight:700;padding:5px 0;border-radius:6px;border:1px solid #ddd;background:#f5f7fa;color:#1976D2;cursor:pointer;margin-bottom:6px;">📈 월별 가격 통계</button>
+        <button class="dev-stat-btn" onclick="(function(btn){var c=btn.closest('.dev-popup-body').querySelector('.dev-chart-area');if(c.style.display==='none'){c.style.display='block';btn.textContent='📉 통계 접기';}else{c.style.display='none';btn.textContent='📈 월별 가격 통계';}})(this)" style="width:100%;font-size:11px;font-weight:700;padding:5px 0;border-radius:7px;border:1px solid #1565C0;background:#f0f4ff;color:#1565C0;cursor:pointer;margin-bottom:6px;">📈 월별 가격 통계</button>
         <div class="dev-chart-area" style="display:none;margin-bottom:8px;"></div>
-        <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:4px;">최근 실거래</div>
+        <div style="font-size:11px;font-weight:700;color:#444;margin-bottom:5px;">최근 실거래</div>
         <div class="dev-trade-list" style="max-height:160px;overflow-y:auto;">${renderTradeList(curKm, curTab)}</div>
       </div>
     </div>
