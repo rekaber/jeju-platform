@@ -4818,7 +4818,8 @@ function renderTradeChartForType(type) {
   var c = meta.color;
   var gradId = 'tradeGrad_'+type;
   var yPos = [padT+cH, padT+cH/2, padT];
-  var yLbls = [Math.round(minV/100)+'백', Math.round((minV+maxV)/200)+'백', Math.round(maxV/100)+'백'];
+  function _ppLbl(v){return (Math.round(v/100)/10).toFixed(1)+'천만';}
+  var yLbls = [_ppLbl(minV), _ppLbl((minV+maxV)/2), _ppLbl(maxV)];
 
   svg.innerHTML =
     '<defs><linearGradient id="'+gradId+'" x1="0" y1="0" x2="0" y2="1">'+
