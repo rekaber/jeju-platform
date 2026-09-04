@@ -4784,11 +4784,12 @@ function renderTradeChartForType(type) {
 
   var now = new Date();
   var months = [];
-  for (var m = 11; m >= 0; m--) {
-    var d = new Date(now);
-    d.setMonth(d.getMonth() - m);
-    var key = d.toISOString().slice(0,7);
-    var label = (d.getMonth()+1) + '월';
+  var curYear = now.getFullYear();
+  var curMonth = now.getMonth(); // 0-indexed
+  for (var m = 0; m <= curMonth; m++) {
+    var d = new Date(curYear, m, 1);
+    var key = curYear + '-' + String(m+1).padStart(2,'0');
+    var label = (m+1) + '월';
     var tradesM = data.filter(function(t) { return t.date && t.date.startsWith(key); });
     var validM = tradesM.filter(function(t){return t.price && t.area && t.area > 0;});
     var avg = validM.length ? Math.round(validM.reduce(function(s,t){return s + t.price*10000/(t.area/3.3058);},0)/validM.length) : null;
