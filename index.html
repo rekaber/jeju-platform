@@ -462,13 +462,13 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
   display: flex; flex-direction: column; align-items: center; cursor: pointer;
 }
 .dev-marker-pin {
-  width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
+  width: 44px; height: 44px; border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg); border: 2px solid rgba(255,255,255,0.9);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.4);
   display: flex; align-items: center; justify-content: center;
 }
 .dev-marker-icon {
-  transform: rotate(45deg); font-size: 14px; line-height: 1;
+  transform: rotate(45deg); font-size: 20px; line-height: 1;
 }
 .dev-marker-label {
   background: rgba(0,0,0,0.72); color: #fff; font-size: 9px; font-weight: 700;
@@ -4069,7 +4069,7 @@ function showDevPopup(p) {
 
   function renderTradeList(km, tab) {
     const trades = getDevNearbyTrades(p, km, tab);
-    if (!trades.length) return `<div style="font-size:10px;color:#aaa;padding:6px 0;">데이터 없음 (${tab==='apt'?'아파트':'토지'} 데이터 연결 필요)</div>`;
+    if (!trades.length) return `<div style="font-size:10px;color:#aaa;padding:6px 0;">데이터 없음</div>`;
     return trades.map(t => {
       if (tab === 'apt') {
         const pyeong = t.area ? t.area / 3.3 : 0;
@@ -4089,9 +4089,88 @@ function showDevPopup(p) {
     }).join('');
   }
 
+  function renderDevChart(km, tab) {
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth() + 1;
+    const srcData = tab === 'apt' ? (window.TRADE_DATA || []) : (window.LAND_DATA || []);
+    const nearby = srcData.filter(t => t.lat && t.lng && haversineKm(p.lat, p.lng, t.lat, t.lng) <= km);
+
+    const months = [];
+    for (let m = 1; m <= curMonth; m++) {
+      const key = curYear + '-' + String(m).padStart(2,'0');
+      const items = nearby.filter(t => t.date && t.date.startsWith(key));
+      let avg = null;
+      if (tab === 'apt') {
+        const valid = items.filter(t => t.price && t.area && t.area > 0);
+        if (valid.length) avg = Math.round(valid.reduce((s,t) => s + t.price*10000/(t.area/3.3058), 0) / valid.length);
+      } else {
+        const valid = items.filter(t => t.perM2 && t.perM2 > 0);
+        if (valid.length) avg = Math.round(valid.reduce((s,t) => s + t.perM2, 0) / valid.length);
+      }
+      months.push({ label: m+'월', avg, count: items.length });
+    }
+
+    const vals = months.map(m => m.avg || 0);
+    const maxV = Math.max(...vals, 1);
+    const posVals = vals.filter(v => v > 0);
+    const minV = posVals.length ? Math.min(...posVals) : maxV;
+    const W = 254, H = 72, padL = 30, padB = 14, padR = 4, padT = 6;
+    const cW = W-padL-padR, cH = H-padT-padB;
+    const xStep = cW / Math.max(months.length - 1, 1);
+    const toY = v => padT + cH - ((v - minV + 0.5) / (maxV - minV + 1)) * cH;
+    const c = tab === 'apt' ? '#1976D2' : '#5D4037';
+    const unit = tab === 'apt' ? '만/평' : '만/㎡';
+
+    const points = months.map((mo, i) => ({
+      x: padL + i * xStep,
+      y: mo.avg ? toY(mo.avg) : null,
+      label: mo.label, avg: mo.avg, count: mo.count
+    })).filter(pt => pt.y !== null);
+
+    if (!points.length) return `<div style="font-size:10px;color:#aaa;text-align:center;padding:8px;">올해 반경 ${km}km 데이터 없음</div>`;
+
+    const pathD = points.map((pt,i) => (i===0?'M':'L')+pt.x.toFixed(1)+','+pt.y.toFixed(1)).join(' ');
+    const first = points[0], last = points[points.length-1];
+    const areaD = pathD + ' L'+last.x.toFixed(1)+','+(padT+cH)+' L'+first.x.toFixed(1)+','+(padT+cH)+' Z';
+
+    const fmtV = v => {
+      if (tab === 'apt') return (Math.round(v/100)/10).toFixed(1)+'천만';
+      return v >= 10000 ? (v/10000).toFixed(1)+'억' : Math.round(v).toLocaleString()+'만';
+    };
+    const yLbls = [fmtV(minV), fmtV((minV+maxV)/2), fmtV(maxV)];
+    const yPos = [padT+cH, padT+cH/2, padT];
+
+    const xLbls = months.map((mo,i) => {
+      const x = (padL + i*xStep).toFixed(1);
+      const step = months.length > 6 ? 3 : months.length > 4 ? 2 : 1;
+      if (i % step !== 0 && i !== months.length-1) return '';
+      return `<text x="${x}" y="${H}" text-anchor="middle" font-size="7" fill="#aaa">${mo.label}</text>`;
+    }).join('');
+
+    return `
+      <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:3px;">📈 올해 월별 평균 (${unit}) · 반경 ${km}km</div>
+      <svg width="${W}" height="${H}" style="display:block;">
+        <defs><linearGradient id="devGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${c}" stop-opacity="0.2"/>
+          <stop offset="100%" stop-color="${c}" stop-opacity="0"/>
+        </linearGradient></defs>
+        ${yPos.map((y,i) => `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#eee" stroke-width="1"/>`).join('')}
+        <path d="${areaD}" fill="url(#devGrad)"/>
+        <path d="${pathD}" fill="none" stroke="${c}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+        ${points.map(pt => `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="2.8" fill="${c}" stroke="#fff" stroke-width="1.2">
+          <title>${pt.label}: ${pt.avg ? fmtV(pt.avg)+unit : '-'} (${pt.count}건)</title>
+        </circle>`).join('')}
+        ${yLbls.map((l,i) => `<text x="${padL-2}" y="${(yPos[i]+3).toFixed(1)}" text-anchor="end" font-size="7" fill="#aaa">${l}</text>`).join('')}
+        ${xLbls}
+      </svg>`;
+  }
+
   function rebuild(km, tab) {
     const list = el.querySelector('.dev-trade-list');
     if (list) list.innerHTML = renderTradeList(km, tab);
+    const chart = el.querySelector('.dev-chart-area');
+    if (chart) chart.innerHTML = renderDevChart(km, tab);
     el.querySelectorAll('.dev-km-btn').forEach(b => b.classList.toggle('active', b.dataset.km == km));
     el.querySelectorAll('.dev-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   }
@@ -4119,7 +4198,9 @@ function showDevPopup(p) {
           <button class="dev-km-btn active" data-km="2" style="font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid #546E7A;background:#546E7A;color:#fff;cursor:pointer;">2km</button>
           <button class="dev-km-btn" data-km="5" style="font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid #ccc;background:#f5f7fa;color:#555;cursor:pointer;">5km</button>
         </div>
-        <div class="dev-trade-list" style="max-height:180px;overflow-y:auto;">${renderTradeList(curKm, curTab)}</div>
+        <div class="dev-chart-area" style="margin-bottom:8px;">${renderDevChart(curKm, curTab)}</div>
+        <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:4px;">최근 실거래</div>
+        <div class="dev-trade-list" style="max-height:140px;overflow-y:auto;">${renderTradeList(curKm, curTab)}</div>
       </div>
     </div>
     <div class="dev-popup-arrow" style="border-top-color:${color};"></div>`;
