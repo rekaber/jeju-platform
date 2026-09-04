@@ -47,6 +47,11 @@ def price_int(s):
     try: return int(str(s).replace(',', '').strip())
     except: return None
 
+def price_eok(s):
+    """만원 단위 문자열 → 억원 float (MOLIT API는 만원 단위로 반환)"""
+    v = price_int(s)
+    return round(v / 10000, 4) if v else None
+
 def float_or_none(s):
     try: return float(str(s).strip())
     except: return None
@@ -61,7 +66,7 @@ def text(item, tag):
 
 def molit_fetch(service, lawd_cd, deal_ymd, page=1, rows=1000):
     """국토교통부 API 단일 페이지 조회"""
-    base = f'https://apis.data.go.kr/1613000/{service[3:]}'
+    base = f'https://apis.data.go.kr/1613000/{service[3:]}/{service}'
     other = urllib.parse.urlencode({
         'LAWD_CD': lawd_cd,
         'DEAL_YMD': deal_ymd,
@@ -97,6 +102,8 @@ def molit_fetch_all(service, lawd_cd, deal_ymd):
         except ET.ParseError as e:
             print(f'  XML 파싱 오류: {e}')
             break
+        if page == 1:
+            print(f'  [DEBUG XML] {xml_str[:800]}')
         items = root.findall('.//item')
         all_items.extend(items)
         total_el = root.find('.//totalCount')
@@ -170,25 +177,35 @@ def get_jibun(it):
 def parse_apt(items, sigungu):
     rows = []
     for it in items:
-        년 = text(it, '년'); 월 = text(it, '월'); 일 = text(it, '일')
+        # 구버전(한글) / 신버전(영문) 필드명 모두 지원
+        년 = text(it, '년') or text(it, 'dealYear')
+        월 = text(it, '월') or text(it, 'dealMonth')
+        일 = text(it, '일') or text(it, 'dealDay')
         if not (년 and 월 and 일): continue
-        dong     = text(it, '법정동')
-        road     = text(it, '도로명')
-        apt_name = text(it, '아파트')
-        # 도로명 필드가 이미 건물번호 포함 ("과원로 11" 등) → 시군구만 앞에 붙이면 완성
+        dong     = text(it, '법정동') or text(it, 'umdNm')
+        road     = text(it, '도로명') or text(it, 'roadNm') or ''
+        apt_name = text(it, '아파트') or text(it, 'aptNm')
+        # 도로명 주소 조합
         road_full  = f"{sigungu} {road}" if road else None
-        _jm, _js   = get_jibun(it)
+        # 지번: 구버전은 본번/부번 분리, 신버전은 jibun 필드(예: "754-4")
+        jibun_raw = text(it, 'jibun')
+        if jibun_raw:
+            parts = jibun_raw.split('-')
+            _jm = parts[0].lstrip('0')
+            _js = parts[1].lstrip('0') if len(parts) > 1 else ''
+        else:
+            _jm, _js = get_jibun(it)
         jibun_full = build_jibun_addr(sigungu, dong, _jm, _js)
         # 우선순위: 도로명주소 > 도로명+이름 keyword > 동+이름 keyword > 지번
         geo_addrs = []
         if road_full:
-            geo_addrs.append((road_full, 'addr'))                          # 1) 완전한 도로명주소
+            geo_addrs.append((road_full, 'addr'))
             if apt_name:
-                geo_addrs.append((f"{road_full} {apt_name}", 'keyword'))   # 2) 도로명+이름 (가장 정확)
+                geo_addrs.append((f"{road_full} {apt_name}", 'keyword'))
         if apt_name and dong:
-            geo_addrs.append((f"{sigungu} {dong} {apt_name}", 'keyword')) # 3) 동+이름
-        if jibun_full: geo_addrs.append((jibun_full, 'addr'))             # 4) 지번주소
-        if apt_name:   geo_addrs.append((apt_name, 'keyword'))            # 5) 이름만
+            geo_addrs.append((f"{sigungu} {dong} {apt_name}", 'keyword'))
+        if jibun_full: geo_addrs.append((jibun_full, 'addr'))
+        if apt_name:   geo_addrs.append((apt_name, 'keyword'))
         rows.append({
             'name':       apt_name,
             'addr':       jibun_full or f"{sigungu} {dong}",
@@ -196,11 +213,11 @@ def parse_apt(items, sigungu):
             'dong':       dong,
             'roadaddr':   road_full or '',
             'type':       'apt',
-            'area':       float_or_none(text(it, '전용면적')),
-            'price':      price_int(text(it, '거래금액')),
+            'area':       float_or_none(text(it, '전용면적') or text(it, 'excluUseAr')),
+            'price':      price_eok(text(it, '거래금액') or text(it, 'dealAmount')),
             'date':       f'{년}-{int(월):02d}-{int(일):02d}',
-            'floor':      int_or_none(text(it, '층')),
-            'built':      int_or_none(text(it, '건축년도')),
+            'floor':      int_or_none(text(it, '층') or text(it, 'floor')),
+            'built':      int_or_none(text(it, '건축년도') or text(it, 'buildYear')),
             'lat':        None, 'lng': None,
             '_geo_addrs': geo_addrs,
         })
@@ -227,7 +244,7 @@ def parse_house(items, sigungu):
             'build_use':  text(it, '건물주용도'),
             'area':       float_or_none(text(it, '연면적')),
             'land_area':  float_or_none(text(it, '대지면적')),
-            'price':      price_int(text(it, '거래금액')),
+            'price':      price_eok(text(it, '거래금액')),
             'date':       f'{년}-{int(월):02d}-{int(일):02d}',
             'built':      int_or_none(text(it, '건축년도')),
             'lat':        None, 'lng': None,
@@ -260,7 +277,7 @@ def parse_rht(items, sigungu):
             'addr':       jibun_full or f"{sigungu} {dong}",
             'roadaddr':   road_full or '',
             'area':       float_or_none(text(it, '전용면적')),
-            'price':      price_int(text(it, '거래금액')),
+            'price':      price_eok(text(it, '거래금액')),
             'date':       f'{년}-{int(월):02d}-{int(일):02d}',
             'floor':      int_or_none(text(it, '층')),
             'built':      int_or_none(text(it, '건축년도')),
@@ -278,8 +295,8 @@ def parse_land(items, sigungu):
         for tag in ['면적', '토지면적']:
             v = float_or_none(text(it, tag))
             if v: area = v; break
-        price = price_int(text(it, '거래금액'))
-        per_m2 = round(price / area, 1) if price and area else None
+        price = price_eok(text(it, '거래금액'))
+        per_m2 = round(price * 10000 / area, 1) if price and area else None  # 만원/m²
         dong  = text(it, '법정동')
         jibun = text(it, '지번')
         # 지번이 "123-4" 형태로 이미 있음 → 가장 정확한 주소
@@ -330,7 +347,7 @@ def parse_comm(items, sigungu):
             'build_use': text(it, '건물주용도'),
             'area':      float_or_none(text(it, '전용면적')),
             'land_area': float_or_none(text(it, '대지면적')),
-            'price':     price_int(text(it, '거래금액')),
+            'price':     price_eok(text(it, '거래금액')),
             'date':      f'{년}-{int(월):02d}-{int(일):02d}',
             'floor':     int_or_none(text(it, '층')),
             'built':     int_or_none(text(it, '건축년도')),
