@@ -968,15 +968,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         </div>
         <div id="trade-month-picker-apt" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
           <div style="display:flex;flex-wrap:wrap;gap:3px;">
-            <button class="tmp-btn active" onclick="setTradeTypeMonth('apt','all',this)">전체</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('apt','202601',this)">1월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('apt','202602',this)">2월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('apt','202603',this)">3월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('apt','202604',this)">4월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('apt','202605',this)">5월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('apt','202606',this)">6월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('apt','202607',this)">7월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('apt','202608',this)">8월</button>
+            <button class="tmp-btn active" onclick="setTradeTypeMonth('apt','all',this)">전체</button>            <span id="trade-month-btns-apt"></span>
           </div>
         </div>
         <div style="padding:0 6px 2px 25px;font-size:10px;color:#999;">
@@ -1005,15 +997,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           </div>
           <div id="bubble-month-picker-apt" style="display:none;">
             <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">
-              <button class="tmp-btn active" onclick="setBubbleMonthForType('apt','all',this)">전체</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202601',this)">1월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202602',this)">2월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202603',this)">3월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202604',this)">4월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202605',this)">5월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202606',this)">6월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202607',this)">7월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('apt','202608',this)">8월</button>
+              <button class="tmp-btn active" onclick="setBubbleMonthForType('apt','all',this)">전체</button>      <span id="bubble-month-btns-apt"></span>
             </div>
           </div>
         </div>
@@ -1037,15 +1021,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         </div>
         <div id="trade-month-picker-house" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
           <div style="display:flex;flex-wrap:wrap;gap:3px;">
-            <button class="tmp-btn active" onclick="setTradeTypeMonth('house','all',this)">전체</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('house','202601',this)">1월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('house','202602',this)">2월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('house','202603',this)">3월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('house','202604',this)">4월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('house','202605',this)">5월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('house','202606',this)">6월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('house','202607',this)">7월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('house','202608',this)">8월</button>
+            <button class="tmp-btn active" onclick="setTradeTypeMonth('house','all',this)">전체</button>            <span id="trade-month-btns-house"></span>
           </div>
         </div>
         <div style="padding:0 6px 2px 25px;font-size:10px;color:#999;">
@@ -1071,15 +1047,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           </div>
           <div id="bubble-month-picker-house" style="display:none;">
             <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">
-              <button class="tmp-btn active" onclick="setBubbleMonthForType('house','all',this)">전체</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202601',this)">1월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202602',this)">2월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202603',this)">3월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202604',this)">4월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202605',this)">5월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202606',this)">6월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202607',this)">7월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('house','202608',this)">8월</button>
+              <button class="tmp-btn active" onclick="setBubbleMonthForType('house','all',this)">전체</button>      <span id="bubble-month-btns-house"></span>
             </div>
           </div>
         </div>
@@ -1103,15 +1071,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         </div>
         <div id="trade-month-picker-rht" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
           <div style="display:flex;flex-wrap:wrap;gap:3px;">
-            <button class="tmp-btn active" onclick="setTradeTypeMonth('rht','all',this)">전체</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('rht','202601',this)">1월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('rht','202602',this)">2월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('rht','202603',this)">3월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('rht','202604',this)">4월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('rht','202605',this)">5월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('rht','202606',this)">6월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('rht','202607',this)">7월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('rht','202608',this)">8월</button>
+            <button class="tmp-btn active" onclick="setTradeTypeMonth('rht','all',this)">전체</button>            <span id="trade-month-btns-rht"></span>
           </div>
         </div>
         <div style="padding:0 6px 2px 25px;font-size:10px;color:#999;">
@@ -1137,15 +1097,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           </div>
           <div id="bubble-month-picker-rht" style="display:none;">
             <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">
-              <button class="tmp-btn active" onclick="setBubbleMonthForType('rht','all',this)">전체</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202601',this)">1월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202602',this)">2월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202603',this)">3월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202604',this)">4월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202605',this)">5월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202606',this)">6월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202607',this)">7월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('rht','202608',this)">8월</button>
+              <button class="tmp-btn active" onclick="setBubbleMonthForType('rht','all',this)">전체</button>      <span id="bubble-month-btns-rht"></span>
             </div>
           </div>
         </div>
@@ -1169,15 +1121,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         </div>
         <div id="trade-month-picker-comm" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
           <div style="display:flex;flex-wrap:wrap;gap:3px;">
-            <button class="tmp-btn active" onclick="setTradeTypeMonth('comm','all',this)">전체</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('comm','202601',this)">1월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('comm','202602',this)">2월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('comm','202603',this)">3월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('comm','202604',this)">4월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('comm','202605',this)">5월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('comm','202606',this)">6월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('comm','202607',this)">7월</button>
-            <button class="tmp-btn" onclick="setTradeTypeMonth('comm','202608',this)">8월</button>
+            <button class="tmp-btn active" onclick="setTradeTypeMonth('comm','all',this)">전체</button>            <span id="trade-month-btns-comm"></span>
           </div>
         </div>
         <div style="padding:0 6px 2px 25px;font-size:10px;color:#999;">
@@ -1203,15 +1147,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           </div>
           <div id="bubble-month-picker-comm" style="display:none;">
             <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">
-              <button class="tmp-btn active" onclick="setBubbleMonthForType('comm','all',this)">전체</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202601',this)">1월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202602',this)">2월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202603',this)">3월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202604',this)">4월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202605',this)">5월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202606',this)">6월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202607',this)">7월</button>
-      <button class="tmp-btn" onclick="setBubbleMonthForType('comm','202608',this)">8월</button>
+              <button class="tmp-btn active" onclick="setBubbleMonthForType('comm','all',this)">전체</button>      <span id="bubble-month-btns-comm"></span>
             </div>
           </div>
         </div>
@@ -5957,8 +5893,33 @@ let unsoldVisible = false;
 let unsoldOpacity = 1.0;
 const unsoldOverlays = [];
 
+// 월 선택 버튼 동적 생성 (현재 연도 1월~현재월)
+function _initMonthPickers() {
+  var now = new Date();
+  var yr = now.getFullYear();
+  var curM = now.getMonth() + 1; // 1-indexed
+  var types = ['apt','house','rht','comm'];
+  types.forEach(function(t) {
+    var tradeEl = document.getElementById('trade-month-btns-' + t);
+    var bubbleEl = document.getElementById('bubble-month-btns-' + t);
+    var html = '';
+    for (var m = 1; m <= curM; m++) {
+      var key = yr + String(m).padStart(2,'0');
+      html += '<button class="tmp-btn" onclick="setTradeTypeMonth(\'' + t + '\',\'' + key + '\',this)">' + m + '월</button>';
+    }
+    if (tradeEl) tradeEl.innerHTML = html;
+    var html2 = '';
+    for (var m = 1; m <= curM; m++) {
+      var key = yr + String(m).padStart(2,'0');
+      html2 += '<button class="tmp-btn" onclick="setBubbleMonthForType(\'' + t + '\',\'' + key + '\',this)">' + m + '월</button>';
+    }
+    if (bubbleEl) bubbleEl.innerHTML = html2;
+  });
+}
+
 // 배지 초기화
 document.addEventListener('DOMContentLoaded', () => {
+  _initMonthPickers();
   const badge = document.getElementById('unsold-cnt-badge');
   if (badge) {
     const totalUnits = UNSOLD_DATA.reduce((sum, d) => sum + d.units, 0);
