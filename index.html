@@ -956,7 +956,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         <div class="layer-item">
           <div class="layer-dot" style="background:#1976D2;border-radius:50%;"></div>
           <span class="layer-label">실거래 내역
-            <span id="trade-badge-apt" style="background:#1976D2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0</span>
+            <span id="trade-badge-apt" style="background:#1976D2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span>
           </span>
           <div class="layer-toggle" id="toggle-trade-apt" onclick="toggleTradeType('apt',this)"></div>
         </div>
@@ -986,14 +986,14 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         </div>
         <div id="trade-chart-wrap-apt" style="display:none;">
           <div class="tc-title">
-            <span>📈 월별 평균 거래가</span>
+            <span>📈 평당 가격 평균</span>
             <button class="tc-detail-btn" onclick="openStatModalForType('apt')">📊 통계 분석</button>
           </div>
           <svg id="trade-chart-svg-apt" viewBox="0 0 228 90" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
         <div class="layer-item" style="margin-top:2px;">
           <div class="layer-dot" style="background:#00897B;border-radius:50%;"></div>
-          <span class="layer-label">지역별 거래 건수</span>
+          <span class="layer-label">지역별 거래 건수<span id="bubble-badge-apt" style="background:#00897B;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span></span>
           <div class="layer-toggle" id="toggle-bubble-apt" onclick="toggleBubbleForType('apt',this)"></div>
         </div>
         <div id="bubble-period-wrap-apt" style="display:none;">
@@ -1025,7 +1025,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         <div class="layer-item">
           <div class="layer-dot" style="background:#00695C;border-radius:50%;"></div>
           <span class="layer-label">실거래 내역
-            <span id="trade-badge-house" style="background:#00695C;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0</span>
+            <span id="trade-badge-house" style="background:#00695C;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span>
           </span>
           <div class="layer-toggle" id="toggle-trade-house" onclick="toggleTradeType('house',this)"></div>
         </div>
@@ -1054,12 +1054,12 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#E53935;margin:0 3px 0 8px;"></span>6억+
         </div>
         <div id="trade-chart-wrap-house" style="display:none;">
-          <div class="tc-title"><span>📈 월별 평균 거래가</span><button class="tc-detail-btn" onclick="openStatModalForType('house')">📊 통계 분석</button></div>
+          <div class="tc-title"><span>📈 평당 가격 평균</span><button class="tc-detail-btn" onclick="openStatModalForType('house')">📊 통계 분석</button></div>
           <svg id="trade-chart-svg-house" viewBox="0 0 228 90" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
         <div class="layer-item" style="margin-top:2px;">
           <div class="layer-dot" style="background:#00897B;border-radius:50%;"></div>
-          <span class="layer-label">지역별 거래 건수</span>
+          <span class="layer-label">지역별 거래 건수<span id="bubble-badge-house" style="background:#00897B;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span></span>
           <div class="layer-toggle" id="toggle-bubble-house" onclick="toggleBubbleForType('house',this)"></div>
         </div>
         <div id="bubble-period-wrap-house" style="display:none;">
@@ -1091,7 +1091,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         <div class="layer-item">
           <div class="layer-dot" style="background:#E65100;border-radius:50%;"></div>
           <span class="layer-label">실거래 내역
-            <span id="trade-badge-rht" style="background:#E65100;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0</span>
+            <span id="trade-badge-rht" style="background:#E65100;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span>
           </span>
           <div class="layer-toggle" id="toggle-trade-rht" onclick="toggleTradeType('rht',this)"></div>
         </div>
@@ -1120,12 +1120,12 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#E53935;margin:0 3px 0 8px;"></span>6억+
         </div>
         <div id="trade-chart-wrap-rht" style="display:none;">
-          <div class="tc-title"><span>📈 월별 평균 거래가</span><button class="tc-detail-btn" onclick="openStatModalForType('rht')">📊 통계 분석</button></div>
+          <div class="tc-title"><span>📈 평당 가격 평균</span><button class="tc-detail-btn" onclick="openStatModalForType('rht')">📊 통계 분석</button></div>
           <svg id="trade-chart-svg-rht" viewBox="0 0 228 90" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
         <div class="layer-item" style="margin-top:2px;">
           <div class="layer-dot" style="background:#00897B;border-radius:50%;"></div>
-          <span class="layer-label">지역별 거래 건수</span>
+          <span class="layer-label">지역별 거래 건수<span id="bubble-badge-rht" style="background:#00897B;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span></span>
           <div class="layer-toggle" id="toggle-bubble-rht" onclick="toggleBubbleForType('rht',this)"></div>
         </div>
         <div id="bubble-period-wrap-rht" style="display:none;">
@@ -1157,7 +1157,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         <div class="layer-item">
           <div class="layer-dot" style="background:#7B1FA2;border-radius:50%;"></div>
           <span class="layer-label">실거래 내역
-            <span id="trade-badge-comm" style="background:#7B1FA2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0</span>
+            <span id="trade-badge-comm" style="background:#7B1FA2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span>
           </span>
           <div class="layer-toggle" id="toggle-trade-comm" onclick="toggleTradeType('comm',this)"></div>
         </div>
@@ -1186,12 +1186,12 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#E53935;margin:0 3px 0 8px;"></span>6억+
         </div>
         <div id="trade-chart-wrap-comm" style="display:none;">
-          <div class="tc-title"><span>📈 월별 평균 거래가</span><button class="tc-detail-btn" onclick="openStatModalForType('comm')">📊 통계 분석</button></div>
+          <div class="tc-title"><span>📈 평당 가격 평균</span><button class="tc-detail-btn" onclick="openStatModalForType('comm')">📊 통계 분석</button></div>
           <svg id="trade-chart-svg-comm" viewBox="0 0 228 90" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
         <div class="layer-item" style="margin-top:2px;">
           <div class="layer-dot" style="background:#00897B;border-radius:50%;"></div>
-          <span class="layer-label">지역별 거래 건수</span>
+          <span class="layer-label">지역별 거래 건수<span id="bubble-badge-comm" style="background:#00897B;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span></span>
           <div class="layer-toggle" id="toggle-bubble-comm" onclick="toggleBubbleForType('comm',this)"></div>
         </div>
         <div id="bubble-period-wrap-comm" style="display:none;">
@@ -2147,14 +2147,7 @@ window.JEJU_BEOPJEONGDONG = [
   window.MULTI_DATA.rht  = TRADE_DATA.filter(t => t._tradeType === 'rht');
   window.MULTI_DATA.house= TRADE_DATA.filter(t => t._tradeType === 'house');
   window.TRADE_DATA = window.MULTI_DATA.apt; // 기본값은 아파트
-  // 배지 초기화
-  setTimeout(() => {
-    ['apt','house','rht','comm'].forEach(function(uiType) {
-      var dataKey = uiType === 'comm' ? 'offi' : uiType;
-      var bd = document.getElementById('trade-badge-' + uiType);
-      if (bd && window.MULTI_DATA[dataKey]) bd.textContent = window.MULTI_DATA[dataKey].length;
-    });
-  }, 100);
+  // 배지 초기화: 토글 OFF 상태이므로 0건 유지 (토글 ON 시 갱신)
   // TOP 5 지연 렌더 (맵 초기화 방해 방지)
   setTimeout(() => {
     if (typeof computeRankCache === 'function') { window._rankCache = null; computeRankCache(); }
@@ -2379,7 +2372,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.apt = data;
     const aptBadge = document.getElementById('trade-badge-apt');
-    if (aptBadge) aptBadge.textContent = data.length;
+    if (aptBadge) aptBadge.textContent = data.length + "건";
     const srcEl = document.getElementById('trade-data-source');
     if (srcEl) srcEl.textContent = `실거래 데이터 · ${data.length.toLocaleString()}건`;
     if (typeof computeRankCache === 'function') { window._rankCache = null; computeRankCache(); }
@@ -2516,7 +2509,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.house = data;
     const badge = document.getElementById('trade-badge-house');
-    if (badge) badge.textContent = data.length;
+    if (badge) badge.textContent = data.length + "건";
     if (window._typeState && window._typeState.house && window._typeState.house.visible) {
       if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType('house');
       if (typeof renderTradeChartForType   === 'function') renderTradeChartForType('house');
@@ -2557,7 +2550,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.rht = data;
     const badge = document.getElementById('trade-badge-rht');
-    if (badge) badge.textContent = data.length;
+    if (badge) badge.textContent = data.length + "건";
     if (window._typeState && window._typeState.rht && window._typeState.rht.visible) {
       if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType('rht');
       if (typeof renderTradeChartForType   === 'function') renderTradeChartForType('rht');
@@ -2592,7 +2585,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.offi = data;
     const badge = document.getElementById('trade-badge-comm');
-    if (badge) badge.textContent = data.length;
+    if (badge) badge.textContent = data.length + "건";
     if (window._typeState && window._typeState.comm && window._typeState.comm.visible) {
       if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType('comm');
       if (typeof renderTradeChartForType   === 'function') renderTradeChartForType('comm');
@@ -4797,7 +4790,8 @@ function renderTradeChartForType(type) {
     var key = d.toISOString().slice(0,7);
     var label = (d.getMonth()+1) + '월';
     var tradesM = data.filter(function(t) { return t.date && t.date.startsWith(key); });
-    var avg = tradesM.length ? (tradesM.reduce(function(s,t){return s+t.price;},0)/tradesM.length) : null;
+    var validM = tradesM.filter(function(t){return t.price && t.area && t.area > 0;});
+    var avg = validM.length ? Math.round(validM.reduce(function(s,t){return s + t.price*10000/(t.area/3.3058);},0)/validM.length) : null;
     months.push({ label:label, avg:avg });
   }
 
@@ -4823,7 +4817,7 @@ function renderTradeChartForType(type) {
   var c = meta.color;
   var gradId = 'tradeGrad_'+type;
   var yPos = [padT+cH, padT+cH/2, padT];
-  var yLbls = [minV.toFixed(1), ((minV+maxV)/2).toFixed(1), maxV.toFixed(1)];
+  var yLbls = [Math.round(minV/100)+'백', Math.round((minV+maxV)/200)+'백', Math.round(maxV/100)+'백'];
 
   svg.innerHTML =
     '<defs><linearGradient id="'+gradId+'" x1="0" y1="0" x2="0" y2="1">'+
@@ -4864,7 +4858,7 @@ function toggleTradeType(type, btn) {
   } else {
     clearTradeMarkersForType(type);
     var badge = document.getElementById('trade-badge-'+type);
-    if (badge) badge.textContent = '0';
+    if (badge) badge.textContent = '0건';
     if (chartWrap) chartWrap.style.display = 'none';
   }
   _syncGlobalTradeData();
@@ -4906,6 +4900,10 @@ function toggleBubbleForType(type, btn) {
   st.bubbleVisible = btn.classList.toggle('on');
   var wrap = document.getElementById('bubble-period-wrap-'+type);
   if (wrap) wrap.style.display = st.bubbleVisible ? 'block' : 'none';
+  if (!st.bubbleVisible) {
+    var bb = document.getElementById('bubble-badge-' + type);
+    if (bb) bb.textContent = '0건';
+  }
   var anyBubble = ['apt','house','rht','comm'].some(function(t){return window._typeState[t].bubbleVisible;});
   var mlBubble = document.getElementById('ml-bubble');
   if (mlBubble) mlBubble.style.display = anyBubble ? 'block' : 'none';
@@ -4968,6 +4966,13 @@ function _renderCombinedBubbles() {
   window.TRADE_DATA = merged;
   if (typeof renderBubbles === 'function') renderBubbles();
   window.TRADE_DATA = orig;
+  // 타입별 버블 건수 배지 업데이트
+  ['apt','house','rht','comm'].forEach(function(t) {
+    var bb = document.getElementById('bubble-badge-' + t);
+    if (!bb) return;
+    var cnt = window._typeState[t].bubbleVisible ? _getBubbleFilteredForType(t).length : 0;
+    bb.textContent = cnt + '건';
+  });
 }
 
 var _statTypeLabels = { apt:'🏢 아파트', house:'🏠 단독/다가구', rht:'🏘 연립/다세대', comm:'🏬 상업용' };
