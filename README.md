@@ -50,7 +50,24 @@ cp .env.example .env   # SERVICE_KEY 입력
 python scripts/seed_from_json.py --only house
 ```
 
+## Actions
+
+| 워크플로 | 용도 |
+|----------|------|
+| `update_data.yml` | 매일 증분(기본 3개월) / 수동 실행 |
+| `backfill_data.yml` | 수동 전체 백필(6~36개월) |
+
+## 프론트 개선 요약
+
+- Supabase 페이지 fetch 동시성 제한 + count 검증
+- 로컬 JSON → Supabase 레이스 완화 (generation 토큰)
+- 배지 항상 전체 건수 표시, 기본 기간 **월간**
+- API 키 HTML 하드코딩 제거 (localStorage만)
+- 인구이동 Supabase 로드 추가
+- `geocodeByNameFallback` 전역화 (단독/연립/상업용 지오코딩 복구)
+
 ## 보안
 
 - `service_role` 키는 Secrets / `.env` 에만 보관 (코드·커밋 금지)
 - 과거 커밋에 키가 있었다면 Supabase에서 **키 재발급** 권장
+- 프론트에는 **anon** 키만 사용 (RLS SELECT)

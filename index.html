@@ -970,13 +970,13 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         <div class="layer-item">
           <div class="layer-dot" style="background:#1976D2;border-radius:50%;"></div>
           <span class="layer-label">실거래 내역
-            <span id="trade-badge-apt" style="background:#1976D2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span>
+            <span id="trade-badge-apt" data-loading="1" style="background:#1976D2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">…</span>
           </span>
           <div class="layer-toggle" id="toggle-trade-apt" onclick="toggleTradeType('apt',this)"></div>
         </div>
         <div class="trade-filter-row" id="trade-filter-row-apt" style="opacity:0.4;pointer-events:none;">
-          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('apt','week',this)">주간</button>
-          <button class="trade-filter-btn" onclick="setTradeTypePeriod('apt','month',this)">월간</button>
+          <button class="trade-filter-btn" onclick="setTradeTypePeriod('apt','week',this)">주간</button>
+          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('apt','month',this)">월간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('apt','year',this)">연간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('apt','pick',this)">월 선택</button>
         </div>
@@ -1023,13 +1023,13 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         <div class="layer-item">
           <div class="layer-dot" style="background:#00695C;border-radius:50%;"></div>
           <span class="layer-label">실거래 내역
-            <span id="trade-badge-house" style="background:#00695C;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span>
+            <span id="trade-badge-house" data-loading="1" style="background:#00695C;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">…</span>
           </span>
           <div class="layer-toggle" id="toggle-trade-house" onclick="toggleTradeType('house',this)"></div>
         </div>
         <div class="trade-filter-row" id="trade-filter-row-house" style="opacity:0.4;pointer-events:none;">
-          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('house','week',this)">주간</button>
-          <button class="trade-filter-btn" onclick="setTradeTypePeriod('house','month',this)">월간</button>
+          <button class="trade-filter-btn" onclick="setTradeTypePeriod('house','week',this)">주간</button>
+          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('house','month',this)">월간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('house','year',this)">연간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('house','pick',this)">월 선택</button>
         </div>
@@ -1073,13 +1073,13 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         <div class="layer-item">
           <div class="layer-dot" style="background:#E65100;border-radius:50%;"></div>
           <span class="layer-label">실거래 내역
-            <span id="trade-badge-rht" style="background:#E65100;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span>
+            <span id="trade-badge-rht" data-loading="1" style="background:#E65100;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">…</span>
           </span>
           <div class="layer-toggle" id="toggle-trade-rht" onclick="toggleTradeType('rht',this)"></div>
         </div>
         <div class="trade-filter-row" id="trade-filter-row-rht" style="opacity:0.4;pointer-events:none;">
-          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('rht','week',this)">주간</button>
-          <button class="trade-filter-btn" onclick="setTradeTypePeriod('rht','month',this)">월간</button>
+          <button class="trade-filter-btn" onclick="setTradeTypePeriod('rht','week',this)">주간</button>
+          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('rht','month',this)">월간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('rht','year',this)">연간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('rht','pick',this)">월 선택</button>
         </div>
@@ -1123,13 +1123,13 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         <div class="layer-item">
           <div class="layer-dot" style="background:#7B1FA2;border-radius:50%;"></div>
           <span class="layer-label">실거래 내역
-            <span id="trade-badge-comm" style="background:#7B1FA2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span>
+            <span id="trade-badge-comm" data-loading="1" style="background:#7B1FA2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">…</span>
           </span>
           <div class="layer-toggle" id="toggle-trade-comm" onclick="toggleTradeType('comm',this)"></div>
         </div>
         <div class="trade-filter-row" id="trade-filter-row-comm" style="opacity:0.4;pointer-events:none;">
-          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('comm','week',this)">주간</button>
-          <button class="trade-filter-btn" onclick="setTradeTypePeriod('comm','month',this)">월간</button>
+          <button class="trade-filter-btn" onclick="setTradeTypePeriod('comm','week',this)">주간</button>
+          <button class="trade-filter-btn active" onclick="setTradeTypePeriod('comm','month',this)">월간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('comm','year',this)">연간</button>
           <button class="trade-filter-btn" onclick="setTradeTypePeriod('comm','pick',this)">월 선택</button>
         </div>
@@ -1795,7 +1795,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
       <div class="dm-section" id="dm-api">
         <div class="dm-field">
           <label>공공데이터포털 API 키 <span style="color:#E53935;">*</span></label>
-          <input type="text" id="api-key-input" value="NPZLvMh4GeHcihxwk2DxXDLdchkDBEgdMeIxwZDVHbbXtRMPhsGqpzHBT9LqpaBGYOgZYZqQH8YdHNI1UEg0KQ%3D%3D" placeholder="data.go.kr에서 발급받은 일반 인증키 (Encoding)">
+          <input type="text" id="api-key-input" value="" placeholder="data.go.kr에서 발급받은 일반 인증키 (Encoding)">
           <div class="hint">→ data.go.kr 로그인 → 마이페이지 → 인증키 확인</div>
         </div>
         <div class="dm-row2">
@@ -2260,42 +2260,64 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 async function sbFetchAll(table, select='*', extraParams='') {
   const pageSize = 1000;
-  // 1) count 먼저 조회해서 전체 페이지 수 파악
-  const countUrl = `${SUPABASE_URL}/rest/v1/${table}?select=${select}&limit=1${extraParams}`;
-  let totalCount = 0;
-  try {
-    const countR = await fetch(countUrl, {
-      headers: { apikey: SUPABASE_ANON, Authorization: 'Bearer ' + SUPABASE_ANON, 'Prefer': 'count=exact' }
-    });
-    const cr = countR.headers.get('content-range');
-    totalCount = parseInt((cr || '').split('/')[1]) || 0;
-  } catch(_) {}
+  const concurrency = 5;
+  const headers = { apikey: SUPABASE_ANON, Authorization: 'Bearer ' + SUPABASE_ANON };
+  const countUrl = `${SUPABASE_URL}/rest/v1/${table}?select=id&limit=1${extraParams}`;
+  const countR = await fetch(countUrl, { headers: { ...headers, Prefer: 'count=exact' } });
+  if (!countR.ok) throw new Error(`[${table}] count ${countR.status}: ${await countR.text()}`);
+  const cr = countR.headers.get('content-range') || '';
+  const totalCount = parseInt(cr.split('/')[1], 10);
+  if (!Number.isFinite(totalCount)) throw new Error(`[${table}] invalid content-range: ${cr}`);
+  if (totalCount === 0) return [];
 
-  if (totalCount === 0) {
-    // fallback: 순차 방식
-    let rows = [], offset = 0, done = false;
-    while (!done) {
-      const url = `${SUPABASE_URL}/rest/v1/${table}?select=${select}&limit=${pageSize}&offset=${offset}${extraParams}`;
-      const r = await fetch(url, { headers: { apikey: SUPABASE_ANON, Authorization: 'Bearer ' + SUPABASE_ANON } });
-      if (!r.ok) throw new Error(await r.text());
-      const batch = await r.json();
-      rows = rows.concat(batch);
-      if (batch.length < pageSize) done = true;
-      else offset += pageSize;
-    }
-    return rows;
-  }
-
-  // 2) 전체 페이지를 병렬로 동시 fetch
   const pages = Math.ceil(totalCount / pageSize);
-  const promises = Array.from({ length: pages }, (_, i) => {
-    const url = `${SUPABASE_URL}/rest/v1/${table}?select=${select}&limit=${pageSize}&offset=${i * pageSize}${extraParams}`;
-    return fetch(url, { headers: { apikey: SUPABASE_ANON, Authorization: 'Bearer ' + SUPABASE_ANON } })
-      .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); });
-  });
-  const results = await Promise.all(promises);
+  const results = new Array(pages);
+  let next = 0;
+  async function worker() {
+    while (next < pages) {
+      const i = next++;
+      const url = `${SUPABASE_URL}/rest/v1/${table}?select=${select}&limit=${pageSize}&offset=${i * pageSize}${extraParams}`;
+      const r = await fetch(url, { headers });
+      if (!r.ok) throw new Error(`[${table}] page ${i} ${r.status}: ${await r.text()}`);
+      results[i] = await r.json();
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, pages) }, () => worker()));
   return results.flat();
 }
+
+function formatTradeCount(n) {
+  const v = Number(n) || 0;
+  return v.toLocaleString('ko-KR') + '건';
+}
+
+function setTradeBadge(type, total, filtered) {
+  const badge = document.getElementById('trade-badge-' + type);
+  if (!badge) return;
+  if (filtered != null && filtered !== total) {
+    badge.textContent = formatTradeCount(filtered) + '/' + formatTradeCount(total);
+  } else {
+    badge.textContent = formatTradeCount(total);
+  }
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+(function initApiKeyField(){
+  const el = document.getElementById('api-key-input');
+  if (!el) return;
+  try {
+    const saved = localStorage.getItem('jeju_molit_api_key') || '';
+    if (saved) el.value = saved;
+    el.addEventListener('change', () => {
+      try { localStorage.setItem('jeju_molit_api_key', el.value.trim()); } catch(_){}
+    });
+  } catch(_){}
+})();
 
 // 아파트 실거래 로드
 (function loadRealTradeData() {
@@ -2322,7 +2344,7 @@ async function sbFetchAll(table, select='*', extraParams='') {
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.apt = data;
     const aptBadge = document.getElementById('trade-badge-apt');
-    if (aptBadge && window._typeState && window._typeState.apt && window._typeState.apt.visible) aptBadge.textContent = data.length + '건';
+    if (aptBadge) setTradeBadge('apt', data.length);
     const srcEl = document.getElementById('trade-data-source');
     if (srcEl) srcEl.textContent = `실거래 데이터 · ${data.length.toLocaleString()}건`;
     if (typeof computeRankCache === 'function') { window._rankCache = null; computeRankCache(); }
@@ -2374,8 +2396,8 @@ async function sbFetchAll(table, select='*', extraParams='') {
     geocodeNext();
   }
 
-  // 건물명 키워드 검색 fallback (아파트·연립 등 이름 있는 건물)
-  function geocodeByNameFallback(data, geoCache, uiType) {
+  // 건물명 키워드 검색 fallback (아파트·연립 등 이름 있는 건물) — 전역 공유
+  window.geocodeByNameFallback = function geocodeByNameFallback(data, geoCache, uiType) {
     if (!window.kakao || !kakao.maps || !kakao.maps.services) return;
     const ps = new kakao.maps.services.Places();
     // 아직 좌표 없고 이름 있는 항목만. 동 이름 포함 키워드로 정확도 향상
@@ -2416,26 +2438,33 @@ async function sbFetchAll(table, select='*', extraParams='') {
     next();
   }
 
-  // 1단계: 로컬 JSON 즉시 로드
+  let _aptGen = 0;
+  // 1단계: 로컬 JSON 즉시 로드 (지오코딩은 Supabase 확정 후)
   fetch('./trade_data.json')
     .then(r => r.json())
     .then(data => {
+      const gen = ++_aptGen;
       normalizeApt(data);
-      const { data: d, geoCache } = applyAptData(data, '로컬');
-      geocodeTradeData(d, geoCache, 'apt');
-      setTimeout(() => geocodeByNameFallback(d, geoCache, 'apt'), 3000);
+      if (gen !== _aptGen) return;
+      applyAptData(data, '로컬');
     })
     .catch(e => console.log('[실거래] 로컬 JSON 로드 실패:', e.message));
 
   // 2단계: Supabase 백그라운드 갱신
   sbFetchAll('apt_trades')
     .then(data => {
+      const gen = ++_aptGen;
       normalizeApt(data);
+      if (gen !== _aptGen) return;
       const { data: d, geoCache } = applyAptData(data, 'Supabase');
       geocodeTradeData(d, geoCache, 'apt');
-      setTimeout(() => geocodeByNameFallback(d, geoCache, 'apt'), 5000);
+      setTimeout(() => window.geocodeByNameFallback && window.geocodeByNameFallback(d, geoCache, 'apt'), 3000);
     })
-    .catch(e => console.log('[실거래] Supabase 로드 실패:', e.message));
+    .catch(e => {
+      console.log('[실거래] Supabase 로드 실패:', e.message);
+      const el = document.getElementById('trade-data-source');
+      if (el && /로딩|—/.test(el.textContent)) el.textContent = 'Supabase 로드 실패 · 로컬 데이터 유지';
+    });
 })();
 
 // 단독/다가구 실거래 로드 — house_data.json
@@ -2459,23 +2488,22 @@ async function sbFetchAll(table, select='*', extraParams='') {
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.house = data;
     const badge = document.getElementById('trade-badge-house');
-    if (badge && window._typeState && window._typeState.house && window._typeState.house.visible) badge.textContent = data.length + '건';
+    if (badge) setTradeBadge('house', data.length);
     if (window._typeState && window._typeState.house && window._typeState.house.visible) {
       if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType('house');
       if (typeof renderTradeChartForType   === 'function') renderTradeChartForType('house');
     }
     console.log(`[단독/다가구] ${source} 로드 완료: ${data.length}건`);
     geocodeTradeData(data, geoCache, 'house');
-    setTimeout(() => geocodeByNameFallback(data, geoCache, 'house'), 4000);
+    setTimeout(() => window.geocodeByNameFallback && window.geocodeByNameFallback(data, geoCache, 'house'), 4000);
   }
-  // 1단계: 로컬 JSON
+  let _houseGen = 0;
   fetch('./house_data.json')
     .then(r => r.json())
-    .then(data => applyHouseData(data, '로컬'))
+    .then(data => { const g = ++_houseGen; applyHouseData(data, '로컬'); })
     .catch(e => console.log('[단독/다가구] JSON 로드 실패:', e.message));
-  // 2단계: Supabase 백그라운드 갱신
   sbFetchAll('house_trades')
-    .then(data => applyHouseData(data, 'Supabase'))
+    .then(data => { const g = ++_houseGen; applyHouseData(data, 'Supabase'); })
     .catch(e => console.log('[단독/다가구] Supabase 로드 실패:', e.message));
 })();
 
@@ -2500,14 +2528,14 @@ async function sbFetchAll(table, select='*', extraParams='') {
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.rht = data;
     const badge = document.getElementById('trade-badge-rht');
-    if (badge && window._typeState && window._typeState.rht && window._typeState.rht.visible) badge.textContent = data.length + '건';
+    if (badge) setTradeBadge('rht', data.length);
     if (window._typeState && window._typeState.rht && window._typeState.rht.visible) {
       if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType('rht');
       if (typeof renderTradeChartForType   === 'function') renderTradeChartForType('rht');
     }
     console.log(`[연립/다세대] ${source} 로드 완료: ${data.length}건`);
     geocodeTradeData(data, geoCache, 'rht');
-    setTimeout(() => geocodeByNameFallback(data, geoCache, 'rht'), 4000);
+    setTimeout(() => window.geocodeByNameFallback && window.geocodeByNameFallback(data, geoCache, 'rht'), 4000);
   }
   sbFetchAll('rht_trades')
     .then(data => applyRhtData(data, 'Supabase'))
@@ -2535,14 +2563,14 @@ async function sbFetchAll(table, select='*', extraParams='') {
     window.MULTI_DATA = window.MULTI_DATA || {};
     window.MULTI_DATA.offi = data;
     const badge = document.getElementById('trade-badge-comm');
-    if (badge && window._typeState && window._typeState.comm && window._typeState.comm.visible) badge.textContent = data.length + '건';
+    if (badge) setTradeBadge('comm', data.length);
     if (window._typeState && window._typeState.comm && window._typeState.comm.visible) {
       if (typeof renderTradeMarkersForType === 'function') renderTradeMarkersForType('comm');
       if (typeof renderTradeChartForType   === 'function') renderTradeChartForType('comm');
     }
     console.log(`[상업업무용] ${source} 로드 완료: ${data.length}건`);
     geocodeTradeData(data, geoCache, 'comm');
-    setTimeout(() => geocodeByNameFallback(data, geoCache, 'comm'), 4000);
+    setTimeout(() => window.geocodeByNameFallback && window.geocodeByNameFallback(data, geoCache, 'comm'), 4000);
   }
   sbFetchAll('comm_trades')
     .then(data => applyCommData(data, 'Supabase'))
@@ -2601,8 +2629,10 @@ async function sbFetchAll(table, select='*', extraParams='') {
     .catch(e => console.log('[토지] 로컬 JSON 로드 실패:', e.message));
 
   // 2단계: Supabase 백그라운드 갱신 (최신 데이터로 조용히 교체)
+  let _landGen = 0;
   sbFetchAll('land_trades')
     .then(data => {
+      const g = ++_landGen;
       data.forEach(normalizeLand);
       applyLandData(data, 'Supabase');
     })
@@ -4688,7 +4718,7 @@ var _typeMeta = {
 // 타입별 상태
 window._typeState = {};
 ['apt','house','rht','comm'].forEach(function(t) {
-  window._typeState[t] = { visible:false, period:'week', month:'all', bubbleVisible:false, bubblePeriod:'week', bubbleMonth:'all' };
+  window._typeState[t] = { visible:false, period:'month', month:'all', bubbleVisible:false, bubblePeriod:'month', bubbleMonth:'all' };
 });
 
 // 타입별 마커 오버레이 배열
@@ -4752,7 +4782,7 @@ function renderTradeMarkersForType(type) {
   var meta = _typeMeta[type];
   var trades = _getFilteredForType(type);
   var badge = document.getElementById('trade-badge-' + type);
-  if (badge) badge.textContent = trades.length;
+  if (badge) setTradeBadge(type, _getTypeData(type).length, trades.length);
 
   var statusEl = document.getElementById('trade-render-status');
   if (!statusEl) {
@@ -4906,7 +4936,10 @@ function toggleTradeType(type, btn) {
   } else {
     clearTradeMarkersForType(type);
     var badge = document.getElementById('trade-badge-'+type);
-    if (badge) badge.textContent = '0건';
+    if (badge) {
+      var total = _getTypeData(type).length;
+      setTradeBadge(type, total);
+    }
     if (chartWrap) chartWrap.style.display = 'none';
   }
   _syncGlobalTradeData();
@@ -5226,7 +5259,15 @@ function computeRankCache() {
 
 function updateInfoPanelApt() {
   var data = (window.MULTI_DATA && window.MULTI_DATA.apt) ? window.MULTI_DATA.apt : (window.TRADE_DATA || []);
-  if (!data.length) return;
+  if (!data.length) {
+    var priceEl0 = document.getElementById('ip-apt-price');
+    var countEl0 = document.getElementById('ip-apt-count');
+    var detailEl0 = document.getElementById('ip-apt-detail');
+    if (priceEl0) priceEl0.textContent = '-';
+    if (countEl0) countEl0.textContent = '-';
+    if (detailEl0) detailEl0.textContent = '데이터 없음';
+    return;
+  }
   var now = new Date();
   var curYear = String(now.getFullYear());
   var yearData = data.filter(function(t){ return t.date && t.date.startsWith(curYear); });
@@ -6362,7 +6403,25 @@ makeDraggable('visitor-modal-inner',   'visitor-modal-hd');
 /* ═══════════════════════════════════════════════
    인구이동 데이터 & 지도 화살표
 ═══════════════════════════════════════════════ */
-fetch('./migration_data.json').then(r=>r.json()).then(d=>{ window.MIGRATION_DATA=d; }).catch(()=>{});
+fetch('./migration_data.json').then(r=>r.json()).then(d=>{ window.MIGRATION_DATA=d; }).catch(e=>console.log('[인구이동] JSON 실패', e.message));
+(async function loadMigrationFromSb(){
+  try {
+    const rows = await sbFetchAll('migration_data');
+    if (!rows || !rows.length) return;
+    const months = [...new Set(rows.map(r => r.year_month))].sort();
+    const build = (dir) => {
+      const map = {};
+      rows.filter(r => r.direction === dir).forEach(r => {
+        if (!map[r.region]) map[r.region] = { region: r.region, counts: months.map(()=>0), nets: months.map(()=>0), lat: r.lat, lng: r.lng };
+        const i = months.indexOf(r.year_month);
+        if (i >= 0) { map[r.region].counts[i] = r.count || 0; map[r.region].nets[i] = r.net_count || 0; }
+      });
+      return Object.values(map);
+    };
+    window.MIGRATION_DATA = { months, outflow: build('out'), inflow: build('in') };
+    console.log('[인구이동] Supabase 로드', rows.length);
+  } catch(e) { console.log('[인구이동] Supabase 실패', e.message); }
+})();
 
 let migActiveDir = null; // 'out' | 'in' | null
 
