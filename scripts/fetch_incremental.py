@@ -1,14 +1,15 @@
 """
-제주 부동산 실거래 증분 업데이트 스크립트 (자동화용)
-- 최근 3개월 데이터만 처리 (GitHub Actions 스케줄 실행용)
-- 안전한 DELETE → INSERT 패턴: 월별로 삭제 후 바로 삽입 (테이블 전체 삭제 없음)
-- 중복 방지: 같은 월을 두 번 실행해도 먼저 해당 월 DELETE 후 INSERT하므로 중복 없음
+제주 부동산 실거래 증분/백필 스크립트 (자동화용)
+- 기본: 최근 3개월 DELETE→INSERT
+- --months N: N개월 수집 (백필 시 36 = 3년)
+- --clear: 실거래 테이블 전체 비운 뒤 수집 (3년치만 남길 때 사용)
+- 지오코딩: 지번주소 우선 → 도로명 → 단지명 키워드
 - 필수 환경변수: MOLIT_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY, KAKAO_REST_KEY
 
 실행 예시:
   python scripts/fetch_incremental.py
-  python scripts/fetch_incremental.py --months 1   # 당월만
-  python scripts/fetch_incremental.py --months 6   # 6개월
+  python scripts/fetch_incremental.py --months 1
+  python scripts/fetch_incremental.py --months 36 --clear   # 3년치만 재적재
 """
 
 import os, sys, time, json, urllib.request, urllib.parse
@@ -17,6 +18,7 @@ from datetime import datetime, timedelta
 
 # ── CLI 옵션 ─────────────────────────────────────────────
 MONTHS_BACK = 3  # 기본값: 최근 3개월
+CLEAR_TABLES = False
 args = sys.argv[1:]
 for i, arg in enumerate(args):
     if arg == '--months' and i + 1 < len(args):
@@ -24,7 +26,8 @@ for i, arg in enumerate(args):
             MONTHS_BACK = max(1, int(args[i + 1]))
         except ValueError:
             pass
-        break
+    elif arg == '--clear':
+        CLEAR_TABLES = True
 
 # ── 설정 ─────────────────────────────────────────────────
 MOLIT_KEY      = os.environ.get('MOLIT_API_KEY', '')
@@ -87,6 +90,9 @@ def text(item, tag):
     return el.text.strip() if el is not None and el.text else ''
 
 # ── API 조회 ──────────────────────────────────────────────
+MOLIT_TIMEOUT = 60
+MOLIT_RETRIES = 4
+
 def molit_fetch(service, lawd_cd, deal_ymd, page=1, rows=1000):
     base = f'https://apis.data.go.kr/1613000/{service[3:]}/{service}'
     params = urllib.parse.urlencode({
@@ -95,22 +101,41 @@ def molit_fetch(service, lawd_cd, deal_ymd, page=1, rows=1000):
     })
     encoded_key = urllib.parse.quote(urllib.parse.unquote(MOLIT_KEY), safe="")
     url = f'{base}?serviceKey={encoded_key}&{params}'
-    try:
-        with urllib.request.urlopen(url, timeout=30) as r:
-            return r.read().decode('utf-8')
-    except urllib.error.HTTPError as e:
-        print(f'  API HTTP 오류: {e.code} | {e.read().decode("utf-8", errors="ignore")[:200]}')
-        return None
-    except Exception as e:
-        print(f'  API 오류: {e}')
-        return None
+    last_err = None
+    for attempt in range(1, MOLIT_RETRIES + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=MOLIT_TIMEOUT) as r:
+                return r.read().decode('utf-8')
+        except urllib.error.HTTPError as e:
+            body = e.read().decode('utf-8', errors='ignore')[:200]
+            print(f'  API HTTP 오류: {e.code} | {body}')
+            # 4xx는 재시도해도 동일할 가능성이 큼 (429는 대기)
+            if e.code == 429:
+                time.sleep(min(30, 2 ** attempt))
+                last_err = e
+                continue
+            return None
+        except Exception as e:
+            last_err = e
+            wait = min(45, 3 * attempt)
+            print(f'  API 오류({attempt}/{MOLIT_RETRIES}): {e} → {wait}s 후 재시도')
+            time.sleep(wait)
+    print(f'  API 최종 실패: {last_err}')
+    return None
 
 def molit_fetch_all(service, lawd_cd, deal_ymd):
     all_items, page = [], 1
+    empty_retries = 0
     while True:
         xml_str = molit_fetch(service, lawd_cd, deal_ymd, page)
         if not xml_str:
+            # 일시 장애면 같은 페이지 한 번 더
+            empty_retries += 1
+            if empty_retries <= 2 and page == 1 and not all_items:
+                time.sleep(5)
+                continue
             break
+        empty_retries = 0
         try:
             root = ET.fromstring(xml_str)
         except ET.ParseError as e:
@@ -129,10 +154,26 @@ def molit_fetch_all(service, lawd_cd, deal_ymd):
         if not items or page * 1000 >= total:
             break
         page += 1
-        time.sleep(0.2)
+        time.sleep(0.35)
     return all_items
 
 # ── Supabase ──────────────────────────────────────────────
+TRADE_TABLES = (
+    'apt_trades', 'house_trades', 'rht_trades', 'land_trades', 'comm_trades',
+)
+
+def sb_clear_table(table):
+    """테이블 전체 삭제 (백필 시 3년치만 남기기 위해)."""
+    url = f'{SUPABASE_URL}/rest/v1/{table}?id=gte.0'
+    req = urllib.request.Request(url, method='DELETE', headers=SUPABASE_HEADERS)
+    try:
+        with urllib.request.urlopen(req, timeout=120):
+            print(f'  ✓ {table} 전체 삭제')
+            return True
+    except Exception as e:
+        print(f'  [경고] {table} 전체 삭제 실패: {e}')
+        return False
+
 def sb_delete_month(table, ym):
     """단일 월 데이터 삭제. 성공 여부 반환."""
     y, m = ym[:4], ym[4:]
@@ -140,7 +181,7 @@ def sb_delete_month(table, ym):
     url = f'{SUPABASE_URL}/rest/v1/{table}?date=like.{prefix}*'
     req = urllib.request.Request(url, method='DELETE', headers=SUPABASE_HEADERS)
     try:
-        with urllib.request.urlopen(req, timeout=30):
+        with urllib.request.urlopen(req, timeout=60):
             return True
     except Exception as e:
         print(f'  [경고] DELETE 실패 ({table}, {prefix}): {e}')
@@ -157,7 +198,7 @@ def sb_insert(table, rows, batch=400):
             data=data, method='POST', headers=SUPABASE_HEADERS
         )
         try:
-            with urllib.request.urlopen(req, timeout=30):
+            with urllib.request.urlopen(req, timeout=60):
                 ok += len(chunk)
         except urllib.error.HTTPError as e:
             body = e.read().decode('utf-8')[:300]
@@ -173,10 +214,25 @@ def build_jibun_addr(sigungu, dong, main_raw, sub_raw):
         return f"{sigungu} {dong} {main}" + (f"-{sub}" if sub and sub != '0' else '')
     return f"{sigungu} {dong}" if dong else None
 
+def build_road_addr(sigungu, road, b_main_raw='', b_sub_raw=''):
+    b_main = (b_main_raw or '').lstrip('0')
+    b_sub  = (b_sub_raw  or '').lstrip('0')
+    if not road:
+        return None
+    if b_main:
+        base = f"{sigungu} {road} {b_main}"
+        return base + (f"-{b_sub}" if b_sub and b_sub != '0' else '')
+    return f"{sigungu} {road}"
+
 def get_jibun(it):
     main = text(it, '본번') or text(it, '법정동본번코드')
     sub  = text(it, '부번') or text(it, '법정동부번코드')
     return main.lstrip('0'), sub.lstrip('0')
+
+def get_road_bun(it):
+    main = text(it, '도로명건물본번호코드') or text(it, 'roadNmBonbun')
+    sub  = text(it, '도로명건물부번호코드') or text(it, 'roadNmBubun')
+    return main, sub
 
 def parse_jibun_field(it, sigungu, dong):
     """신/구 API 모두 지원: jibun 필드(신) 또는 본번/부번(구)"""
@@ -189,6 +245,29 @@ def parse_jibun_field(it, sigungu, dong):
         jm, js = get_jibun(it)
     return build_jibun_addr(sigungu, dong, jm, js), jm, js
 
+def geo_priority_jibun_first(jibun_full, road_full, place_name, sigungu, dong):
+    """지번 → 도로명 → 단지명 키워드 순 (물건 위치 정확도 우선)."""
+    geo_addrs = []
+    seen = set()
+    def add(addr, mode):
+        if not addr or addr in seen:
+            return
+        seen.add(addr)
+        geo_addrs.append((addr, mode))
+    if jibun_full and any(c.isdigit() for c in jibun_full):
+        add(jibun_full, 'addr')
+    if road_full:
+        add(road_full, 'addr')
+        if place_name:
+            add(f"{road_full} {place_name}", 'keyword')
+    if place_name and dong:
+        add(f"{sigungu} {dong} {place_name}", 'keyword')
+    if jibun_full:
+        add(jibun_full, 'addr')
+    if place_name:
+        add(place_name, 'keyword')
+    return geo_addrs
+
 # ── 파서 ──────────────────────────────────────────────────
 def parse_apt(items, sigungu):
     rows = []
@@ -200,17 +279,10 @@ def parse_apt(items, sigungu):
         dong     = text(it, '법정동') or text(it, 'umdNm')
         road     = text(it, '도로명') or text(it, 'roadNm') or ''
         apt_name = text(it, '아파트') or text(it, 'aptNm')
-        road_full = f"{sigungu} {road}" if road else None
+        b_main, b_sub = get_road_bun(it)
+        road_full = build_road_addr(sigungu, road, b_main, b_sub)
         jibun_full, _, _ = parse_jibun_field(it, sigungu, dong)
-        # 지오코딩 우선순위: 도로명+단지명 > 도로명 > 동+단지명 > 지번
-        geo_addrs = []
-        if road_full:
-            if apt_name: geo_addrs.append((f"{road_full} {apt_name}", 'keyword'))
-            geo_addrs.append((road_full, 'addr'))
-        if apt_name and dong:
-            geo_addrs.append((f"{sigungu} {dong} {apt_name}", 'keyword'))
-        if jibun_full: geo_addrs.append((jibun_full, 'addr'))
-        if apt_name:   geo_addrs.append((apt_name, 'keyword'))
+        geo_addrs = geo_priority_jibun_first(jibun_full, road_full, apt_name, sigungu, dong)
         rows.append({
             'name':     apt_name,
             'addr':     jibun_full or f"{sigungu} {dong}",
@@ -237,12 +309,12 @@ def parse_house(items, sigungu):
         if not (년 and 월 and 일): continue
         dong = text(it, '법정동') or text(it, 'umdNm')
         road = text(it, '도로명') or text(it, 'roadNm') or ''
-        road_full = f"{sigungu} {road}" if road else None
+        b_main, b_sub = get_road_bun(it)
+        road_full = build_road_addr(sigungu, road, b_main, b_sub)
         jibun_full, _, _ = parse_jibun_field(it, sigungu, dong)
-        geo_addrs = []
-        if road_full:  geo_addrs.append((road_full, 'addr'))
-        if jibun_full: geo_addrs.append((jibun_full, 'addr'))
-        geo_addrs.append((f"{sigungu} {dong}", 'addr'))
+        geo_addrs = geo_priority_jibun_first(jibun_full, road_full, None, sigungu, dong)
+        if not geo_addrs:
+            geo_addrs.append((f"{sigungu} {dong}", 'addr'))
         rows.append({
             'name':        text(it, '주택유형') or text(it, 'buildingType') or dong,
             'sigungu':     sigungu,
@@ -271,15 +343,10 @@ def parse_rht(items, sigungu):
         dong     = text(it, '법정동') or text(it, 'umdNm')
         road     = text(it, '도로명') or text(it, 'roadNm') or ''
         rht_name = text(it, '연립다세대') or text(it, 'aptNm') or text(it, 'mhouseNm')
-        road_full = f"{sigungu} {road}" if road else None
+        b_main, b_sub = get_road_bun(it)
+        road_full = build_road_addr(sigungu, road, b_main, b_sub)
         jibun_full, _, _ = parse_jibun_field(it, sigungu, dong)
-        geo_addrs = []
-        if road_full:
-            if rht_name: geo_addrs.append((f"{road_full} {rht_name}", 'keyword'))
-            geo_addrs.append((road_full, 'addr'))
-        if rht_name and dong: geo_addrs.append((f"{sigungu} {dong} {rht_name}", 'keyword'))
-        if jibun_full: geo_addrs.append((jibun_full, 'addr'))
-        if rht_name:   geo_addrs.append((rht_name, 'keyword'))
+        geo_addrs = geo_priority_jibun_first(jibun_full, road_full, rht_name, sigungu, dong)
         rows.append({
             'name':     rht_name,
             'sigungu':  sigungu,
@@ -310,8 +377,8 @@ def parse_land(items, sigungu):
             if v: area = v; break
         price = price_eok(text(it, '거래금액') or text(it, 'dealAmount'))
         per_m2 = round(price * 10000 / area, 1) if price and area else None  # 만원/㎡
-        dong  = text(it, '법정동')
-        jibun = text(it, '지번')
+        dong  = text(it, '법정동') or text(it, 'umdNm')
+        jibun = text(it, '지번') or text(it, 'jibun')
         jibun_addr = f"{sigungu} {dong} {jibun}" if jibun else f"{sigungu} {dong}"
         rows.append({
             'addr':       jibun_addr,
@@ -320,7 +387,7 @@ def parse_land(items, sigungu):
             'jibun':      jibun,
             'jimok':      text(it, '지목'),
             'yongdo':     text(it, '용도지역'),
-            'doro':       text(it, '도로명'),
+            'doro':       text(it, '도로명') or text(it, 'roadNm'),
             'area':       area,
             'price':      price,
             'per_m2':     per_m2,
@@ -342,20 +409,17 @@ def parse_comm(items, sigungu):
         dong     = text(it, '법정동') or text(it, 'umdNm')
         road     = text(it, '도로명') or text(it, 'roadNm') or ''
         bld_name = text(it, '건물명') or text(it, 'bldNm') or ''
-        road_full = f"{sigungu} {road}" if road else None
+        b_main, b_sub = get_road_bun(it)
+        road_full = build_road_addr(sigungu, road, b_main, b_sub)
         jibun_full, _, _ = parse_jibun_field(it, sigungu, dong)
-        geo_addrs = []
-        if road_full:
-            if bld_name: geo_addrs.append((f"{road_full} {bld_name}", 'keyword'))
-            geo_addrs.append((road_full, 'addr'))
-        if bld_name and dong: geo_addrs.append((f"{sigungu} {dong} {bld_name}", 'keyword'))
-        if jibun_full: geo_addrs.append((jibun_full, 'addr'))
-        if bld_name:   geo_addrs.append((bld_name, 'keyword'))
+        geo_addrs = geo_priority_jibun_first(jibun_full, road_full, bld_name, sigungu, dong)
         rows.append({
             'sigungu':   sigungu,
             'dong':      dong,
             'addr':      jibun_full or f"{sigungu} {dong}",
             'name':      bld_name,
+            'roadaddr':  road_full or '',
+            'type':      'comm',
             'build_use': text(it, '건물주용도') or text(it, 'buildingUse'),
             'area':      float_or_none(text(it, '전용면적') or text(it, 'buildingAr')),
             'land_area': float_or_none(text(it, '대지면적') or text(it, 'plottageAr')),
@@ -384,7 +448,7 @@ def kakao_geocode(addr):
     url = f'https://dapi.kakao.com/v2/local/search/address.json?{urllib.parse.urlencode({"query": full})}'
     req = urllib.request.Request(url, headers={'Authorization': f'KakaoAK {KAKAO_REST_KEY}'})
     try:
-        with urllib.request.urlopen(req, timeout=10) as r:
+        with urllib.request.urlopen(req, timeout=15) as r:
             docs = json.loads(r.read().decode())['documents']
         if docs:
             lat, lng = float(docs[0]['y']), float(docs[0]['x'])
@@ -404,7 +468,7 @@ def kakao_keyword(keyword):
     url = f'https://dapi.kakao.com/v2/local/search/keyword.json?{params}'
     req = urllib.request.Request(url, headers={'Authorization': f'KakaoAK {KAKAO_REST_KEY}'})
     try:
-        with urllib.request.urlopen(req, timeout=10) as r:
+        with urllib.request.urlopen(req, timeout=15) as r:
             docs = json.loads(r.read().decode())['documents']
         if docs:
             lat, lng = float(docs[0]['y']), float(docs[0]['x'])
@@ -423,25 +487,27 @@ def geocode_row(r):
         if coord:
             r['lat'], r['lng'] = coord['lat'], coord['lng']
             return True
-        time.sleep(0.05)
+        time.sleep(0.03)
     return False
 
 def geocode_all(rows):
+    # 동일 주소는 캐시로 공유 — 단지/지번 단위로 묶이면 호출 수 대폭 감소
     todo = [r for r in rows if not r.get('lat')]
-    print(f'  지오코딩 대상: {len(todo)}건')
+    print(f'  지오코딩 대상: {len(todo)}건 (캐시 {len(_geo_cache)}건)')
     ok = 0
-    for r in todo:
+    for i, r in enumerate(todo, 1):
         if geocode_row(r):
             ok += 1
-        time.sleep(0.05)
+        if i % 200 == 0:
+            print(f'  … 지오코딩 진행 {i}/{len(todo)} (성공 {ok}, 캐시 {len(_geo_cache)})')
+        time.sleep(0.03)
     print(f'  지오코딩 완료: {ok}/{len(todo)}건 성공')
 
 # ── 월별 안전 업로드 (핵심 로직) ─────────────────────────
-def safe_upload_by_month(table, month_rows_map):
+def safe_upload_by_month(table, month_rows_map, skip_delete=False):
     """
     월별로 DELETE → INSERT 순서로 처리.
-    한 월씩 처리하므로 INSERT 실패해도 다른 월에 영향 없음.
-    month_rows_map: {'202409': [row, ...], '202408': [...], ...}
+    skip_delete=True 이면 (--clear 후) DELETE 생략.
     """
     total_inserted = 0
     for ym, rows in month_rows_map.items():
@@ -449,19 +515,18 @@ def safe_upload_by_month(table, month_rows_map):
         date_prefix = f'{y}-{m}'
         print(f'  [{table}] {date_prefix} → {len(rows)}건 처리 중...')
 
-        # 1. 삭제 (해당 월만)
-        del_ok = sb_delete_month(table, ym)
-        if not del_ok:
-            print(f'  [{table}] {date_prefix} DELETE 실패 → 이 월 스킵 (기존 데이터 보존)')
-            continue
+        if not skip_delete:
+            del_ok = sb_delete_month(table, ym)
+            if not del_ok:
+                print(f'  [{table}] {date_prefix} DELETE 실패 → 이 월 스킵 (기존 데이터 보존)')
+                continue
 
-        # 2. 삽입 (삭제 성공한 경우만)
         if rows:
             inserted = sb_insert(table, rows)
             total_inserted += inserted
             print(f'  [{table}] {date_prefix} → {inserted}/{len(rows)}건 삽입 완료')
         else:
-            print(f'  [{table}] {date_prefix} → API 데이터 없음 (삭제 후 빈 상태)')
+            print(f'  [{table}] {date_prefix} → API 데이터 없음')
 
         time.sleep(0.2)
 
@@ -474,10 +539,17 @@ def main():
     months = get_months(MONTHS_BACK)
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
     print(f'\n{"="*50}')
-    print(f'제주 부동산 증분 업데이트 ({now_str})')
+    print(f'제주 부동산 데이터 업데이트 ({now_str})')
     print(f'처리 기간: {months[-1]} ~ {months[0]} ({MONTHS_BACK}개월)')
     print(f'지역: {[r[1] for r in REGIONS]}')
+    print(f'전체 초기화(--clear): {CLEAR_TABLES}')
     print(f'{"="*50}')
+
+    if CLEAR_TABLES:
+        print('\n▶ 실거래 테이블 전체 삭제 (3년치만 재적재용)')
+        for t in TRADE_TABLES:
+            sb_clear_table(t)
+            time.sleep(0.3)
 
     tasks = [
         ('getRTMSDataSvcAptTrade',  'apt_trades',   parse_apt,   'roadaddr'),
@@ -490,7 +562,6 @@ def main():
     for service, table, parser, _ in tasks:
         print(f'\n▶ {table}')
 
-        # 월별로 수집 (월→지역 순서로 수집, 이후 월별 분류)
         month_rows_map = {ym: [] for ym in months}
 
         for ym in months:
@@ -499,23 +570,20 @@ def main():
                 rows = parser(items, sigungu)
                 print(f'  {sigungu} {ym[:4]}년 {ym[4:]}월 → {len(rows)}건')
                 month_rows_map[ym].extend(rows)
-                time.sleep(0.3)
+                time.sleep(0.4)
 
-        # 전체 rows (지오코딩용)
         all_rows = [r for rows in month_rows_map.values() for r in rows]
         if not all_rows:
             print(f'  데이터 없음, 스킵')
             continue
 
-        # 지오코딩 (한 번에 전체 처리 → 캐시 공유로 효율적)
         geocode_all(all_rows)
 
-        # 월별 안전 업로드
-        inserted = safe_upload_by_month(table, month_rows_map)
+        inserted = safe_upload_by_month(table, month_rows_map, skip_delete=CLEAR_TABLES)
         print(f'  ✓ {table} 완료: 총 {inserted}건 삽입')
 
     print(f'\n{"="*50}')
-    print(f'✅ 증분 업데이트 완료! ({datetime.now().strftime("%H:%M:%S")})')
+    print(f'✅ 업데이트 완료! ({datetime.now().strftime("%H:%M:%S")})')
     print(f'{"="*50}')
 
 if __name__ == '__main__':

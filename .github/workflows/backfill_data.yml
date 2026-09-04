@@ -4,15 +4,20 @@ on:
   workflow_dispatch:
     inputs:
       months:
-        description: '백필 개월 수'
+        description: '백필 개월 수 (36=3년)'
         required: true
-        default: '12'
+        default: '36'
         type: choice
         options:
           - '6'
           - '12'
           - '24'
           - '36'
+      clear:
+        description: '기존 실거래 테이블 비우고 재적재'
+        required: true
+        default: true
+        type: boolean
 
 jobs:
   backfill:
@@ -23,7 +28,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Full backfill via fetch_all / incremental
+      - name: 시크릿 존재 확인
+        run: |
+          missing=0
+          for name in MOLIT_API_KEY SUPABASE_URL SUPABASE_SERVICE_KEY KAKAO_REST_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Secret $name 이 비어 있습니다."
+              missing=1
+            else
+              echo "OK $name"
+            fi
+          done
+          exit $missing
+        env:
+          MOLIT_API_KEY: ${{ secrets.MOLIT_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
+      - name: 3년치 실거래 백필 (지번 지오코딩)
         env:
           MOLIT_API_KEY: ${{ secrets.MOLIT_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -31,6 +53,9 @@ jobs:
           KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
         run: |
           MONTHS="${{ github.event.inputs.months }}"
-          echo "Backfill months=$MONTHS"
-          # 증분 스크립트에 months 전달 (전체 재수집에 동일 로직 사용)
-          python scripts/fetch_incremental.py --months "$MONTHS"
+          CLEAR_FLAG=""
+          if [ "${{ github.event.inputs.clear }}" = "true" ]; then
+            CLEAR_FLAG="--clear"
+          fi
+          echo "Backfill months=$MONTHS clear=$CLEAR_FLAG"
+          python scripts/fetch_incremental.py --months "$MONTHS" $CLEAR_FLAG

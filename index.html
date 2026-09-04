@@ -2204,9 +2204,14 @@ const DONG_COORDS = {
 // 동 좌표 테이블로 즉시 lat/lng 설정 (API geocoding 전에 먼저 적용)
 function applyDongCoords(data) {
   data.forEach(d => {
-    if (!d.lat && d.roadAddr && DONG_COORDS[d.roadAddr]) {
-      d.lat = DONG_COORDS[d.roadAddr].lat;
-      d.lng = DONG_COORDS[d.roadAddr].lng;
+    if (d.lat && d.lng) return;
+    const key = d.roadAddr || ((d.sigungu && d.dong) ? (d.sigungu + ' ' + d.dong) : '');
+    const dongKey = (d.sigungu && d.dong) ? (d.sigungu + ' ' + d.dong) : '';
+    const hit = (key && DONG_COORDS[key]) || (dongKey && DONG_COORDS[dongKey]);
+    if (hit) {
+      d.lat = hit.lat;
+      d.lng = hit.lng;
+      d._approxDong = true; // 지번 지오코딩 전 임시 좌표
     }
   });
 }
@@ -2217,7 +2222,8 @@ function geocodeTradeData(data, geoCache, uiType) {
   if (!window.kakao || !kakao.maps || !kakao.maps.services) return;
   const gc   = new kakao.maps.services.Geocoder();
   const todo = [...new Set(
-    data.filter(d => d.roadAddr && !geoCache[d.roadAddr]).map(d => d.roadAddr)
+    data.filter(d => d.roadAddr && (!d.lat || d._approxDong) && !geoCache[d.roadAddr])
+      .map(d => d.roadAddr)
   )];
   if (!todo.length) return;
   let idx = 0, newEntries = 0;
@@ -2244,7 +2250,11 @@ function geocodeTradeData(data, geoCache, uiType) {
         const lat = parseFloat(result[0].y), lng = parseFloat(result[0].x);
         if (isInJeju(lat, lng)) {
           geoCache[addr] = { lat, lng };
-          data.forEach(d => { if (d.roadAddr === addr) { d.lat = lat; d.lng = lng; } });
+          data.forEach(d => {
+            if (d.roadAddr === addr) {
+              d.lat = lat; d.lng = lng; delete d._approxDong;
+            }
+          });
           newEntries++;
         }
       }
@@ -2323,14 +2333,22 @@ function escHtml(s) {
 (function loadRealTradeData() {
   function normalizeApt(data) {
     data.forEach(d => {
-      // geocoding은 동 레벨로 (건물명 포함 시 addressSearch 실패)
-      d.roadAddr = (d.sigungu && d.dong)
-        ? d.sigungu + ' ' + d.dong
-        : (d.addr || d.roadaddr || '');
-      d.price    = parseFloat(d.price) || 0;
-      d.area     = parseFloat(d.area)  || 0;
+      const latN = parseFloat(d.lat);
+      const lngN = parseFloat(d.lng);
+      d.lat = Number.isFinite(latN) ? latN : null;
+      d.lng = Number.isFinite(lngN) ? lngN : null;
+      // 지번(숫자가 포함된 addr) > 도로명 > 동 — DB 좌표가 있으면 지오코딩 스킵
+      const jibun = (d.addr || '').trim();
+      const road  = (d.roadaddr || '').trim();
+      if (jibun && /\d/.test(jibun)) d.roadAddr = jibun;
+      else if (road) d.roadAddr = road;
+      else if (d.sigungu && d.dong) d.roadAddr = d.sigungu + ' ' + d.dong;
+      else d.roadAddr = jibun || road || '';
+      d.price = parseFloat(d.price) || 0;
+      d.area  = parseFloat(d.area)  || 0;
     });
-    applyDongCoords(data);  // 동 좌표 테이블로 즉시 설정
+    // DB lat/lng 없는 건만 동 대표점으로 임시 표시
+    applyDongCoords(data);
   }
   function applyAptData(data, source) {
     const geoCache = loadGeoCache();
@@ -2401,7 +2419,7 @@ function escHtml(s) {
     if (!window.kakao || !kakao.maps || !kakao.maps.services) return;
     const ps = new kakao.maps.services.Places();
     // 아직 좌표 없고 이름 있는 항목만. 동 이름 포함 키워드로 정확도 향상
-    const todo = data.filter(d => !d.lat && d.name);
+    const todo = data.filter(d => (!d.lat || d._approxDong) && d.name);
     // (동+이름) 조합 키 기준으로 그룹화
     const nameMap = {};
     todo.forEach(d => {
@@ -2471,9 +2489,13 @@ function escHtml(s) {
 (function loadHouseData() {
   function applyHouseData(data, source) {
     data.forEach(d => {
-      // addr에 지번주소(시군구+동+지번)가 있으면 우선 사용
-      d.roadAddr = d.addr || d.roadaddr
-        || ((d.sigungu && d.dong) ? d.sigungu + ' ' + d.dong : '');
+      const latN = parseFloat(d.lat), lngN = parseFloat(d.lng);
+      d.lat = Number.isFinite(latN) ? latN : null;
+      d.lng = Number.isFinite(lngN) ? lngN : null;
+      const jibun = (d.addr || '').trim();
+      const road  = (d.roadaddr || '').trim();
+      if (jibun && /\d/.test(jibun)) d.roadAddr = jibun;
+      else d.roadAddr = road || jibun || ((d.sigungu && d.dong) ? d.sigungu + ' ' + d.dong : '');
       d.price    = parseFloat(d.price) || 0;
       d.area     = parseFloat(d.area)  || 0;
       if (!d._tradeType) { d._tradeType = 'house'; d._typeColor = '#00695C'; d._typeLabel = '단독/다가구'; }
@@ -2511,9 +2533,13 @@ function escHtml(s) {
 (function loadRhtData() {
   function applyRhtData(data, source) {
     data.forEach(d => {
-      // roadaddr(도로명+건물번호) 또는 addr(지번) 우선, 없으면 동 수준
-      d.roadAddr = d.roadaddr || d.addr
-        || ((d.sigungu && d.dong) ? d.sigungu + ' ' + d.dong : '');
+      const latN = parseFloat(d.lat), lngN = parseFloat(d.lng);
+      d.lat = Number.isFinite(latN) ? latN : null;
+      d.lng = Number.isFinite(lngN) ? lngN : null;
+      const jibun = (d.addr || '').trim();
+      const road  = (d.roadaddr || '').trim();
+      if (jibun && /\d/.test(jibun)) d.roadAddr = jibun;
+      else d.roadAddr = road || jibun || ((d.sigungu && d.dong) ? d.sigungu + ' ' + d.dong : '');
       d.price    = parseFloat(d.price) || 0;
       d.area     = parseFloat(d.area)  || 0;
       if (!d._tradeType) { d._tradeType = 'rht'; d._typeColor = '#E65100'; d._typeLabel = '연립/다세대'; }
@@ -2546,9 +2572,13 @@ function escHtml(s) {
 (function loadCommData() {
   function applyCommData(data, source) {
     data.forEach(d => {
-      // roadaddr(도로명+건물번호) 또는 addr(지번) 우선
-      d.roadAddr = d.roadaddr || d.addr
-        || ((d.sigungu && d.dong) ? d.sigungu + ' ' + d.dong : '');
+      const latN = parseFloat(d.lat), lngN = parseFloat(d.lng);
+      d.lat = Number.isFinite(latN) ? latN : null;
+      d.lng = Number.isFinite(lngN) ? lngN : null;
+      const jibun = (d.addr || '').trim();
+      const road  = (d.roadaddr || '').trim();
+      if (jibun && /\d/.test(jibun)) d.roadAddr = jibun;
+      else d.roadAddr = road || jibun || ((d.sigungu && d.dong) ? d.sigungu + ' ' + d.dong : '');
       d.price    = parseFloat(d.price) || 0;
       d.area     = parseFloat(d.area)  || 0;
       if (!d._tradeType) { d._tradeType = 'offi'; d._typeColor = '#7B1FA2'; d._typeLabel = '상업용'; }

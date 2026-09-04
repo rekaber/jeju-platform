@@ -55,7 +55,12 @@ python scripts/seed_from_json.py --only house
 | 워크플로 | 용도 |
 |----------|------|
 | `update_data.yml` | 매일 증분(기본 3개월) / 수동 실행 |
-| `backfill_data.yml` | 수동 전체 백필(6~36개월) |
+| `backfill_data.yml` | 수동 백필 — 기본 **36개월(3년)** + 테이블 clear |
+
+3년치만 재적재:
+Actions → **제주 부동산 전체 백필** → months=`36`, clear=`true` → Run
+
+지오코딩은 **지번주소 우선** (Kakao Local API).
 
 ## 프론트 개선 요약
 
