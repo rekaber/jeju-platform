@@ -179,10 +179,10 @@ def molit_fetch_all(service, lawd_cd, deal_ymd):
         except ET.ParseError as e:
             print(f'  XML 파싱 오류: {e}')
             break
-        # API 에러코드 체크
+        # API 에러코드 체크 (국토부 RTMS 성공 코드: 00 / 000 / 0)
         result_msg = root.findtext('.//resultMsg') or ''
-        result_code = root.findtext('.//resultCode') or ''
-        if result_code not in ('00', '0', ''):
+        result_code = (root.findtext('.//resultCode') or '').strip()
+        if result_code not in ('00', '000', '0', ''):
             print(f'  API 오류코드 {result_code}: {result_msg}')
             break
         items = root.findall('.//item')
