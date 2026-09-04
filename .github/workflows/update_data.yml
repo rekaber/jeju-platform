@@ -4,10 +4,22 @@ on:
   schedule:
     - cron: '0 1 * * *'   # 매일 KST 10:00 (UTC 01:00)
   workflow_dispatch:        # 수동 실행 가능
+    inputs:
+      months:
+        description: '수집 개월 수 (증분)'
+        required: false
+        default: '3'
+        type: choice
+        options:
+          - '1'
+          - '3'
+          - '6'
+          - '12'
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
 
     steps:
       - name: 코드 체크아웃
@@ -18,10 +30,31 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: 시크릿 존재 확인
+        run: |
+          missing=0
+          for name in MOLIT_API_KEY SUPABASE_URL SUPABASE_SERVICE_KEY KAKAO_REST_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Secret $name 이 비어 있습니다."
+              missing=1
+            else
+              echo "OK $name"
+            fi
+          done
+          exit $missing
+        env:
+          MOLIT_API_KEY: ${{ secrets.MOLIT_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
+
       - name: 데이터 수집 및 Supabase 업로드
         env:
           MOLIT_API_KEY: ${{ secrets.MOLIT_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
-        run: python scripts/fetch_incremental.py
+        run: |
+          MONTHS="${{ github.event.inputs.months }}"
+          if [ -z "$MONTHS" ]; then MONTHS=3; fi
+          python scripts/fetch_incremental.py --months "$MONTHS"

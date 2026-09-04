@@ -1,11 +1,11 @@
-
+.env
+.env.local
 env.txt
 *.bak
 index_backup.html
 jeju_realestate_mvp.html.bak
 *.docx
 *.xlsx
-
-env.txt
-*.bak
-index_backup.html
+__pycache__/
+*.pyc
+.DS_Store

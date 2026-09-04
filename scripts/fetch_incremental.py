@@ -17,12 +17,14 @@ from datetime import datetime, timedelta
 
 # ── CLI 옵션 ─────────────────────────────────────────────
 MONTHS_BACK = 3  # 기본값: 최근 3개월
-for i, arg in enumerate(sys.argv[1:]):
-    if arg == '--months' and i + 1 < len(sys.argv) - 1:
+args = sys.argv[1:]
+for i, arg in enumerate(args):
+    if arg == '--months' and i + 1 < len(args):
         try:
-            MONTHS_BACK = int(sys.argv[i + 2])
+            MONTHS_BACK = max(1, int(args[i + 1]))
         except ValueError:
             pass
+        break
 
 # ── 설정 ─────────────────────────────────────────────────
 MOLIT_KEY      = os.environ.get('MOLIT_API_KEY', '')
@@ -242,16 +244,18 @@ def parse_house(items, sigungu):
         if jibun_full: geo_addrs.append((jibun_full, 'addr'))
         geo_addrs.append((f"{sigungu} {dong}", 'addr'))
         rows.append({
-            'sigungu':    sigungu,
-            'dong':       dong,
-            'addr':       jibun_full or f"{sigungu} {dong}",
-            'house_type': text(it, '주택유형') or text(it, 'buildingType'),
-            'build_use':  text(it, '건물주용도') or text(it, 'buildingUse'),
-            'area':       float_or_none(text(it, '연면적') or text(it, 'totalFloorAr') or text(it, 'buildingAr')),
-            'land_area':  float_or_none(text(it, '대지면적') or text(it, 'plottageAr')),
-            'price':      price_eok(text(it, '거래금액') or text(it, 'dealAmount')),
-            'date':       f'{년}-{int(월):02d}-{int(일):02d}',
-            'built':      int_or_none(text(it, '건축년도') or text(it, 'buildYear')),
+            'name':        text(it, '주택유형') or text(it, 'buildingType') or dong,
+            'sigungu':     sigungu,
+            'dong':        dong,
+            'addr':        jibun_full or f"{sigungu} {dong}",
+            'roadaddr':    road_full or '',
+            'house_type':  text(it, '주택유형') or text(it, 'buildingType'),
+            'type':        'house',
+            'area':        float_or_none(text(it, '연면적') or text(it, 'totalFloorAr') or text(it, 'buildingAr')),
+            'plottage_ar': float_or_none(text(it, '대지면적') or text(it, 'plottageAr')),
+            'price':       price_eok(text(it, '거래금액') or text(it, 'dealAmount')),
+            'date':        f'{년}-{int(월):02d}-{int(일):02d}',
+            'built':       int_or_none(text(it, '건축년도') or text(it, 'buildYear')),
             'lat': None, 'lng': None,
             '_geo_addrs': geo_addrs,
         })
@@ -282,6 +286,7 @@ def parse_rht(items, sigungu):
             'dong':     dong,
             'addr':     jibun_full or f"{sigungu} {dong}",
             'roadaddr': road_full or '',
+            'type':     'rht',
             'area':     float_or_none(text(it, '전용면적') or text(it, 'excluUseAr')),
             'price':    price_eok(text(it, '거래금액') or text(it, 'dealAmount')),
             'date':     f'{년}-{int(월):02d}-{int(일):02d}',
