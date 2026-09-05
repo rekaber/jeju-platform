@@ -162,50 +162,88 @@ function renderTradeChartForType(type) {
   var curYear = now.getFullYear();
   var curMonth = now.getMonth(); // 0-indexed
   for (var m = 0; m <= curMonth; m++) {
-    var d = new Date(curYear, m, 1);
     var key = curYear + '-' + String(m+1).padStart(2,'0');
     var label = (m+1) + '월';
     var tradesM = data.filter(function(t) { return t.date && t.date.startsWith(key); });
     var validM = tradesM.filter(function(t){return t.price && t.area && t.area > 0;});
-    var avg = validM.length ? Math.round(validM.reduce(function(s,t){return s + t.price*10000/(t.area/3.3058);},0)/validM.length) : null;
-    months.push({ label:label, avg:avg });
+    // 만원/평 = (억*10000) / (㎡/3.3058) — 소표본 왜곡 완화로 중앙값 사용
+    var avg = null;
+    if (validM.length) {
+      var list = validM.map(function(t) {
+        return t.price * 10000 / (t.area / 3.3058);
+      }).sort(function(a, b) { return a - b; });
+      var mid = Math.floor(list.length / 2);
+      avg = Math.round(list.length % 2 ? list[mid] : (list[mid - 1] + list[mid]) / 2);
+    }
+    months.push({ label:label, avg:avg, n: validM.length });
   }
 
-  var vals = months.map(function(m){return m.avg||0;});
+  var vals = months.map(function(m){ return m.avg || 0; });
   var maxV = Math.max.apply(null, vals.concat([1]));
-  var posVals = vals.filter(function(v){return v>0;});
+  var posVals = vals.filter(function(v){ return v > 0; });
   var minV = posVals.length ? Math.min.apply(null, posVals) : maxV;
-  var W=228,H=80,padL=22,padB=16,padR=6,padT=6;
-  var cW=W-padL-padR, cH=H-padT-padB;
-  var xStep = cW/(months.length-1);
+  // Y축 여유: 최소·최대가 붙지 않도록
+  var yMin = Math.max(0, minV * 0.92);
+  var yMax = maxV * 1.05;
+  if (yMax <= yMin) yMax = yMin + 1;
 
+  var W = 228, H = 80, padL = 34, padB = 16, padR = 6, padT = 6;
+  var cW = W - padL - padR, cH = H - padT - padB;
+  var xStep = months.length > 1 ? cW / (months.length - 1) : 0;
+
+  // 월 인덱스 기준 좌표 (데이터 없는 달은 선에서 끊김)
   var points = [];
-  months.forEach(function(mo,i){
-    var x = padL + i*xStep;
-    var y = mo.avg ? padT+cH-((mo.avg-minV+0.5)/(maxV-minV+1))*cH : null;
-    if (y!==null) points.push({x:x, y:y, label:mo.label, avg:mo.avg});
+  months.forEach(function(mo, i) {
+    var x = padL + i * xStep;
+    if (mo.avg == null) return;
+    var y = padT + cH - ((mo.avg - yMin) / (yMax - yMin)) * cH;
+    points.push({ x:x, y:y, label:mo.label, avg:mo.avg, n:mo.n, i:i });
   });
-  if (!points.length) { svg.innerHTML=''; return; }
+  if (!points.length) { svg.innerHTML = ''; return; }
 
-  var pathD = points.map(function(p,i){return (i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1);}).join(' ');
-  var last = points[points.length-1], first = points[0];
-  var areaD = pathD+' L'+last.x.toFixed(1)+','+(padT+cH).toFixed(1)+' L'+first.x.toFixed(1)+','+(padT+cH).toFixed(1)+' Z';
+  var pathD = points.map(function(p, i) {
+    return (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1);
+  }).join(' ');
+  var last = points[points.length - 1], first = points[0];
+  var areaD = pathD + ' L' + last.x.toFixed(1) + ',' + (padT + cH).toFixed(1)
+    + ' L' + first.x.toFixed(1) + ',' + (padT + cH).toFixed(1) + ' Z';
   var c = meta.color;
-  var gradId = 'tradeGrad_'+type;
-  var yPos = [padT+cH, padT+cH/2, padT];
-  function _ppLbl(v){return (Math.round(v/100)/10).toFixed(1)+'천만';}
-  var yLbls = [_ppLbl(minV), _ppLbl((minV+maxV)/2), _ppLbl(maxV)];
+  var gradId = 'tradeGrad_' + type;
+  var yPos = [padT + cH, padT + cH / 2, padT];
+
+  // 만원/평 → 읽기 쉬운 라벨 (0.7천만 잘림 방지)
+  function _ppLbl(v) {
+    if (v >= 1000) return (v / 1000).toFixed(1).replace(/\.0$/, '') + '천만';
+    return Math.round(v) + '만';
+  }
+  var yLbls = [_ppLbl(yMin), _ppLbl((yMin + yMax) / 2), _ppLbl(yMax)];
+
+  // X축: 월 격자 기준 라벨 (포인트 인덱스가 아닌 달력 월)
+  var xLabels = [];
+  months.forEach(function(mo, i) {
+    if (i % 3 === 0 || i === months.length - 1) {
+      var x = padL + i * xStep;
+      xLabels.push('<text x="' + x.toFixed(1) + '" y="' + H + '" text-anchor="middle" font-size="7" fill="#aaa">' + mo.label + '</text>');
+    }
+  });
 
   svg.innerHTML =
-    '<defs><linearGradient id="'+gradId+'" x1="0" y1="0" x2="0" y2="1">'+
-    '<stop offset="0%" stop-color="'+c+'" stop-opacity="0.25"/>'+
-    '<stop offset="100%" stop-color="'+c+'" stop-opacity="0"/></linearGradient></defs>'+
-    yPos.map(function(y){return '<line x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+y.toFixed(1)+'" stroke="#eee" stroke-width="1"/>';}).join('')+
-    '<path d="'+areaD+'" fill="url(#'+gradId+')"/>'+
-    '<path d="'+pathD+'" fill="none" stroke="'+c+'" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>'+
-    points.map(function(p){return '<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="2.5" fill="'+c+'" stroke="#fff" stroke-width="1.2"/>';}).join('')+
-    yLbls.map(function(l,i){return '<text x="'+(padL-2)+'" y="'+(yPos[i]+3).toFixed(1)+'" text-anchor="end" font-size="7" fill="#aaa">'+l+'</text>';}).join('')+
-    points.filter(function(_,i){return i%3===0||i===points.length-1;}).map(function(p){return '<text x="'+p.x.toFixed(1)+'" y="'+H+'" text-anchor="middle" font-size="7" fill="#aaa">'+p.label+'</text>';}).join('');
+    '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0%" stop-color="' + c + '" stop-opacity="0.25"/>' +
+    '<stop offset="100%" stop-color="' + c + '" stop-opacity="0"/></linearGradient></defs>' +
+    yPos.map(function(y) {
+      return '<line x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y.toFixed(1) + '" stroke="#eee" stroke-width="1"/>';
+    }).join('') +
+    '<path d="' + areaD + '" fill="url(#' + gradId + ')"/>' +
+    '<path d="' + pathD + '" fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>' +
+    points.map(function(p) {
+      var title = p.label + ' 중앙값 ' + _ppLbl(p.avg) + '/평 · ' + p.n + '건';
+      return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="2.5" fill="' + c + '" stroke="#fff" stroke-width="1.2"><title>' + title + '</title></circle>';
+    }).join('') +
+    yLbls.map(function(l, i) {
+      return '<text x="' + (padL - 2) + '" y="' + (yPos[i] + 3).toFixed(1) + '" text-anchor="end" font-size="7" fill="#aaa">' + l + '</text>';
+    }).join('') +
+    xLabels.join('');
 }
 
 function _syncGlobalTradeData() {

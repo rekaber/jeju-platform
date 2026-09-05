@@ -18,11 +18,9 @@ function setTradeBadge(type, total, filtered) {
     badge.textContent = '데이터 없음';
     return;
   }
-  if (filtered != null && filtered !== total) {
-    badge.textContent = formatTradeCount(filtered) + '/' + formatTradeCount(total);
-  } else {
-    badge.textContent = formatTradeCount(total);
-  }
+  // 현재 필터 건수만 표시 (전체 건수 분모 없음)
+  const n = (filtered != null) ? filtered : total;
+  badge.textContent = formatTradeCount(n);
 }
 
 function setLandCntBadge(filtered) {
