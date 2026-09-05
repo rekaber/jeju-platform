@@ -9,9 +9,9 @@ on:
         default: '202401'
         type: string
       clear:
-        description: '기존 실거래 테이블 비우고 재적재'
+        description: '기존 실거래 테이블 비우고 재적재 (API 장애 시 자동 중단·비우지 않음)'
         required: true
-        default: true
+        default: false
         type: boolean
 
 jobs:

@@ -128,10 +128,14 @@ def text(item, tag):
     return el.text.strip() if el is not None and el.text else ''
 
 # ── API 조회 ──────────────────────────────────────────────
-MOLIT_TIMEOUT = 60
-MOLIT_RETRIES = 4
+MOLIT_TIMEOUT = 25
+MOLIT_RETRIES = 3
+# 연속 실패 시 조기 중단 (타임아웃으로 6시간 소모 방지)
+_api_fail_streak = 0
+API_FAIL_ABORT = 8
 
 def molit_fetch(service, lawd_cd, deal_ymd, page=1, rows=1000):
+    global _api_fail_streak
     base = f'https://apis.data.go.kr/1613000/{service[3:]}/{service}'
     params = urllib.parse.urlencode({
         'LAWD_CD': lawd_cd, 'DEAL_YMD': deal_ymd,
@@ -143,34 +147,55 @@ def molit_fetch(service, lawd_cd, deal_ymd, page=1, rows=1000):
     for attempt in range(1, MOLIT_RETRIES + 1):
         try:
             with urllib.request.urlopen(url, timeout=MOLIT_TIMEOUT) as r:
+                _api_fail_streak = 0
                 return r.read().decode('utf-8')
         except urllib.error.HTTPError as e:
             body = e.read().decode('utf-8', errors='ignore')[:200]
             print(f'  API HTTP 오류: {e.code} | {body}')
-            # 4xx는 재시도해도 동일할 가능성이 큼 (429는 대기)
             if e.code == 429:
                 time.sleep(min(30, 2 ** attempt))
                 last_err = e
                 continue
+            _api_fail_streak += 1
             return None
         except Exception as e:
             last_err = e
-            wait = min(45, 3 * attempt)
+            wait = min(20, 2 * attempt)
             print(f'  API 오류({attempt}/{MOLIT_RETRIES}): {e} → {wait}s 후 재시도')
             time.sleep(wait)
     print(f'  API 최종 실패: {last_err}')
+    _api_fail_streak += 1
     return None
 
+def molit_api_reachable():
+    """백필 전 국토부 API 생존 확인 (실패 시 clear 금지)."""
+    print('\n▶ 국토부 API 연결 확인…')
+    # 최근 월·제주시 아파트 1페이지
+    ym = datetime.now().strftime('%Y%m')
+    xml = molit_fetch('getRTMSDataSvcAptTrade', '50110', ym, page=1, rows=10)
+    if not xml:
+        # 한 달 전으로 한 번 더
+        d = datetime.now().replace(day=1) - timedelta(days=1)
+        xml = molit_fetch('getRTMSDataSvcAptTrade', '50110', d.strftime('%Y%m'), page=1, rows=10)
+    if xml and ('<item>' in xml or 'resultCode' in xml or 'resultMsg' in xml):
+        print('  ✓ 국토부 API 응답 OK')
+        return True
+    print('  ✗ 국토부 API 응답 없음 (타임아웃/장애)')
+    return False
+
 def molit_fetch_all(service, lawd_cd, deal_ymd):
+    global _api_fail_streak
     all_items, page = [], 1
     empty_retries = 0
     while True:
+        if _api_fail_streak >= API_FAIL_ABORT:
+            print(f'  ⚠ API 연속 실패 {_api_fail_streak}회 → 이 구간 중단')
+            break
         xml_str = molit_fetch(service, lawd_cd, deal_ymd, page)
         if not xml_str:
-            # 일시 장애면 같은 페이지 한 번 더
             empty_retries += 1
-            if empty_retries <= 2 and page == 1 and not all_items:
-                time.sleep(5)
+            if empty_retries <= 1 and page == 1 and not all_items:
+                time.sleep(3)
                 continue
             break
         empty_retries = 0
@@ -179,7 +204,6 @@ def molit_fetch_all(service, lawd_cd, deal_ymd):
         except ET.ParseError as e:
             print(f'  XML 파싱 오류: {e}')
             break
-        # API 에러코드 체크 (국토부 RTMS 성공 코드: 00 / 000 / 0)
         result_msg = root.findtext('.//resultMsg') or ''
         result_code = (root.findtext('.//resultCode') or '').strip()
         if result_code not in ('00', '000', '0', ''):
@@ -572,6 +596,7 @@ def safe_upload_by_month(table, month_rows_map, skip_delete=False):
 
 # ── 메인 ─────────────────────────────────────────────────
 def main():
+    global _api_fail_streak
     preflight()
 
     months, period_label = resolve_months()
@@ -583,8 +608,14 @@ def main():
     print(f'전체 초기화(--clear): {CLEAR_TABLES}')
     print(f'{"="*50}')
 
+    # clear 전에 API 생존 확인 — 장애 시 빈 DB로 두지 않음
+    if not molit_api_reachable():
+        print('\n❌ 국토부 API 장애로 백필을 중단합니다. 기존 DB를 유지하세요.')
+        print('   (--clear 요청이 있어도 테이블을 비우지 않습니다)')
+        sys.exit(2)
+
     if CLEAR_TABLES:
-        print('\n▶ 실거래 테이블 전체 삭제 (3년치만 재적재용)')
+        print('\n▶ 실거래 테이블 전체 삭제 (재적재용)')
         for t in TRADE_TABLES:
             sb_clear_table(t)
             time.sleep(0.3)
@@ -599,26 +630,43 @@ def main():
 
     for service, table, parser, _ in tasks:
         print(f'\n▶ {table}')
+        _api_fail_streak = 0
+        total_inserted = 0
+        consecutive_empty = 0
 
-        month_rows_map = {ym: [] for ym in months}
-
+        # 월 단위로 수집→지오코딩→업로드 (중간에 끊겨도 이미 넣은 월은 보존)
         for ym in months:
+            if _api_fail_streak >= API_FAIL_ABORT:
+                print(f'  ⚠ {table}: API 연속 실패로 남은 월 스킵')
+                break
+
+            month_rows = []
             for lawd_cd, sigungu in REGIONS:
                 items = molit_fetch_all(service, lawd_cd, ym)
                 rows = parser(items, sigungu)
                 print(f'  {sigungu} {ym[:4]}년 {ym[4:]}월 → {len(rows)}건')
-                month_rows_map[ym].extend(rows)
-                time.sleep(0.4)
+                month_rows.extend(rows)
+                time.sleep(0.35)
 
-        all_rows = [r for rows in month_rows_map.values() for r in rows]
-        if not all_rows:
-            print(f'  데이터 없음, 스킵')
-            continue
+            if not month_rows:
+                consecutive_empty += 1
+                # 빈 월은 DELETE 하지 않음 (clear 모드가 아닐 때 기존 유지)
+                if CLEAR_TABLES:
+                    # clear 후에는 빈 월도 그대로 두면 됨 (이미 전체 삭제됨)
+                    pass
+                if consecutive_empty >= 6 and _api_fail_streak >= 4:
+                    print(f'  ⚠ {table}: 연속 빈 결과+API 실패 → 테이블 중단')
+                    break
+                continue
 
-        geocode_all(all_rows)
+            consecutive_empty = 0
+            geocode_all(month_rows)
+            inserted = safe_upload_by_month(
+                table, {ym: month_rows}, skip_delete=CLEAR_TABLES
+            )
+            total_inserted += inserted
 
-        inserted = safe_upload_by_month(table, month_rows_map, skip_delete=CLEAR_TABLES)
-        print(f'  ✓ {table} 완료: 총 {inserted}건 삽입')
+        print(f'  ✓ {table} 완료: 총 {total_inserted}건 삽입')
 
     print(f'\n{"="*50}')
     print(f'✅ 업데이트 완료! ({datetime.now().strftime("%H:%M:%S")})')
