@@ -112,11 +112,13 @@ function getFilteredTrades() {
 }
 
 function clearTradeMarkers() {
-  tradeOverlays.forEach(o => o.setMap(null));
-  tradeOverlays = [];
+  tradeOverlays.forEach(function(o) { try { o.setMap(null); } catch(_){} });
+  tradeOverlays.length = 0;
+  renderTradeMarkers._token = (renderTradeMarkers._token || 0) + 1;
 }
 
 function renderTradeMarkers() {
+  clearTradeMarkers();
   const trades = getFilteredTrades();
   document.getElementById('trade-cnt-badge').textContent = trades.length;
 

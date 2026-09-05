@@ -21,8 +21,8 @@ function toggleBubble(btn) {
 }
 
 function clearBubbles() {
-  bubbleOverlays.forEach(o => o.setMap(null));
-  bubbleOverlays = [];
+  bubbleOverlays.forEach(function(o) { try { o.setMap(null); } catch(_){} });
+  bubbleOverlays.length = 0;
 }
 
 function getPeriodLabel() {
@@ -44,19 +44,23 @@ function getBubbleFilteredTrades() {
   else if (bubblePeriod === '6m')    cutoff.setMonth(now.getMonth() - 6);
   else if (bubblePeriod === '3m')    cutoff.setMonth(now.getMonth() - 3);
   else if (bubblePeriod === 'month') cutoff.setMonth(now.getMonth() - 1);
+  else if (bubblePeriod === 'week')  cutoff.setDate(now.getDate() - 7);
+  else return window.TRADE_DATA.slice();
   return window.TRADE_DATA.filter(t => t.date && new Date(t.date) >= cutoff);
 }
 
 function getBubblePeriodLabel() {
-  const labels = { year:'2026년', '6m':'최근 6개월', '3m':'최근 3개월', month:'최근 1개월' };
+  const labels = { year:'2026년', '6m':'최근 6개월', '3m':'최근 3개월', month:'최근 1개월', week:'최근 7일' };
   return labels[bubblePeriod] || '';
 }
 
-function renderBubbles() {
+function renderBubbles(prefiltered, periodLabelOverride) {
   clearBubbles();
-  const trades = getBubbleFilteredTrades();
-  const periodLabel = getBubblePeriodLabel();
+  // prefiltered가 있으면 그대로 사용 (타입별 월 필터 등). 없으면 레거시 TRADE_DATA 필터
+  const trades = Array.isArray(prefiltered) ? prefiltered : getBubbleFilteredTrades();
+  const periodLabel = periodLabelOverride || getBubblePeriodLabel();
   if (!trades.length) return;
+  if (typeof map === 'undefined' || !map) return;
 
   // sigungu+dong 기준 법정동별 집계
   const stats = {};

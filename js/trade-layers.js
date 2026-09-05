@@ -80,13 +80,19 @@ function _getFilteredForType(type) {
 }
 
 function clearTradeMarkersForType(type) {
-  (window._typeOverlays[type] || []).forEach(function(o) { o.setMap(null); });
-  window._typeOverlays[type] = [];
+  // 배열을 교체하지 않고 비움 — 진행 중 청크가 옛 배열에 마커를 쌓아 고아 마커가 되는 것 방지
+  if (!window._typeOverlays[type]) window._typeOverlays[type] = [];
+  var arr = window._typeOverlays[type];
+  arr.forEach(function(o) { try { o.setMap(null); } catch(_){} });
+  arr.length = 0;
+  // 진행 중 렌더 취소
+  if (!window._typeRenderToken) window._typeRenderToken = {};
+  window._typeRenderToken[type] = (window._typeRenderToken[type] || 0) + 1;
 }
 
 // ── 픽셀 거리 기반 클러스터링 ──────────────────────────
 function _clusterTrades(trades, gridPx) {
-  if (!window.map) return trades.map(function(t){ return { type:'single', trade:t }; });
+  if (!window.map && typeof map === 'undefined') return trades.map(function(t){ return { type:'single', trade:t }; });
   var proj = map.getProjection();
   var cells = {};
   trades.forEach(function(t) {
@@ -122,23 +128,26 @@ function renderTradeMarkersForType(type) {
   }
   statusEl.style.display = 'block';
 
+  if (!trades.length) { statusEl.style.display = 'none'; return; }
+  if (typeof map === 'undefined' || !map) { statusEl.style.display = 'none'; return; }
+
   // 줌 레벨 3 이하에서만 클러스터링 적용 (그 외는 개별 마커)
   var zoomLv = map.getLevel();
   var gridPx = zoomLv <= 3 ? 80 : 0;
   var items = gridPx > 0 ? _clusterTrades(trades, gridPx) : trades.map(function(t){ return { type:'single', trade:t }; });
 
   var CHUNK = 200, i = 0;
-  var token = ++renderTradeMarkersForType._token;
+  if (!window._typeRenderToken) window._typeRenderToken = {};
+  var token = ++window._typeRenderToken[type];
   var overlays = window._typeOverlays[type];
 
   function renderChunk() {
-    if (token !== renderTradeMarkersForType._token) { statusEl.style.display = 'none'; return; }
+    if (token !== window._typeRenderToken[type]) { statusEl.style.display = 'none'; return; }
     var end = Math.min(i + CHUNK, items.length);
     for (; i < end; i++) {
       var item = items[i];
       var el, ov;
       if (item.type === 'cluster') {
-        // 클러스터 마커
         var avgPrice = item.trades.reduce(function(s,t){return s+t.price;},0)/item.cnt;
         var bgColor = avgPrice < 3 ? '#2E7D32' : avgPrice < 6 ? '#E65100' : '#B71C1C';
         el = document.createElement('div');
@@ -153,7 +162,6 @@ function renderTradeMarkersForType(type) {
         }; })(item.lat, item.lng));
         ov = new kakao.maps.CustomOverlay({ position:new kakao.maps.LatLng(item.lat,item.lng), content:el, yAnchor:0.5, zIndex:4 });
       } else {
-        // 개별 마커
         var t = item.trade;
         if (!t.lat || !t.lng || !isInJeju(t.lat, t.lng)) continue;
         var cls = t.price < 3 ? 'price-low' : t.price < 6 ? 'price-mid' : 'price-high';
@@ -178,7 +186,6 @@ function renderTradeMarkersForType(type) {
   statusEl.textContent = meta.label + ' 마커 로딩…';
   setTimeout(renderChunk, 0);
 }
-renderTradeMarkersForType._token = 0;
 
 function renderTradeChartForType(type) {
   var meta = _typeMeta[type];
@@ -458,19 +465,28 @@ function _getBubbleFilteredForType(type) {
 }
 
 function _renderCombinedBubbles() {
+  // 실거래 OFF인 타입의 고아 마커 정리
+  ['apt','house','rht','comm'].forEach(function(t) {
+    if (!window._typeState[t].visible) clearTradeMarkersForType(t);
+  });
   clearBubbles();
   var anyBubble = ['apt','house','rht','comm'].some(function(t){return window._typeState[t].bubbleVisible;});
   if (!anyBubble) return;
   var merged = [];
+  var labelParts = [];
   ['apt','house','rht','comm'].forEach(function(type) {
     if (!window._typeState[type].bubbleVisible) return;
     merged = merged.concat(_getBubbleFilteredForType(type));
+    var st = window._typeState[type];
+    if (st.bubblePeriod === 'pick' && st.bubbleMonth && st.bubbleMonth !== 'all') {
+      labelParts.push(st.bubbleMonth.slice(0,4) + '년 ' + parseInt(st.bubbleMonth.slice(4), 10) + '월');
+    } else if (st.bubblePeriod === 'week') labelParts.push('최근 7일');
+    else if (st.bubblePeriod === 'month') labelParts.push('최근 30일');
+    else labelParts.push(new Date().getFullYear() + '년');
   });
-  var orig = window.TRADE_DATA;
-  window.TRADE_DATA = merged;
-  if (typeof renderBubbles === 'function') renderBubbles();
-  window.TRADE_DATA = orig;
-  // 타입별 버블 건수 배지 업데이트
+  var periodLabel = labelParts[0] || '';
+  // 이미 기간 필터된 merged를 그대로 그림 (구 bubblePeriod로 재필터하지 않음)
+  if (typeof renderBubbles === 'function') renderBubbles(merged, periodLabel);
   ['apt','house','rht','comm'].forEach(function(t) {
     var bb = document.getElementById('bubble-badge-' + t);
     if (!bb) return;
