@@ -289,10 +289,14 @@ def sb_clear_table(table):
 
 def sb_delete_month(table, ym):
     """단일 월 데이터 삭제. 성공/대상없음이면 True."""
-    y, m = ym[:4], ym[4:]
-    prefix = f'{y}-{m}'
-    # PostgREST like 와일드카드는 * 또는 % (URL 인코딩 %25)
-    url = f'{SUPABASE_URL}/rest/v1/{table}?date=like.{prefix}%25'
+    y, m = int(ym[:4]), int(ym[4:])
+    start = f'{y}-{m:02d}-01'
+    if m == 12:
+        end = f'{y + 1}-01-01'
+    else:
+        end = f'{y}-{m + 1:02d}-01'
+    # date 컬럼이 DATE 타입일 수 있어 like 대신 범위 삭제
+    url = f'{SUPABASE_URL}/rest/v1/{table}?date=gte.{start}&date=lt.{end}'
     req = urllib.request.Request(url, method='DELETE', headers=SUPABASE_HEADERS)
     try:
         with urllib.request.urlopen(req, timeout=60):
@@ -301,10 +305,11 @@ def sb_delete_month(table, ym):
         # 404 = 매칭 행 없음 → 삭제할 것 없음 (성공으로 간주)
         if e.code in (404, 204):
             return True
-        print(f'  [경고] DELETE 실패 ({table}, {prefix}): HTTP Error {e.code}')
+        body = e.read().decode('utf-8', errors='ignore')[:200]
+        print(f'  [경고] DELETE 실패 ({table}, {start}): HTTP Error {e.code} | {body}')
         return False
     except Exception as e:
-        print(f'  [경고] DELETE 실패 ({table}, {prefix}): {e}')
+        print(f'  [경고] DELETE 실패 ({table}, {start}): {e}')
         return False
 
 def sb_insert(table, rows, batch=400):
@@ -641,11 +646,16 @@ def _coord_key(r):
 
 def load_month_coords(table, ym):
     """기존 월 데이터의 lat/lng를 키로 로드 (재지오코딩 생략용)."""
-    y, m = ym[:4], ym[4:]
-    prefix = f'{y}-{m}'
+    y, m = int(ym[:4]), int(ym[4:])
+    start = f'{y}-{m:02d}-01'
+    if m == 12:
+        end = f'{y + 1}-01-01'
+    else:
+        end = f'{y}-{m + 1:02d}-01'
     url = (
         f'{SUPABASE_URL}/rest/v1/{table}'
-        f'?select=date,dong,jibun,area,price,lat,lng&date=like.{prefix}%25&lat=not.is.null'
+        f'?select=date,dong,jibun,area,price,lat,lng'
+        f'&date=gte.{start}&date=lt.{end}&lat=not.is.null'
     )
     req = urllib.request.Request(url, headers={
         'apikey': SUPABASE_KEY,
@@ -658,9 +668,13 @@ def load_month_coords(table, ym):
         for row in rows:
             if row.get('lat') is None or row.get('lng') is None:
                 continue
+            # date가 DATE면 ISO 문자열일 수 있음
+            if row.get('date') and len(str(row['date'])) > 10:
+                row = dict(row)
+                row['date'] = str(row['date'])[:10]
             out[_coord_key(row)] = (row['lat'], row['lng'])
     except Exception as e:
-        print(f'  [경고] 기존 좌표 로드 실패 ({table}, {prefix}): {e}')
+        print(f'  [경고] 기존 좌표 로드 실패 ({table}, {start}): {e}')
     return out
 
 def reuse_coords(table, ym, rows):

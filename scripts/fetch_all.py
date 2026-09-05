@@ -121,18 +121,22 @@ def molit_fetch_all(service, lawd_cd, deal_ymd):
 
 # ── Supabase 업로드 ──────────────────────────────────────
 def sb_delete_by_months(table, months):
-    """특정 월 데이터 삭제 (date like '2025-01%' OR ...)"""
+    """특정 월 데이터 삭제 (date 범위). DATE 타입 호환."""
     import urllib.request
     for ym in months:
-        y, m = ym[:4], ym[4:]
-        prefix = f'{y}-{m}'
-        url = f'{SUPABASE_URL}/rest/v1/{table}?date=like.{prefix}%25'
+        y, m = int(ym[:4]), int(ym[4:])
+        start = f'{y}-{m:02d}-01'
+        if m == 12:
+            end = f'{y + 1}-01-01'
+        else:
+            end = f'{y}-{m + 1:02d}-01'
+        url = f'{SUPABASE_URL}/rest/v1/{table}?date=gte.{start}&date=lt.{end}'
         req = urllib.request.Request(url, method='DELETE', headers=SUPABASE_HEADERS)
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
                 pass
         except Exception as e:
-            print(f'  삭제 오류 ({table}, {prefix}): {e}')
+            print(f'  삭제 오류 ({table}, {start}): {e}')
     time.sleep(0.3)
 
 def sb_insert(table, rows, batch=400):
