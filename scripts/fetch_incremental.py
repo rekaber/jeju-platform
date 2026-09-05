@@ -5,6 +5,7 @@
 - --from YYYYMM: 해당 월부터 당월까지 수집 (예: --from 202401 → 2024-01~오늘)
 - --clear: 실거래 테이블 전체 비운 뒤 수집 (--only 지정 시 해당 테이블만)
 - --only TABLE[,TABLE...]: 지정 테이블만 수집 (예: --only land_trades)
+- --skip-geocode: 기존 DB lat/lng 재사용 (지목 등 필드만 갱신할 때)
 - 지오코딩: 지번주소 우선 → 도로명 → 단지명 키워드
 - 필수 환경변수: MOLIT_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY, KAKAO_REST_KEY
 
@@ -12,7 +13,7 @@
   python scripts/fetch_incremental.py
   python scripts/fetch_incremental.py --months 1
   python scripts/fetch_incremental.py --from 202401 --clear
-  python scripts/fetch_incremental.py --from 202401 --only land_trades --force
+  python scripts/fetch_incremental.py --from 202401 --only land_trades --skip-geocode --force
 """
 
 import os, sys, time, json, urllib.request, urllib.parse
@@ -25,6 +26,7 @@ FROM_YM = None   # --from 202401
 CLEAR_TABLES = False
 FORCE_RUN = False  # --force: API 사전점검 실패해도 계속
 ONLY_TABLES = None  # --only land_trades,comm_trades
+SKIP_GEOCODE = False  # --skip-geocode: 기존 lat/lng 재사용(신규 주소만 null)
 args = sys.argv[1:]
 for i, arg in enumerate(args):
     if arg == '--months' and i + 1 < len(args):
@@ -45,6 +47,8 @@ for i, arg in enumerate(args):
         CLEAR_TABLES = True
     elif arg == '--force':
         FORCE_RUN = True
+    elif arg == '--skip-geocode':
+        SKIP_GEOCODE = True
 
 # ── 설정 ─────────────────────────────────────────────────
 MOLIT_KEY      = os.environ.get('MOLIT_API_KEY', '')
@@ -482,7 +486,7 @@ def parse_rht(items, sigungu):
 
 def parse_land(items, sigungu):
     rows = []
-    for it in items:
+    for idx, it in enumerate(items):
         년 = text_any(it, '년', 'dealYear')
         월 = text_any(it, '월', 'dealMonth')
         일 = text_any(it, '일', 'dealDay')
@@ -497,13 +501,19 @@ def parse_land(items, sigungu):
         jibun = text_any(it, '지번', 'jibun')
         jibun_addr = f"{sigungu} {dong} {jibun}" if jibun else f"{sigungu} {dong}"
         # 신 API(apis.data.go.kr)는 영문 태그: jimok / landUse / shareDealingType
+        jimok = text_any(it, '지목', 'jimok', 'lndcgrCodeNm')
+        yongdo = text_any(it, '용도지역', 'landUse', 'zoning')
+        if idx == 0 and not hasattr(parse_land, '_dumped'):
+            parse_land._dumped = True
+            tags = [(c.tag, (c.text or '')[:40]) for c in list(it)]
+            print(f'  [진단] land item tags ({sigungu}): {tags}')
         rows.append({
             'addr':       jibun_addr,
             'sigungu':    sigungu,
             'dong':       dong,
             'jibun':      jibun,
-            'jimok':      text_any(it, '지목', 'jimok', 'lndcgrCodeNm'),
-            'yongdo':     text_any(it, '용도지역', 'landUse', 'zoning'),
+            'jimok':      jimok,
+            'yongdo':     yongdo,
             'doro':       text_any(it, '도로명', 'roadNm'),
             'area':       area,
             'price':      price,
@@ -620,6 +630,50 @@ def geocode_all(rows):
         time.sleep(0.03)
     print(f'  지오코딩 완료: {ok}/{len(todo)}건 성공')
 
+def _coord_key(r):
+    return (
+        r.get('date') or '',
+        r.get('dong') or '',
+        r.get('jibun') or '',
+        str(r.get('area') if r.get('area') is not None else ''),
+        str(r.get('price') if r.get('price') is not None else ''),
+    )
+
+def load_month_coords(table, ym):
+    """기존 월 데이터의 lat/lng를 키로 로드 (재지오코딩 생략용)."""
+    y, m = ym[:4], ym[4:]
+    prefix = f'{y}-{m}'
+    url = (
+        f'{SUPABASE_URL}/rest/v1/{table}'
+        f'?select=date,dong,jibun,area,price,lat,lng&date=like.{prefix}%25&lat=not.is.null'
+    )
+    req = urllib.request.Request(url, headers={
+        'apikey': SUPABASE_KEY,
+        'Authorization': f'Bearer {SUPABASE_KEY}',
+    })
+    out = {}
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            rows = json.loads(r.read().decode())
+        for row in rows:
+            if row.get('lat') is None or row.get('lng') is None:
+                continue
+            out[_coord_key(row)] = (row['lat'], row['lng'])
+    except Exception as e:
+        print(f'  [경고] 기존 좌표 로드 실패 ({table}, {prefix}): {e}')
+    return out
+
+def reuse_coords(table, ym, rows):
+    coords = load_month_coords(table, ym)
+    hit = 0
+    for r in rows:
+        c = coords.get(_coord_key(r))
+        if c:
+            r['lat'], r['lng'] = c
+            hit += 1
+    print(f'  좌표 재사용: {hit}/{len(rows)}건 (기존 맵 {len(coords)}건)')
+    return hit
+
 # ── 월별 안전 업로드 (핵심 로직) ─────────────────────────
 def safe_upload_by_month(table, month_rows_map, skip_delete=False):
     """
@@ -662,6 +716,7 @@ def main():
     print(f'지역: {[r[1] for r in REGIONS]}')
     print(f'전체 초기화(--clear): {CLEAR_TABLES}')
     print(f'대상 테이블(--only): {sorted(ONLY_TABLES) if ONLY_TABLES else "전체"}')
+    print(f'지오코딩 생략(--skip-geocode): {SKIP_GEOCODE}')
     print(f'{"="*50}')
 
     # API 사전점검
@@ -738,7 +793,16 @@ def main():
                 continue
 
             consecutive_empty = 0
-            geocode_all(month_rows)
+            if SKIP_GEOCODE:
+                reuse_coords(table, ym, month_rows)
+            else:
+                geocode_all(month_rows)
+            # land_trades 지목 누락 진단 (첫 월 1회)
+            if table == 'land_trades' and month_rows and ym == months[0]:
+                with_j = sum(1 for r in month_rows if r.get('jimok'))
+                print(f'  [진단] jimok 채움 {with_j}/{len(month_rows)}건')
+                if with_j == 0:
+                    print('  [진단] 지목 전무 — API 태그명 확인 필요')
             inserted = safe_upload_by_month(
                 table, {ym: month_rows}, skip_delete=CLEAR_TABLES
             )

@@ -18,6 +18,11 @@ on:
         required: false
         default: ''
         type: string
+      skip_geocode:
+        description: '지오코딩 생략(기존 lat/lng 재사용). 필드만 고칠 때 권장'
+        required: true
+        default: false
+        type: boolean
 
 jobs:
   backfill:
@@ -51,6 +56,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
+          PYTHONUNBUFFERED: '1'
         run: |
           FROM_YM="${{ github.event.inputs.from_ym }}"
           CLEAR_FLAG=""
@@ -62,6 +68,9 @@ jobs:
           if [ -n "$ONLY_VAL" ]; then
             ONLY_FLAG="--only $ONLY_VAL"
           fi
-          echo "Backfill from=$FROM_YM clear=$CLEAR_FLAG only=$ONLY_VAL"
-          # DB가 비어 있으면 API 점검 실패해도 계속 (--force)
-          python scripts/fetch_incremental.py --from "$FROM_YM" $CLEAR_FLAG $ONLY_FLAG --force
+          SKIP_FLAG=""
+          if [ "${{ github.event.inputs.skip_geocode }}" = "true" ]; then
+            SKIP_FLAG="--skip-geocode"
+          fi
+          echo "Backfill from=$FROM_YM clear=$CLEAR_FLAG only=$ONLY_VAL skip=$SKIP_FLAG"
+          python scripts/fetch_incremental.py --from "$FROM_YM" $CLEAR_FLAG $ONLY_FLAG $SKIP_FLAG --force
