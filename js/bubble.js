@@ -166,7 +166,8 @@ function toggleLandBubble(btn) {
     var wrap = document.getElementById('land-bubble-period-wrap');
     if (wrap) {
       wrap.querySelectorAll('.trade-filter-btn').forEach(function(b) {
-        b.classList.toggle('active', (b.getAttribute('onclick') || '').indexOf(",'week',") >= 0);
+        var oc = b.getAttribute('onclick') || '';
+        b.classList.toggle('active', oc.indexOf("'week'") >= 0);
       });
     }
     var picker = document.getElementById('land-bubble-month-picker');

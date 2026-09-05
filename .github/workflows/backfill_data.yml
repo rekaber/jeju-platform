@@ -13,6 +13,11 @@ on:
         required: true
         default: false
         type: boolean
+      only:
+        description: '특정 테이블만 (쉼표구분, 비우면 전체). 예: land_trades'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   backfill:
@@ -52,6 +57,11 @@ jobs:
           if [ "${{ github.event.inputs.clear }}" = "true" ]; then
             CLEAR_FLAG="--clear"
           fi
-          echo "Backfill from=$FROM_YM clear=$CLEAR_FLAG"
+          ONLY_FLAG=""
+          ONLY_VAL="${{ github.event.inputs.only }}"
+          if [ -n "$ONLY_VAL" ]; then
+            ONLY_FLAG="--only $ONLY_VAL"
+          fi
+          echo "Backfill from=$FROM_YM clear=$CLEAR_FLAG only=$ONLY_VAL"
           # DB가 비어 있으면 API 점검 실패해도 계속 (--force)
-          python scripts/fetch_incremental.py --from "$FROM_YM" $CLEAR_FLAG --force
+          python scripts/fetch_incremental.py --from "$FROM_YM" $CLEAR_FLAG $ONLY_FLAG --force

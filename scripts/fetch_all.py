@@ -64,6 +64,13 @@ def text(item, tag):
     el = item.find(tag)
     return el.text.strip() if el is not None and el.text else ''
 
+def text_any(item, *tags):
+    for tag in tags:
+        v = text(item, tag)
+        if v:
+            return v
+    return ''
+
 def molit_fetch(service, lawd_cd, deal_ymd, page=1, rows=1000):
     """국토교통부 API 단일 페이지 조회"""
     base = f'https://apis.data.go.kr/1613000/{service[3:]}/{service}'
@@ -305,18 +312,18 @@ def parse_rht(items, sigungu):
 def parse_land(items, sigungu):
     rows = []
     for it in items:
-        년 = text(it, '년') or text(it, 'dealYear')
-        월 = text(it, '월') or text(it, 'dealMonth')
-        일 = text(it, '일') or text(it, 'dealDay')
+        년 = text_any(it, '년', 'dealYear')
+        월 = text_any(it, '월', 'dealMonth')
+        일 = text_any(it, '일', 'dealDay')
         if not (년 and 월 and 일): continue
         area = None
         for tag in ['거래면적', '면적', '토지면적', 'landAr', 'dealArea', 'officialLandPriceAr']:
             v = float_or_none(text(it, tag))
             if v: area = v; break
-        price = price_eok(text(it, '거래금액') or text(it, 'dealAmount'))
+        price = price_eok(text_any(it, '거래금액', 'dealAmount'))
         per_m2 = round(price * 10000 / area, 1) if price and area else None  # 만원/m²
-        dong  = text(it, '법정동')
-        jibun = text(it, '지번')
+        dong  = text_any(it, '법정동', 'umdNm')
+        jibun = text_any(it, '지번', 'jibun')
         # 지번이 "123-4" 형태로 이미 있음 → 가장 정확한 주소
         jibun_addr = f"{sigungu} {dong} {jibun}" if jibun else f"{sigungu} {dong}"
         geo_addrs = [a for a in [jibun_addr, f"{sigungu} {dong}"] if a]
@@ -325,15 +332,15 @@ def parse_land(items, sigungu):
             'sigungu':    sigungu,
             'dong':       dong,
             'jibun':      jibun,
-            'jimok':      text(it, '지목') or text(it, 'lndcgrCodeNm'),
-            'yongdo':     text(it, '용도지역') or text(it, 'zoning'),
-            'doro':       text(it, '도로명'),
+            'jimok':      text_any(it, '지목', 'jimok', 'lndcgrCodeNm'),
+            'yongdo':     text_any(it, '용도지역', 'landUse', 'zoning'),
+            'doro':       text_any(it, '도로명', 'roadNm'),
             'area':       area,
             'price':      price,
             'per_m2':     per_m2,
             'date':       f'{년}-{int(월):02d}-{int(일):02d}',
-            'jibun_type': text(it, '지분거래구분'),
-            'trade_type': text(it, '거래유형'),
+            'jibun_type': text_any(it, '지분거래구분', '구분', 'shareDealingType'),
+            'trade_type': text_any(it, '거래유형', 'dealingGbn'),
             'lat':        None, 'lng': None,
             '_geo_addrs': geo_addrs,
         })

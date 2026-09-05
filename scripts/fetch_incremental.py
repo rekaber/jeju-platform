@@ -3,7 +3,8 @@
 - 기본: 최근 3개월 DELETE→INSERT
 - --months N: 최근 N개월 수집
 - --from YYYYMM: 해당 월부터 당월까지 수집 (예: --from 202401 → 2024-01~오늘)
-- --clear: 실거래 테이블 전체 비운 뒤 수집
+- --clear: 실거래 테이블 전체 비운 뒤 수집 (--only 지정 시 해당 테이블만)
+- --only TABLE[,TABLE...]: 지정 테이블만 수집 (예: --only land_trades)
 - 지오코딩: 지번주소 우선 → 도로명 → 단지명 키워드
 - 필수 환경변수: MOLIT_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY, KAKAO_REST_KEY
 
@@ -11,6 +12,7 @@
   python scripts/fetch_incremental.py
   python scripts/fetch_incremental.py --months 1
   python scripts/fetch_incremental.py --from 202401 --clear
+  python scripts/fetch_incremental.py --from 202401 --only land_trades --force
 """
 
 import os, sys, time, json, urllib.request, urllib.parse
@@ -22,6 +24,7 @@ MONTHS_BACK = 3  # 기본값: 최근 3개월 (--from 없을 때)
 FROM_YM = None   # --from 202401
 CLEAR_TABLES = False
 FORCE_RUN = False  # --force: API 사전점검 실패해도 계속
+ONLY_TABLES = None  # --only land_trades,comm_trades
 args = sys.argv[1:]
 for i, arg in enumerate(args):
     if arg == '--months' and i + 1 < len(args):
@@ -36,6 +39,8 @@ for i, arg in enumerate(args):
         else:
             print(f'[ERROR] --from 형식은 YYYYMM 입니다: {args[i + 1]}')
             sys.exit(1)
+    elif arg == '--only' and i + 1 < len(args):
+        ONLY_TABLES = {t.strip() for t in args[i + 1].split(',') if t.strip()}
     elif arg == '--clear':
         CLEAR_TABLES = True
     elif arg == '--force':
@@ -129,6 +134,13 @@ def int_or_none(s):
 def text(item, tag):
     el = item.find(tag)
     return el.text.strip() if el is not None and el.text else ''
+
+def text_any(item, *tags):
+    for tag in tags:
+        v = text(item, tag)
+        if v:
+            return v
+    return ''
 
 # ── API 조회 ──────────────────────────────────────────────
 MOLIT_TIMEOUT = 45
@@ -471,33 +483,34 @@ def parse_rht(items, sigungu):
 def parse_land(items, sigungu):
     rows = []
     for it in items:
-        년 = text(it, '년') or text(it, 'dealYear')
-        월 = text(it, '월') or text(it, 'dealMonth')
-        일 = text(it, '일') or text(it, 'dealDay')
+        년 = text_any(it, '년', 'dealYear')
+        월 = text_any(it, '월', 'dealMonth')
+        일 = text_any(it, '일', 'dealDay')
         if not (년 and 월 and 일): continue
         area = None
         for tag in ['거래면적', '면적', '토지면적', 'landAr', 'dealArea', 'officialLandPriceAr']:
             v = float_or_none(text(it, tag))
             if v: area = v; break
-        price = price_eok(text(it, '거래금액') or text(it, 'dealAmount'))
+        price = price_eok(text_any(it, '거래금액', 'dealAmount'))
         per_m2 = round(price * 10000 / area, 1) if price and area else None  # 만원/㎡
-        dong  = text(it, '법정동') or text(it, 'umdNm')
-        jibun = text(it, '지번') or text(it, 'jibun')
+        dong  = text_any(it, '법정동', 'umdNm')
+        jibun = text_any(it, '지번', 'jibun')
         jibun_addr = f"{sigungu} {dong} {jibun}" if jibun else f"{sigungu} {dong}"
+        # 신 API(apis.data.go.kr)는 영문 태그: jimok / landUse / shareDealingType
         rows.append({
             'addr':       jibun_addr,
             'sigungu':    sigungu,
             'dong':       dong,
             'jibun':      jibun,
-            'jimok':      text(it, '지목') or text(it, 'lndcgrCodeNm'),
-            'yongdo':     text(it, '용도지역') or text(it, 'zoning'),
-            'doro':       text(it, '도로명') or text(it, 'roadNm'),
+            'jimok':      text_any(it, '지목', 'jimok', 'lndcgrCodeNm'),
+            'yongdo':     text_any(it, '용도지역', 'landUse', 'zoning'),
+            'doro':       text_any(it, '도로명', 'roadNm'),
             'area':       area,
             'price':      price,
             'per_m2':     per_m2,
             'date':       f'{년}-{int(월):02d}-{int(일):02d}',
-            'jibun_type': text(it, '지분거래구분'),
-            'trade_type': text(it, '거래유형'),
+            'jibun_type': text_any(it, '지분거래구분', '구분', 'shareDealingType'),
+            'trade_type': text_any(it, '거래유형', 'dealingGbn'),
             'lat': None, 'lng': None,
             '_geo_addrs': [a for a in [jibun_addr, f"{sigungu} {dong}"] if a],
         })
@@ -648,6 +661,7 @@ def main():
     print(f'처리 기간: {period_label}')
     print(f'지역: {[r[1] for r in REGIONS]}')
     print(f'전체 초기화(--clear): {CLEAR_TABLES}')
+    print(f'대상 테이블(--only): {sorted(ONLY_TABLES) if ONLY_TABLES else "전체"}')
     print(f'{"="*50}')
 
     # API 사전점검
@@ -670,12 +684,6 @@ def main():
             print('\n⚠ 국토부 API가 불안정하지만 DB가 비어 있어 수집을 계속 시도합니다.')
             time.sleep(10)
 
-    if CLEAR_TABLES:
-        print('\n▶ 실거래 테이블 전체 삭제 (재적재용)')
-        for t in TRADE_TABLES:
-            sb_clear_table(t)
-            time.sleep(0.3)
-
     tasks = [
         ('getRTMSDataSvcAptTrade',  'apt_trades',   parse_apt,   'roadaddr'),
         ('getRTMSDataSvcSHTrade',   'house_trades',  parse_house, 'addr'),
@@ -683,6 +691,20 @@ def main():
         ('getRTMSDataSvcLandTrade', 'land_trades',   parse_land,  'addr'),
         ('getRTMSDataSvcNrgTrade',  'comm_trades',   parse_comm,  'roadaddr'),
     ]
+    if ONLY_TABLES:
+        unknown = ONLY_TABLES - {t[1] for t in tasks}
+        if unknown:
+            print(f'[ERROR] 알 수 없는 --only 테이블: {sorted(unknown)}')
+            print(f'  가능: {[t[1] for t in tasks]}')
+            sys.exit(1)
+        tasks = [t for t in tasks if t[1] in ONLY_TABLES]
+
+    if CLEAR_TABLES:
+        clear_targets = [t[1] for t in tasks] if ONLY_TABLES else list(TRADE_TABLES)
+        print(f'\n▶ 실거래 테이블 삭제 (재적재용): {clear_targets}')
+        for t in clear_targets:
+            sb_clear_table(t)
+            time.sleep(0.3)
 
     for service, table, parser, _ in tasks:
         print(f'\n▶ {table}')
