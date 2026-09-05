@@ -237,14 +237,21 @@ def sb_clear_table(table):
         return False
 
 def sb_delete_month(table, ym):
-    """단일 월 데이터 삭제. 성공 여부 반환."""
+    """단일 월 데이터 삭제. 성공/대상없음이면 True."""
     y, m = ym[:4], ym[4:]
     prefix = f'{y}-{m}'
-    url = f'{SUPABASE_URL}/rest/v1/{table}?date=like.{prefix}*'
+    # PostgREST like 와일드카드는 * 또는 % (URL 인코딩 %25)
+    url = f'{SUPABASE_URL}/rest/v1/{table}?date=like.{prefix}%25'
     req = urllib.request.Request(url, method='DELETE', headers=SUPABASE_HEADERS)
     try:
         with urllib.request.urlopen(req, timeout=60):
             return True
+    except urllib.error.HTTPError as e:
+        # 404 = 매칭 행 없음 → 삭제할 것 없음 (성공으로 간주)
+        if e.code in (404, 204):
+            return True
+        print(f'  [경고] DELETE 실패 ({table}, {prefix}): HTTP Error {e.code}')
+        return False
     except Exception as e:
         print(f'  [경고] DELETE 실패 ({table}, {prefix}): {e}')
         return False
@@ -580,8 +587,8 @@ def safe_upload_by_month(table, month_rows_map, skip_delete=False):
         if not skip_delete:
             del_ok = sb_delete_month(table, ym)
             if not del_ok:
-                print(f'  [{table}] {date_prefix} DELETE 실패 → 이 월 스킵 (기존 데이터 보존)')
-                continue
+                # DELETE 실패해도 INSERT는 시도 (빈 테이블 404로 데이터 유실 방지)
+                print(f'  [{table}] {date_prefix} DELETE 경고 → INSERT는 계속 진행')
 
         if rows:
             inserted = sb_insert(table, rows)
