@@ -94,7 +94,8 @@
         </div>
         <div id="trade-month-picker-apt" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
           <div style="display:flex;flex-wrap:wrap;gap:3px;">
-            <button class="tmp-btn active" onclick="setTradeTypeMonth('apt','all',this)">전체</button>            <span id="trade-month-btns-apt"></span>
+            <button class="tmp-btn active" onclick="setTradeTypeMonth('apt','all',this)">전체</button>
+            <span id="trade-month-btns-apt"></span>
           </div>
         </div>
         <div style="padding:0 6px 2px 25px;font-size:10px;color:#999;">
@@ -119,11 +120,12 @@
             <button class="trade-filter-btn active" onclick="setBubblePeriodForType('apt','week',this)">주간</button>
             <button class="trade-filter-btn" onclick="setBubblePeriodForType('apt','month',this)">월간</button>
             <button class="trade-filter-btn" onclick="setBubblePeriodForType('apt','year',this)">연간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('apt','pick',this)">월선택</button>
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('apt','pick',this)">월 선택</button>
           </div>
           <div id="bubble-month-picker-apt" style="display:none;">
             <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">
-              <button class="tmp-btn active" onclick="setBubbleMonthForType('apt','all',this)">전체</button>      <span id="bubble-month-btns-apt"></span>
+              <button class="tmp-btn active" onclick="setBubbleMonthForType('apt','all',this)">전체</button>
+              <span id="bubble-month-btns-apt"></span>
             </div>
           </div>
         </div>
@@ -147,7 +149,8 @@
         </div>
         <div id="trade-month-picker-house" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
           <div style="display:flex;flex-wrap:wrap;gap:3px;">
-            <button class="tmp-btn active" onclick="setTradeTypeMonth('house','all',this)">전체</button>            <span id="trade-month-btns-house"></span>
+            <button class="tmp-btn active" onclick="setTradeTypeMonth('house','all',this)">전체</button>
+            <span id="trade-month-btns-house"></span>
           </div>
         </div>
         <div style="padding:0 6px 2px 25px;font-size:10px;color:#999;">
@@ -156,7 +159,10 @@
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#E53935;margin:0 3px 0 8px;"></span>6억+
         </div>
         <div id="trade-chart-wrap-house" style="display:none;">
-          <div class="tc-title"><span>📈 평당가 (중앙값)</span><button class="tc-detail-btn" onclick="openStatModalForType('house')">📊 통계 분석</button></div>
+          <div class="tc-title">
+            <span>📈 평당가 (중앙값)</span>
+            <button class="tc-detail-btn" onclick="openStatModalForType('house')">📊 통계 분석</button>
+          </div>
           <svg id="trade-chart-svg-house" viewBox="0 0 228 90" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
         <div class="layer-item" style="margin-top:2px;">
@@ -169,11 +175,12 @@
             <button class="trade-filter-btn active" onclick="setBubblePeriodForType('house','week',this)">주간</button>
             <button class="trade-filter-btn" onclick="setBubblePeriodForType('house','month',this)">월간</button>
             <button class="trade-filter-btn" onclick="setBubblePeriodForType('house','year',this)">연간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('house','pick',this)">월선택</button>
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('house','pick',this)">월 선택</button>
           </div>
           <div id="bubble-month-picker-house" style="display:none;">
             <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">
-              <button class="tmp-btn active" onclick="setBubbleMonthForType('house','all',this)">전체</button>      <span id="bubble-month-btns-house"></span>
+              <button class="tmp-btn active" onclick="setBubbleMonthForType('house','all',this)">전체</button>
+              <span id="bubble-month-btns-house"></span>
             </div>
           </div>
         </div>
@@ -197,7 +204,8 @@
         </div>
         <div id="trade-month-picker-rht" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
           <div style="display:flex;flex-wrap:wrap;gap:3px;">
-            <button class="tmp-btn active" onclick="setTradeTypeMonth('rht','all',this)">전체</button>            <span id="trade-month-btns-rht"></span>
+            <button class="tmp-btn active" onclick="setTradeTypeMonth('rht','all',this)">전체</button>
+            <span id="trade-month-btns-rht"></span>
           </div>
         </div>
         <div style="padding:0 6px 2px 25px;font-size:10px;color:#999;">
@@ -206,7 +214,10 @@
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#E53935;margin:0 3px 0 8px;"></span>6억+
         </div>
         <div id="trade-chart-wrap-rht" style="display:none;">
-          <div class="tc-title"><span>📈 평당가 (중앙값)</span><button class="tc-detail-btn" onclick="openStatModalForType('rht')">📊 통계 분석</button></div>
+          <div class="tc-title">
+            <span>📈 평당가 (중앙값)</span>
+            <button class="tc-detail-btn" onclick="openStatModalForType('rht')">📊 통계 분석</button>
+          </div>
           <svg id="trade-chart-svg-rht" viewBox="0 0 228 90" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
         <div class="layer-item" style="margin-top:2px;">
@@ -219,11 +230,12 @@
             <button class="trade-filter-btn active" onclick="setBubblePeriodForType('rht','week',this)">주간</button>
             <button class="trade-filter-btn" onclick="setBubblePeriodForType('rht','month',this)">월간</button>
             <button class="trade-filter-btn" onclick="setBubblePeriodForType('rht','year',this)">연간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('rht','pick',this)">월선택</button>
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('rht','pick',this)">월 선택</button>
           </div>
           <div id="bubble-month-picker-rht" style="display:none;">
             <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">
-              <button class="tmp-btn active" onclick="setBubbleMonthForType('rht','all',this)">전체</button>      <span id="bubble-month-btns-rht"></span>
+              <button class="tmp-btn active" onclick="setBubbleMonthForType('rht','all',this)">전체</button>
+              <span id="bubble-month-btns-rht"></span>
             </div>
           </div>
         </div>
@@ -247,7 +259,8 @@
         </div>
         <div id="trade-month-picker-comm" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
           <div style="display:flex;flex-wrap:wrap;gap:3px;">
-            <button class="tmp-btn active" onclick="setTradeTypeMonth('comm','all',this)">전체</button>            <span id="trade-month-btns-comm"></span>
+            <button class="tmp-btn active" onclick="setTradeTypeMonth('comm','all',this)">전체</button>
+            <span id="trade-month-btns-comm"></span>
           </div>
         </div>
         <div style="padding:0 6px 2px 25px;font-size:10px;color:#999;">
@@ -256,7 +269,10 @@
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#E53935;margin:0 3px 0 8px;"></span>6억+
         </div>
         <div id="trade-chart-wrap-comm" style="display:none;">
-          <div class="tc-title"><span>📈 평당가 (중앙값)</span><button class="tc-detail-btn" onclick="openStatModalForType('comm')">📊 통계 분석</button></div>
+          <div class="tc-title">
+            <span>📈 평당가 (중앙값)</span>
+            <button class="tc-detail-btn" onclick="openStatModalForType('comm')">📊 통계 분석</button>
+          </div>
           <svg id="trade-chart-svg-comm" viewBox="0 0 228 90" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
         <div class="layer-item" style="margin-top:2px;">
@@ -269,11 +285,12 @@
             <button class="trade-filter-btn active" onclick="setBubblePeriodForType('comm','week',this)">주간</button>
             <button class="trade-filter-btn" onclick="setBubblePeriodForType('comm','month',this)">월간</button>
             <button class="trade-filter-btn" onclick="setBubblePeriodForType('comm','year',this)">연간</button>
-            <button class="trade-filter-btn" onclick="setBubblePeriodForType('comm','pick',this)">월선택</button>
+            <button class="trade-filter-btn" onclick="setBubblePeriodForType('comm','pick',this)">월 선택</button>
           </div>
           <div id="bubble-month-picker-comm" style="display:none;">
             <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">
-              <button class="tmp-btn active" onclick="setBubbleMonthForType('comm','all',this)">전체</button>      <span id="bubble-month-btns-comm"></span>
+              <button class="tmp-btn active" onclick="setBubbleMonthForType('comm','all',this)">전체</button>
+              <span id="bubble-month-btns-comm"></span>
             </div>
           </div>
         </div>
