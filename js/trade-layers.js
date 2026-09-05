@@ -14,10 +14,10 @@ var _typeMeta = {
   comm: { color:'#7B1FA2', label:'상업용' }
 };
 
-// 타입별 상태 — bubblePeriod 기본값은 HTML(주간 active)과 일치
+// 타입별 상태 — 활성화 시 기본 기간은 주간
 window._typeState = {};
 ['apt','house','rht','comm'].forEach(function(t) {
-  window._typeState[t] = { visible:false, period:'month', month:'all', bubbleVisible:false, bubblePeriod:'week', bubbleMonth:'all' };
+  window._typeState[t] = { visible:false, period:'week', month:'all', bubbleVisible:false, bubblePeriod:'week', bubbleMonth:'all' };
 });
 
 // 타입별 마커 오버레이 배열
@@ -297,9 +297,17 @@ function toggleTradeType(type, btn) {
   if (picker && !st.visible) picker.style.display = 'none';
   var chartWrap = document.getElementById('trade-chart-wrap-'+type);
   if (st.visible) {
+    // 켤 때마다 기본 기간 = 주간
+    st.period = 'week';
+    st.month = 'all';
+    st.bubblePeriod = 'week';
+    st.bubbleMonth = 'all';
+    _syncPeriodButtons(type, 'week', 'both');
+    if (picker) picker.style.display = 'none';
     renderTradeMarkersForType(type);
     renderTradeChartForType(type);
     if (chartWrap) chartWrap.style.display = 'block';
+    if (st.bubbleVisible) _renderCombinedBubbles();
   } else {
     clearTradeMarkersForType(type);
     setTradeBadge(type, _getTypeData(type).length);
@@ -365,6 +373,18 @@ function toggleBubbleForType(type, btn) {
   if (!st.bubbleVisible) {
     var bb = document.getElementById('bubble-badge-' + type);
     if (bb) bb.textContent = '0건';
+  } else {
+    // 켤 때마다 기본 기간 = 주간
+    st.period = 'week';
+    st.month = 'all';
+    st.bubblePeriod = 'week';
+    st.bubbleMonth = 'all';
+    _syncPeriodButtons(type, 'week', 'both');
+    var tp = document.getElementById('trade-month-picker-' + type);
+    if (tp) tp.style.display = 'none';
+    var bp = document.getElementById('bubble-month-picker-' + type);
+    if (bp) bp.style.display = 'none';
+    if (st.visible) { renderTradeMarkersForType(type); renderTradeChartForType(type); }
   }
   var anyBubble = ['apt','house','rht','comm'].some(function(t){return window._typeState[t].bubbleVisible;});
   var mlBubble = document.getElementById('ml-bubble');

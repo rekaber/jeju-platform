@@ -129,7 +129,7 @@ function renderBubbles() {
 // ── 토지 지역별 건수 버블 ──────────────────────────────
 var landBubbleVisible = false;
 var landBubbleOverlays = [];
-var landBubblePeriod = 'year';
+var landBubblePeriod = 'week';
 var landBubbleMonth  = 'all';
 
 function setLandBubblePeriod(p, btn) {
@@ -154,8 +154,21 @@ function setLandBubbleMonth(ym, btn) {
 function toggleLandBubble(btn) {
   landBubbleVisible = btn.classList.toggle('on');
   document.getElementById('land-bubble-period-wrap').style.display = landBubbleVisible ? 'block' : 'none';
-  if (landBubbleVisible) renderLandBubbles();
-  else clearLandBubbles();
+  if (landBubbleVisible) {
+    landBubblePeriod = 'week';
+    landBubbleMonth = 'all';
+    var wrap = document.getElementById('land-bubble-period-wrap');
+    if (wrap) {
+      wrap.querySelectorAll('.trade-filter-btn').forEach(function(b) {
+        b.classList.toggle('active', (b.getAttribute('onclick') || '').indexOf(",'week',") >= 0);
+      });
+    }
+    var picker = document.getElementById('land-bubble-month-picker');
+    if (picker) picker.style.display = 'none';
+    renderLandBubbles();
+  } else {
+    clearLandBubbles();
+  }
   updateActiveLayerCount();
 }
 

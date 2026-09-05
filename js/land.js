@@ -21,10 +21,21 @@ function toggleLand(btn) {
   periodRow.style.pointerEvents = on ? 'auto' : 'none';
   filterWrap.style.display = on ? 'block' : 'none';
   chartWrap.style.display  = on ? 'block' : 'none';
-  if (picker) { picker.style.display = (on && landPeriod === 'pick') ? 'block' : 'none'; picker.style.opacity = on ? '1' : '0.4'; picker.style.pointerEvents = on ? 'auto' : 'none'; }
   document.getElementById('land-popup').style.display = 'none';
-  if (on) { renderLandMarkers(); renderLandChart(); }
-  else {
+  if (on) {
+    // 켤 때마다 기본 기간 = 주간
+    landPeriod = 'week';
+    landMonth = 'all';
+    if (periodRow) {
+      periodRow.querySelectorAll('.trade-filter-btn').forEach(function(b) {
+        b.classList.toggle('active', (b.getAttribute('onclick') || '').indexOf(",'week',") >= 0);
+      });
+    }
+    if (picker) picker.style.display = 'none';
+    renderLandMarkers();
+    renderLandChart();
+  } else {
+    if (picker) { picker.style.display = 'none'; }
     clearLandMarkers();
     setLandCntBadge(0);
   }
