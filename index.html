@@ -970,7 +970,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         <div class="layer-item">
           <div class="layer-dot" style="background:#1976D2;border-radius:50%;"></div>
           <span class="layer-label">실거래 내역
-            <span id="trade-badge-apt" data-loading="1" style="background:#1976D2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">…</span>
+            <span id="trade-badge-apt" data-loading="1" style="background:#1976D2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span>
           </span>
           <div class="layer-toggle" id="toggle-trade-apt" onclick="toggleTradeType('apt',this)"></div>
         </div>
@@ -1023,7 +1023,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         <div class="layer-item">
           <div class="layer-dot" style="background:#00695C;border-radius:50%;"></div>
           <span class="layer-label">실거래 내역
-            <span id="trade-badge-house" data-loading="1" style="background:#00695C;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">…</span>
+            <span id="trade-badge-house" data-loading="1" style="background:#00695C;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span>
           </span>
           <div class="layer-toggle" id="toggle-trade-house" onclick="toggleTradeType('house',this)"></div>
         </div>
@@ -1073,7 +1073,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         <div class="layer-item">
           <div class="layer-dot" style="background:#E65100;border-radius:50%;"></div>
           <span class="layer-label">실거래 내역
-            <span id="trade-badge-rht" data-loading="1" style="background:#E65100;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">…</span>
+            <span id="trade-badge-rht" data-loading="1" style="background:#E65100;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span>
           </span>
           <div class="layer-toggle" id="toggle-trade-rht" onclick="toggleTradeType('rht',this)"></div>
         </div>
@@ -1123,7 +1123,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         <div class="layer-item">
           <div class="layer-dot" style="background:#7B1FA2;border-radius:50%;"></div>
           <span class="layer-label">실거래 내역
-            <span id="trade-badge-comm" data-loading="1" style="background:#7B1FA2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">…</span>
+            <span id="trade-badge-comm" data-loading="1" style="background:#7B1FA2;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span>
           </span>
           <div class="layer-toggle" id="toggle-trade-comm" onclick="toggleTradeType('comm',this)"></div>
         </div>
@@ -1187,7 +1187,7 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
         <div class="layer-item">
           <div class="layer-dot" style="background:#5D4037; border-radius:2px;"></div>
           <span class="layer-label">실거래 내역
-            <span id="land-cnt-badge" style="background:#5D4037;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0</span>
+            <span id="land-cnt-badge" style="background:#5D4037;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span>
           </span>
           <div class="layer-toggle" id="toggle-land" onclick="toggleLand(this)"></div>
         </div>
@@ -2241,6 +2241,12 @@ function setTradeBadge(type, total, filtered) {
   const badge = document.getElementById('trade-badge-' + type);
   if (!badge) return;
   badge.removeAttribute('data-loading');
+  // 레이어 OFF면 항상 0건 (지도에 안 올린 상태)
+  const visible = window._typeState && window._typeState[type] && window._typeState[type].visible;
+  if (!visible) {
+    badge.textContent = '0건';
+    return;
+  }
   if (!total) {
     badge.textContent = '데이터 없음';
     return;
@@ -2250,6 +2256,24 @@ function setTradeBadge(type, total, filtered) {
   } else {
     badge.textContent = formatTradeCount(total);
   }
+}
+
+function setLandCntBadge(filtered) {
+  const badge = document.getElementById('land-cnt-badge');
+  if (!badge) return;
+  const tog = document.getElementById('toggle-land');
+  const on = !!(tog && tog.classList.contains('on'));
+  if (!on) {
+    badge.textContent = '0건';
+    return;
+  }
+  const total = (window.LAND_DATA && window.LAND_DATA.length) || 0;
+  if (!total) {
+    badge.textContent = '데이터 없음';
+    return;
+  }
+  const n = filtered != null ? filtered : total;
+  badge.textContent = formatTradeCount(n);
 }
 
 function setEmptyTradeSource(msg) {
@@ -2592,7 +2616,7 @@ function escHtml(s) {
         : '데이터 없음';
     }
     const badge = document.getElementById('land-cnt-badge');
-    if (badge) badge.textContent = data.length ? String(data.length) : '데이터 없음';
+    if (badge) setLandCntBadge(data.length);
     if (typeof landVisible !== 'undefined' && landVisible) {
       clearLandMarkers(); renderLandMarkers();
     }
@@ -2982,8 +3006,7 @@ async function loadTradeData() {
       document.getElementById('trade-data-source').textContent =
         `토지 ${src} · ${geocoded.length}건 로드됨`;
       if (landVisible) { clearLandMarkers(); renderLandMarkers(); renderLandChart(); }
-      const badge = document.getElementById('land-cnt-badge');
-      if (badge) badge.textContent = geocoded.length;
+      else setLandCntBadge(0);
     } else {
       // MULTI_DATA에 타입별 저장
       window.MULTI_DATA[type] = geocoded;
@@ -4907,11 +4930,7 @@ function toggleTradeType(type, btn) {
     if (chartWrap) chartWrap.style.display = 'block';
   } else {
     clearTradeMarkersForType(type);
-    var badge = document.getElementById('trade-badge-'+type);
-    if (badge) {
-      var total = _getTypeData(type).length;
-      setTradeBadge(type, total);
-    }
+    setTradeBadge(type, _getTypeData(type).length);
     if (chartWrap) chartWrap.style.display = 'none';
   }
   _syncGlobalTradeData();
@@ -5751,7 +5770,10 @@ function toggleLand(btn) {
   if (picker) { picker.style.display = (on && landPeriod === 'pick') ? 'block' : 'none'; picker.style.opacity = on ? '1' : '0.4'; picker.style.pointerEvents = on ? 'auto' : 'none'; }
   document.getElementById('land-popup').style.display = 'none';
   if (on) { renderLandMarkers(); renderLandChart(); }
-  else clearLandMarkers();
+  else {
+    clearLandMarkers();
+    setLandCntBadge(0);
+  }
 }
 
 function setLandJimok(type, btn) {
@@ -5874,11 +5896,7 @@ function renderLandChart() {
 function renderLandMarkers() {
   clearLandMarkers();
   const lands = getFilteredLands();
-  const badge = document.getElementById('land-cnt-badge');
-  if (badge) {
-    const total = (window.LAND_DATA && window.LAND_DATA.length) || 0;
-    badge.textContent = total ? String(lands.length) : '데이터 없음';
-  }
+  setLandCntBadge(lands.length);
   if (!lands.length) return;
 
   // 로딩 상태 표시
