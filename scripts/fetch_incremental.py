@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 MONTHS_BACK = 3  # 기본값: 최근 3개월 (--from 없을 때)
 FROM_YM = None   # --from 202401
 CLEAR_TABLES = False
+FORCE_RUN = False  # --force: API 사전점검 실패해도 계속
 args = sys.argv[1:]
 for i, arg in enumerate(args):
     if arg == '--months' and i + 1 < len(args):
@@ -37,6 +38,8 @@ for i, arg in enumerate(args):
             sys.exit(1)
     elif arg == '--clear':
         CLEAR_TABLES = True
+    elif arg == '--force':
+        FORCE_RUN = True
 
 # ── 설정 ─────────────────────────────────────────────────
 MOLIT_KEY      = os.environ.get('MOLIT_API_KEY', '')
@@ -128,11 +131,11 @@ def text(item, tag):
     return el.text.strip() if el is not None and el.text else ''
 
 # ── API 조회 ──────────────────────────────────────────────
-MOLIT_TIMEOUT = 25
+MOLIT_TIMEOUT = 45
 MOLIT_RETRIES = 3
 # 연속 실패 시 조기 중단 (타임아웃으로 6시간 소모 방지)
 _api_fail_streak = 0
-API_FAIL_ABORT = 8
+API_FAIL_ABORT = 12
 
 def molit_fetch(service, lawd_cd, deal_ymd, page=1, rows=1000):
     global _api_fail_streak
@@ -168,20 +171,52 @@ def molit_fetch(service, lawd_cd, deal_ymd, page=1, rows=1000):
     return None
 
 def molit_api_reachable():
-    """백필 전 국토부 API 생존 확인 (실패 시 clear 금지)."""
+    """백필 전 국토부 API 생존 확인. 여러 월·긴 타임아웃으로 재시도."""
+    global _api_fail_streak
     print('\n▶ 국토부 API 연결 확인…')
-    # 최근 월·제주시 아파트 1페이지
-    ym = datetime.now().strftime('%Y%m')
-    xml = molit_fetch('getRTMSDataSvcAptTrade', '50110', ym, page=1, rows=10)
-    if not xml:
-        # 한 달 전으로 한 번 더
-        d = datetime.now().replace(day=1) - timedelta(days=1)
-        xml = molit_fetch('getRTMSDataSvcAptTrade', '50110', d.strftime('%Y%m'), page=1, rows=10)
-    if xml and ('<item>' in xml or 'resultCode' in xml or 'resultMsg' in xml):
-        print('  ✓ 국토부 API 응답 OK')
-        return True
+    # 사전점검은 fail streak에 영향 주지 않음
+    saved_streak = _api_fail_streak
+    candidates = []
+    now = datetime.now()
+    for i in range(0, 4):
+        y, m = now.year, now.month - i
+        while m <= 0:
+            m += 12; y -= 1
+        candidates.append(f'{y}{m:02d}')
+    for ym in candidates:
+        xml = molit_fetch('getRTMSDataSvcAptTrade', '50110', ym, page=1, rows=10)
+        if xml and ('<item>' in xml or 'resultCode' in xml or 'resultMsg' in xml):
+            print(f'  ✓ 국토부 API 응답 OK ({ym})')
+            _api_fail_streak = saved_streak
+            return True
+        time.sleep(2)
+    _api_fail_streak = saved_streak
     print('  ✗ 국토부 API 응답 없음 (타임아웃/장애)')
     return False
+
+def sb_table_count(table):
+    """대략 건수 (Prefer count=exact). 실패 시 -1."""
+    url = f'{SUPABASE_URL}/rest/v1/{table}?select=id&limit=1'
+    headers = {**SUPABASE_HEADERS, 'Prefer': 'count=exact'}
+    req = urllib.request.Request(url, method='HEAD', headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            cr = r.headers.get('Content-Range') or r.headers.get('content-range') or ''
+            # forms: 0-0/123 or */0
+            if '/' in cr:
+                total = cr.split('/')[-1]
+                return int(total) if total.isdigit() else 0
+    except Exception as e:
+        print(f'  [경고] {table} 건수 조회 실패: {e}')
+    return -1
+
+def trade_db_empty():
+    """주요 실거래 테이블이 사실상 비었는지."""
+    for t in ('apt_trades', 'house_trades', 'rht_trades', 'land_trades'):
+        n = sb_table_count(t)
+        if n > 0:
+            return False
+    return True
 
 def molit_fetch_all(service, lawd_cd, deal_ymd):
     global _api_fail_streak
@@ -615,11 +650,25 @@ def main():
     print(f'전체 초기화(--clear): {CLEAR_TABLES}')
     print(f'{"="*50}')
 
-    # clear 전에 API 생존 확인 — 장애 시 빈 DB로 두지 않음
-    if not molit_api_reachable():
-        print('\n❌ 국토부 API 장애로 백필을 중단합니다. 기존 DB를 유지하세요.')
-        print('   (--clear 요청이 있어도 테이블을 비우지 않습니다)')
-        sys.exit(2)
+    # API 사전점검
+    api_ok = molit_api_reachable()
+    if not api_ok:
+        empty = trade_db_empty()
+        if FORCE_RUN:
+            print('\n⚠ --force: API 점검 실패해도 수집을 계속합니다.')
+            time.sleep(5)
+        elif CLEAR_TABLES:
+            print('\n❌ 국토부 API 장애 — --clear 백필을 중단합니다 (빈 DB 방지).')
+            print('   API 복구 후 다시 실행하거나 --force 사용.')
+            sys.exit(2)
+        elif not empty:
+            print('\n❌ 국토부 API 장애 — 기존 데이터가 있어 중단합니다.')
+            print('   API 복구 후 재실행하세요. (강제: --force)')
+            sys.exit(2)
+        else:
+            # DB가 이미 비어 있음 → 중단하면 복구 불가
+            print('\n⚠ 국토부 API가 불안정하지만 DB가 비어 있어 수집을 계속 시도합니다.')
+            time.sleep(10)
 
     if CLEAR_TABLES:
         print('\n▶ 실거래 테이블 전체 삭제 (재적재용)')

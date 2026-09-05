@@ -53,4 +53,5 @@ jobs:
             CLEAR_FLAG="--clear"
           fi
           echo "Backfill from=$FROM_YM clear=$CLEAR_FLAG"
-          python scripts/fetch_incremental.py --from "$FROM_YM" $CLEAR_FLAG
+          # DB가 비어 있으면 API 점검 실패해도 계속 (--force)
+          python scripts/fetch_incremental.py --from "$FROM_YM" $CLEAR_FLAG --force
