@@ -1,10 +1,7 @@
-/* js/bubble.js - 제주 부동산 플랫폼 */
-/* ═══════════════════════════════════════════════
-   동별 거래현황 버블
-═══════════════════════════════════════════════ */
-let bubbleVisible = false;
-let bubbleOverlays = [];
-let bubblePeriod = 'year';  // 'year'|'6m'|'3m'|'month'
+/* js/bubble.js - extracted from index.html */
+var bubbleVisible = false;
+var bubbleOverlays = [];
+var bubblePeriod = 'year';  // 'year'|'6m'|'3m'|'month'
 
 function setBubblePeriod(p, btn) {
   bubblePeriod = p;
@@ -16,18 +13,20 @@ function setBubblePeriod(p, btn) {
 function toggleBubble(btn) {
   bubbleVisible = btn.classList.toggle('on');
   document.getElementById('bubble-period-wrap').style.display = bubbleVisible ? 'block' : 'none';
+  document.getElementById('ml-bubble').style.display = bubbleVisible ? 'block' : 'none';
+  updateLegendVisibility();
   if (bubbleVisible) renderBubbles();
   else clearBubbles();
   updateActiveLayerCount();
 }
 
 function clearBubbles() {
-  bubbleOverlays.forEach(o => o.remove());
+  bubbleOverlays.forEach(o => o.setMap(null));
   bubbleOverlays = [];
 }
 
 function getPeriodLabel() {
-  const now = new Date('2026-08-25');
+  const now = new Date();
   if (tradePeriod === 'week')  return '최근 7일';
   if (tradePeriod === 'month') return now.getMonth() + 1 + '월';
   if (tradePeriod === 'pick') {
@@ -39,7 +38,7 @@ function getPeriodLabel() {
 
 function getBubbleFilteredTrades() {
   if (!window.TRADE_DATA) return [];
-  const now = new Date('2026-08-25');
+  const now = new Date();
   const cutoff = new Date(now);
   if      (bubblePeriod === 'year')  cutoff.setFullYear(now.getFullYear(), 0, 1);
   else if (bubblePeriod === '6m')    cutoff.setMonth(now.getMonth() - 6);
@@ -100,6 +99,7 @@ function renderBubbles() {
 
     const el = document.createElement('div');
     el.className = `stat-bubble ${colorCls}`;
+    el.style.cursor = 'pointer';
     el.innerHTML =
       `<div class="sb-dong">${s.sigungu.replace('특별자치도','').replace('특별자치시','')} ${s.dong}</div>` +
       `<div class="sb-meta">${periodLabel}</div>` +
@@ -110,16 +110,131 @@ function renderBubbles() {
     el.style.transform = `scale(${scale.toFixed(2)})`;
     el.style.transformOrigin = 'bottom center';
     el.title = `${s.sigungu} ${s.dong}\n${periodLabel} ${s.count}건\n평균 ${avgPrice.toFixed(2)}억 · 평당 ${perPyeongStr}`;
+    el.addEventListener('click', (function(stat, tradeList) { return function(e) {
+      e.stopPropagation();
+      showBubbleDetail(stat, tradeList);
+    }; })(s, trades.filter(t => t.sigungu === s.sigungu && t.dong === s.dong)));
 
-    const ov = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-      .setLngLat([s.lng, s.lat]);
-    ov.addTo(map);
+    const ov = new kakao.maps.CustomOverlay({
+      position: new kakao.maps.LatLng(s.lat, s.lng),
+      content: el,
+      yAnchor: 1.18,
+      zIndex: 4
+    });
+    ov.setMap(map);
     bubbleOverlays.push(ov);
   });
 }
 
-let tradeVisible = false;
-let tradePeriod  = 'week';
-let tradeMonth   = 'all';   // 'all' 또는 '202601'~'202612'
-let tradeOverlays = [];
+// ── 토지 지역별 건수 버블 ──────────────────────────────
+var landBubbleVisible = false;
+var landBubbleOverlays = [];
+var landBubblePeriod = 'year';
+var landBubbleMonth  = 'all';
 
+function setLandBubblePeriod(p, btn) {
+  landBubblePeriod = p;
+  var wrap = document.getElementById('land-bubble-period-wrap');
+  if (wrap) wrap.querySelectorAll('.trade-filter-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  var picker = document.getElementById('land-bubble-month-picker');
+  if (picker) picker.style.display = (p === 'pick') ? 'flex' : 'none';
+  if (p !== 'pick') landBubbleMonth = 'all';
+  if (landBubbleVisible) renderLandBubbles();
+}
+
+function setLandBubbleMonth(ym, btn) {
+  landBubbleMonth = ym;
+  var picker = document.getElementById('land-bubble-month-picker');
+  if (picker) picker.querySelectorAll('.tmp-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  if (landBubbleVisible) renderLandBubbles();
+}
+
+function toggleLandBubble(btn) {
+  landBubbleVisible = btn.classList.toggle('on');
+  document.getElementById('land-bubble-period-wrap').style.display = landBubbleVisible ? 'block' : 'none';
+  if (landBubbleVisible) renderLandBubbles();
+  else clearLandBubbles();
+  updateActiveLayerCount();
+}
+
+function clearLandBubbles() {
+  landBubbleOverlays.forEach(o => o.setMap(null));
+  landBubbleOverlays = [];
+}
+
+function getLandBubbleFiltered() {
+  if (!window.LAND_DATA) return [];
+  const now = new Date();
+  if (landBubblePeriod === 'pick') {
+    if (landBubbleMonth && landBubbleMonth !== 'all') {
+      return window.LAND_DATA.filter(t => t.date && t.date.replace(/-/g,'').slice(0,6) === landBubbleMonth);
+    }
+    return window.LAND_DATA.filter(t => t.date && t.date.startsWith(String(now.getFullYear())));
+  }
+  let cutoff = new Date(now);
+  if      (landBubblePeriod === 'week')  cutoff = new Date(now - 7*86400000);
+  else if (landBubblePeriod === 'month') cutoff = new Date(now - 30*86400000);
+  else if (landBubblePeriod === 'year')  cutoff.setFullYear(now.getFullYear(), 0, 1);
+  return window.LAND_DATA.filter(t => t.date && new Date(t.date) >= cutoff);
+}
+
+function renderLandBubbles() {
+  clearLandBubbles();
+  const lands = getLandBubbleFiltered();
+  const now2 = new Date();
+  const periodLabels = { week:'최근 7일', month:'최근 30일', year:now2.getFullYear()+'년', pick: landBubbleMonth !== 'all' ? landBubbleMonth.slice(0,4)+'년 '+parseInt(landBubbleMonth.slice(4))+'월' : now2.getFullYear()+'년 전체' };
+  const periodLabel = periodLabels[landBubblePeriod] || '';
+  if (!lands.length) return;
+
+  const stats = {};
+  lands.forEach(t => {
+    const sig  = t.sigungu || '';
+    const dong = t.dong || '';
+    if (!dong) return;
+    const key = sig + '|' + dong;
+    if (!stats[key]) {
+      const bjInfo = window.JEJU_BEOPJEONGDONG.find(b => b.dong === dong && b.sigungu === sig);
+      stats[key] = { dong, sigungu: sig, lat: bjInfo ? bjInfo.lat : t.lat, lng: bjInfo ? bjInfo.lng : t.lng, count: 0, totalPerM2: 0, m2cnt: 0 };
+    }
+    stats[key].count++;
+    if (t.perM2 > 0) { stats[key].totalPerM2 += t.perM2; stats[key].m2cnt++; }
+  });
+
+  const allCounts = Object.values(stats).map(s => s.count);
+  const maxCnt = Math.max(...allCounts, 1);
+
+  Object.values(stats).forEach(s => {
+    if (!s.lat || !s.lng || s.count < 1) return;
+    const avgPerM2 = s.m2cnt > 0 ? Math.round(s.totalPerM2 / s.m2cnt) : 0;
+    const perM2Str = avgPerM2 >= 10000 ? (avgPerM2/10000).toFixed(1)+'만/㎡' : avgPerM2.toLocaleString()+'원/㎡';
+    const ratio = s.count / maxCnt;
+    const colorCls = ratio < 0.3 ? 'cnt-low' : ratio < 0.65 ? 'cnt-mid' : 'cnt-high';
+
+    const el = document.createElement('div');
+    el.className = `stat-bubble ${colorCls}`;
+    el.style.background = ratio < 0.3 ? 'rgba(121,85,72,0.85)' : ratio < 0.65 ? 'rgba(93,64,55,0.90)' : 'rgba(62,39,35,0.88)';
+    el.style.cursor = 'pointer';
+    el.innerHTML =
+      `<div class="sb-dong">${s.sigungu.replace('특별자치도','').replace('특별자치시','')} ${s.dong}</div>` +
+      `<div class="sb-meta">${periodLabel}</div>` +
+      `<div class="sb-count">${s.count}건</div>` +
+      `<div class="sb-price">${perM2Str}</div>`;
+    const scale = 0.78 + ratio * 0.5;
+    el.style.transform = `scale(${scale.toFixed(2)})`;
+    el.style.transformOrigin = 'bottom center';
+    (function(stat, key) {
+      el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var dongTrades = lands.filter(function(t){ return (t.sigungu||'')+'|'+(t.dong||'') === key; });
+        showLandBubbleDetail(stat, dongTrades);
+      });
+    })(s, s.sigungu + '|' + s.dong);
+
+    const ov = new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(s.lat, s.lng), content: el, yAnchor: 1.18, zIndex: 4 });
+    ov.setMap(map);
+    landBubbleOverlays.push(ov);
+  });
+}
+// ── /토지 지역별 건수 버블 ─────────────────────────────

@@ -1,8 +1,8 @@
-/* js/jiga.js - 제주 부동산 플랫폼 */
+/* js/jiga.js - extracted from index.html */
 /* ═══════════════════════════════════════════════
    지가변동률 모달
 ═══════════════════════════════════════════════ */
-let jigaRegion = '제주전체', jigaCat = '평균', jigaSub = '평균';
+var jigaRegion = '제주전체', jigaCat = '평균', jigaSub = '평균';
 
 fetch('./jiga_data.json').then(r=>r.json()).then(d=>{ window.JIGA_DATA=d; }).catch(()=>{});
 fetch('./imde_data.json').then(r=>r.json()).then(d=>{ window.IMDE_DATA=d; }).catch(()=>{});
@@ -138,4 +138,3 @@ function renderJigaChart(){
   document.getElementById('jiga-legend').innerHTML=
     rows.filter(r=>r.row).map(r=>`<span><i style="background:${r.color}"></i>${r.label}</span>`).join('');
 }
-

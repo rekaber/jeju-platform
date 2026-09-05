@@ -1,8 +1,8 @@
-/* js/imde.js - 제주 부동산 플랫폼 */
+/* js/imde.js - extracted from index.html */
 /* ═══════════════════════════════════════════════
    상업용 임대시장 모달
 ═══════════════════════════════════════════════ */
-let imdeSec='임대가격지수', imdeCat='오피스';
+var imdeSec='임대가격지수', imdeCat='오피스';
 
 function openImdeModal(){ document.getElementById('imde-modal').classList.add('open'); renderImdeChart(); }
 function closeImdeModal(){ document.getElementById('imde-modal').classList.remove('open'); }
@@ -108,4 +108,3 @@ function renderImdeChart(){
     <text x="12" y="${(padT+cH/2).toFixed(1)}" text-anchor="middle" font-size="11" fill="#999" transform="rotate(-90,12,${(padT+cH/2).toFixed(1)})">${imdeSec}</text>
     ${chartContent}${xLabels}`;
 }
-

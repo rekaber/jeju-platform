@@ -1,13 +1,27 @@
-/* js/land-stat.js - 제주 부동산 플랫폼 */
+/* js/land-stat.js - extracted from index.html */
 /* ═══════════════════════════════════════════════
    토지 실거래 통계 모달
 ═══════════════════════════════════════════════ */
-let landStatTab    = 'perm2';
-let landStatRegion = 'all';
-let landStatJimok  = 'all';
+var landStatTab    = 'perm2';
+var landStatRegion = 'all';
+var landStatJimok  = 'all';
+var landStatYear   = new Date().getFullYear();
+
+function _initLandStatYearSelect() {
+  const sel = document.getElementById('land-stat-year-select');
+  if (!sel || !window.LAND_DATA) return;
+  const years = [...new Set(window.LAND_DATA.map(t => t.date && t.date.slice(0,4)).filter(Boolean))].sort();
+  const list = years.length ? years : [String(new Date().getFullYear())];
+  sel.innerHTML = list.map(y => `<option value="${y}"${String(landStatYear)===y?' selected':''}>${y}년</option>`).join('');
+}
+function setLandStatYear(y) {
+  landStatYear = parseInt(y);
+  renderLandStatChart();
+}
 
 function openLandStatModal() {
   document.getElementById('land-stat-modal').classList.add('open');
+  _initLandStatYearSelect();
   renderLandStatChart();
 }
 function closeLandStatModal() {
@@ -56,7 +70,8 @@ function renderLandStatChart() {
     return arr.length ? parseFloat((arr.reduce((s,r) => s + r.price, 0) / arr.length).toFixed(2)) : null;
   }
 
-  const baseData = filterByJimok(window.LAND_DATA);
+  const yearFiltered = window.LAND_DATA.filter(r => r.date && r.date.startsWith(String(landStatYear)));
+  const baseData = filterByJimok(yearFiltered);
   const jejuAll  = baseData.filter(r => r.sigungu === '제주시');
   const seoAll   = baseData.filter(r => r.sigungu === '서귀포시');
 
@@ -82,7 +97,7 @@ function renderLandStatChart() {
 
   // 월 시계열 (데이터 없는 월 제외)
   const months = [];
-  const now = new Date('2026-08-25');
+  const now = new Date();
   for (let m = 11; m >= 0; m--) {
     const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
     const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');

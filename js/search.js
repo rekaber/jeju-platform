@@ -1,20 +1,14 @@
-/* js/search.js - 제주 부동산 플랫폼 */
+/* js/search.js - extracted from index.html */
 /* ═══════════════════════════════════════════════
    주소 검색 (카카오 Geocoder + Places)
 ═══════════════════════════════════════════════ */
-let geocoder = null;
-let places = null;
-let searchPinOverlay = null;
-
-kakao.maps.load(function() {
-  geocoder = new kakao.maps.services.Geocoder();
-  places   = new kakao.maps.services.Places();
-});
+var geocoder = new kakao.maps.services.Geocoder();
+var places   = new kakao.maps.services.Places();
+var searchPinOverlay = null;
 
 function doSearch() {
   const q = document.getElementById('search-input').value.trim();
   if (!q) return;
-  if (!geocoder || !places) { showToast('검색 서비스 초기화 중입니다. 잠시 후 다시 시도해주세요.'); return; }
 
   // 도로명/지번 주소 우선
   geocoder.addressSearch(q, function(result, status) {
@@ -73,10 +67,12 @@ function selectResultItem(item) {
   document.getElementById('search-results').style.display = 'none';
   document.getElementById('search-input').value = item.name;
 
-  map.flyTo({ center: [item.lng, item.lat], zoom: 16 });
+  const pos = new kakao.maps.LatLng(item.lat, item.lng);
+  map.setCenter(pos);
+  map.setLevel(4);
 
   // 검색 핀
-  if (searchPinOverlay) searchPinOverlay.remove();
+  if (searchPinOverlay) searchPinOverlay.setMap(null);
   const pinEl = document.createElement('div');
   pinEl.className = 'search-pin-el';
   pinEl.innerHTML = `
@@ -85,85 +81,15 @@ function selectResultItem(item) {
       <circle cx="12" cy="8" r="4" fill="#fff"/>
     </svg>
     <div class="pin-label">${item.name}</div>`;
-  searchPinOverlay = new maplibregl.Marker({ element: pinEl, anchor: 'bottom' })
-    .setLngLat([item.lng, item.lat]);
-  searchPinOverlay.addTo(map);
+  searchPinOverlay = new kakao.maps.CustomOverlay({
+    position: pos,
+    content: pinEl,
+    yAnchor: 1.0
+  });
+  searchPinOverlay.setMap(map);
 }
 
 document.getElementById('search-btn').addEventListener('click', doSearch);
 document.getElementById('search-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') doSearch();
 });
-
-/* ═══════════════════════════════════════════════
-   Toast 알림
-═══════════════════════════════════════════════ */
-function showToast(msg, dur = 2500) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.opacity = '1';
-  setTimeout(() => t.style.opacity = '0', dur);
-}
-
-// 미분양 단지 좌표 자동 보정 (모든 변수 선언 후 실행)
-geocodeUnsoldByName();
-
-/* ═══════════════════════════════════════════════
-   드래그 가능 모달
-═══════════════════════════════════════════════ */
-function makeDraggable(innerId, hdId) {
-  const inner = document.getElementById(innerId);
-  const hd    = document.getElementById(hdId);
-  if (!inner || !hd) return;
-  let startX, startY, startL, startT, dragging = false;
-
-  function resetPos() {
-    inner.style.transform = 'translateX(-50%)';
-    inner.style.left = '50%';
-    inner.style.top  = '5vh';
-  }
-
-  hd.addEventListener('mousedown', e => {
-    if (e.target.closest('.sm-close')) return;
-    dragging = true;
-    // 처음 드래그 시 절대 좌표로 전환
-    const rect = inner.getBoundingClientRect();
-    inner.style.transform = 'none';
-    inner.style.left = rect.left + 'px';
-    inner.style.top  = rect.top  + 'px';
-    startX = e.clientX; startY = e.clientY;
-    startL = rect.left; startT = rect.top;
-    document.body.style.userSelect = 'none';
-  });
-  document.addEventListener('mousemove', e => {
-    if (!dragging) return;
-    let l = startL + (e.clientX - startX);
-    let t = startT + (e.clientY - startY);
-    // 화면 밖으로 나가지 않게
-    l = Math.max(0, Math.min(window.innerWidth  - inner.offsetWidth,  l));
-    t = Math.max(0, Math.min(window.innerHeight - inner.offsetHeight, t));
-    inner.style.left = l + 'px';
-    inner.style.top  = t + 'px';
-  });
-  document.addEventListener('mouseup', () => {
-    dragging = false;
-    document.body.style.userSelect = '';
-  });
-
-  // 모달이 열릴 때 위치 초기화
-  const modal = inner.closest('[id$="-modal"]');
-  if (modal) {
-    const obs = new MutationObserver(() => {
-      if (modal.classList.contains('open')) resetPos();
-    });
-    obs.observe(modal, { attributes: true, attributeFilter: ['class'] });
-  }
-}
-
-// 4개 모달에 드래그 적용
-makeDraggable('stat-modal-inner',      'stat-modal-hd');
-makeDraggable('land-stat-modal-inner', 'land-stat-modal-hd');
-makeDraggable('jiga-modal-inner',      'jiga-modal-hd');
-makeDraggable('imde-modal-inner',      'imde-modal-hd');
-makeDraggable('mig-modal-inner',       'mig-modal-hd');
-

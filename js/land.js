@@ -1,16 +1,33 @@
-/* js/land.js - 제주 부동산 플랫폼 */
-let landJimok    = 'all';
-let landPeriod   = 'year';
-let landOverlays = [];
+/* js/land.js - extracted from index.html */
+/* ═══════════════════════════════════════════════
+   토지 실거래 레이어
+═══════════════════════════════════════════════ */
+var landVisible  = false;
+var landJimok    = 'all';
+var landPeriod   = 'week';
+var landMonth    = 'all';
+var landOverlays = [];
 
-const FARM_JIMOK = ['전','답','과수원'];
+var FARM_JIMOK = ['전','답','과수원'];
 
 function toggleLand(btn) {
   landVisible = btn.classList.toggle('on');
-  document.getElementById('land-filter-wrap').style.display = landVisible ? 'block' : 'none';
+  const on = landVisible;
+  const periodRow  = document.getElementById('land-period-row');
+  const filterWrap = document.getElementById('land-filter-wrap');
+  const chartWrap  = document.getElementById('land-chart-wrap');
+  const picker     = document.getElementById('land-month-picker');
+  periodRow.style.opacity       = on ? '1' : '0.4';
+  periodRow.style.pointerEvents = on ? 'auto' : 'none';
+  filterWrap.style.display = on ? 'block' : 'none';
+  chartWrap.style.display  = on ? 'block' : 'none';
+  if (picker) { picker.style.display = (on && landPeriod === 'pick') ? 'block' : 'none'; picker.style.opacity = on ? '1' : '0.4'; picker.style.pointerEvents = on ? 'auto' : 'none'; }
   document.getElementById('land-popup').style.display = 'none';
-  if (landVisible) renderLandMarkers();
-  else clearLandMarkers();
+  if (on) { renderLandMarkers(); renderLandChart(); }
+  else {
+    clearLandMarkers();
+    setLandCntBadge(0);
+  }
 }
 
 function setLandJimok(type, btn) {
@@ -22,27 +39,49 @@ function setLandJimok(type, btn) {
 
 function setLandPeriod(p, btn) {
   landPeriod = p;
-  document.querySelectorAll('.land-pd-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#land-period-row .trade-filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  if (landVisible) { clearLandMarkers(); renderLandMarkers(); }
+  const picker = document.getElementById('land-month-picker');
+  if (picker) picker.style.display = (p === 'pick' && landVisible) ? 'block' : 'none';
+  if (p !== 'pick') { landMonth = 'all'; document.querySelectorAll('.land-tmp-btn').forEach(b => b.classList.remove('active')); const allBtn = document.querySelector('.land-tmp-btn'); if (allBtn) allBtn.classList.add('active'); }
+  if (landVisible) { clearLandMarkers(); renderLandMarkers(); renderLandChart(); }
+}
+
+function setLandMonth(ym, btn) {
+  landMonth = ym;
+  document.querySelectorAll('.land-tmp-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (landVisible) { clearLandMarkers(); renderLandMarkers(); renderLandChart(); }
 }
 
 function getFilteredLands() {
   if (!window.LAND_DATA) return [];
-  const now = new Date('2026-08-25');
-  const cutoff = new Date(now);
-  if      (landPeriod === 'year')  cutoff.setFullYear(now.getFullYear(), 0, 1);
-  else if (landPeriod === '6m')    cutoff.setMonth(now.getMonth() - 6);
-  else if (landPeriod === '3m')    cutoff.setMonth(now.getMonth() - 3);
-  else if (landPeriod === 'month') cutoff.setMonth(now.getMonth() - 1);
-  return window.LAND_DATA.filter(t => {
-    if (!t.lat || !t.lng) return false;
-    if (t.date && new Date(t.date) < cutoff) return false;
+  const now = new Date();
+  const jimokFilter = t => {
     if (landJimok === 'dae'  && t.jimok !== '대') return false;
     if (landJimok === 'farm' && !FARM_JIMOK.includes(t.jimok)) return false;
     if (landJimok === 'imya' && t.jimok !== '임야') return false;
     if (landJimok === 'etc'  && (t.jimok === '대' || FARM_JIMOK.includes(t.jimok) || t.jimok === '임야')) return false;
     return true;
+  };
+  // 월 선택 모드
+  if (landPeriod === 'pick') {
+    return window.LAND_DATA.filter(t => {
+      if (!t.lat || !t.lng || !isInJeju(t.lat, t.lng)) return false;
+      if (!jimokFilter(t)) return false;
+      if (landMonth === 'all') return true;
+      return t.date && t.date.slice(0,4) + t.date.slice(5,7) === landMonth;
+    });
+  }
+  // 상대 기간 모드
+  const cutoff = new Date(now);
+  if      (landPeriod === 'year')  cutoff.setFullYear(now.getFullYear(), 0, 1);
+  else if (landPeriod === 'week')  cutoff.setDate(now.getDate() - 7);
+  else if (landPeriod === 'month') cutoff.setDate(now.getDate() - 30);
+  return window.LAND_DATA.filter(t => {
+    if (!t.lat || !t.lng || !isInJeju(t.lat, t.lng)) return false;
+    if (t.date && new Date(t.date) < cutoff) return false;
+    return jimokFilter(t);
   });
 }
 
@@ -55,13 +94,63 @@ function getLandClass(jimok) {
 
 function clearLandMarkers() {
   renderLandMarkers._token = (renderLandMarkers._token || 0) + 1; // 진행 중 렌더링 취소
-  landOverlays.forEach(o => o.remove());
+  landOverlays.forEach(o => o.setMap(null));
   landOverlays = [];
+}
+
+function renderLandChart() {
+  const svg = document.getElementById('land-chart-svg');
+  if (!svg || !window.LAND_DATA) return;
+  const months = [];
+  const now = new Date();
+  for (let m = 11; m >= 0; m--) {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() - m);
+    const key = d.toISOString().slice(0, 7);
+    const label = (d.getMonth() + 1) + '월';
+    const trades = window.LAND_DATA.filter(t => t.date && t.date.startsWith(key) && t.perM2 > 0);
+    const avg = trades.length ? trades.reduce((s, t) => s + t.perM2, 0) / trades.length : null;
+    months.push({ label, avg });
+  }
+  const vals = months.map(m => m.avg || 0);
+  const maxV = Math.max(...vals, 1);
+  const minV = Math.min(...vals.filter(v => v > 0), maxV);
+  const W = 228, H = 80, padL = 22, padB = 16, padR = 6, padT = 6;
+  const cW = W - padL - padR, cH = H - padT - padB;
+
+  const points = months.map((m, i) => {
+    const x = padL + i * (cW / (months.length - 1));
+    const y = m.avg ? padT + cH - ((m.avg - minV + 0.5) / (maxV - minV + 1)) * cH : null;
+    return { x, y, label: m.label, avg: m.avg };
+  }).filter(p => p.y !== null);
+
+  if (!points.length) { svg.innerHTML = '<text x="114" y="45" text-anchor="middle" font-size="9" fill="#aaa">데이터 없음</text>'; return; }
+
+  const pathD = points.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+  const areaD = pathD + ` L${points[points.length-1].x.toFixed(1)},${(padT+cH).toFixed(1)} L${points[0].x.toFixed(1)},${(padT+cH).toFixed(1)} Z`;
+  const yLabels = [minV.toFixed(0), ((minV+maxV)/2).toFixed(0), maxV.toFixed(0)];
+  const yPositions = [padT+cH, padT+cH/2, padT];
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="landGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#5D4037" stop-opacity="0.28"/>
+        <stop offset="100%" stop-color="#5D4037" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    ${yPositions.map(y => `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#eee" stroke-width="1"/>`).join('')}
+    <path d="${areaD}" fill="url(#landGrad)"/>
+    <path d="${pathD}" fill="none" stroke="#8D6E63" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+    ${points.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.5" fill="#5D4037" stroke="#fff" stroke-width="1.2"/>`).join('')}
+    ${yLabels.map((l, i) => `<text x="${padL-2}" y="${(yPositions[i]+3).toFixed(1)}" text-anchor="end" font-size="7" fill="#aaa">${l}</text>`).join('')}
+    ${points.filter((_, i) => i % 3 === 0 || i === points.length-1).map(p => `<text x="${p.x.toFixed(1)}" y="${H}" text-anchor="middle" font-size="7" fill="#aaa">${p.label}</text>`).join('')}
+  `;
 }
 
 function renderLandMarkers() {
   clearLandMarkers();
   const lands = getFilteredLands();
+  setLandCntBadge(lands.length);
   if (!lands.length) return;
 
   // 로딩 상태 표시
@@ -89,14 +178,18 @@ function renderLandMarkers() {
         : t.perM2.toFixed(1) + '만';
       const el = document.createElement('div');
       el.className = 'land-marker ' + cls;
-      el.textContent = perM2str + '/㎡';
+      const dongShort = (t.dong || t.sigungu || '').replace(/^제주시\s*|^서귀포시\s*/,'');
+      el.innerHTML = '<span class="lm-dong">' + (dongShort || '') + '</span>' +
+                     '<span class="lm-price">' + perM2str + '/㎡</span>';
       el.addEventListener('click', (function(td){ return function(e) {
         e.stopPropagation();
         showLandPopup(td, this);
       }; })(t));
-      const ov = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat([t.lng, t.lat]);
-      ov.addTo(map);
+      const ov = new kakao.maps.CustomOverlay({
+        position: new kakao.maps.LatLng(t.lat, t.lng),
+        content: el, yAnchor: 1.35, zIndex: 3
+      });
+      ov.setMap(map);
       landOverlays.push(ov);
     }
     if (i < lands.length) {
@@ -138,13 +231,28 @@ function showLandPopup(t, el) {
   popup.style.display = 'block';
 }
 
-// zoningVisible / zoningOpacity는 map.js에서 선언됨
+var zoningVisible = false;
+var zoningOpacity = 0.6;
 
-// toggleZoning은 map.js에서 정의됨
+function toggleZoning(btn) {
+  zoningVisible = btn.classList.toggle('on');
+  const legend = document.getElementById('zoning-legend');
+  if (zoningVisible) {
+    map.addOverlayMapTypeId(kakao.maps.MapTypeId.USE_DISTRICT);
+    legend.style.display = 'block';
+  } else {
+    map.removeOverlayMapTypeId(kakao.maps.MapTypeId.USE_DISTRICT);
+    legend.style.display = 'none';
+  }
+  updateActiveLayerCount();
+}
 
-// setZoningOpacity는 map.js에서 정의됨
+function setZoningOpacity(val) {
+  zoningOpacity = val / 100;
+  document.querySelectorAll('#zoning-overlay img').forEach(img => img.style.opacity = zoningOpacity);
+}
 
-let cadastralOpen = false;
+var cadastralOpen = false;
 function toggleCadastralPanel() {
   cadastralOpen = !cadastralOpen;
   const panel = document.getElementById('cadastral-panel');
@@ -169,14 +277,9 @@ function closeCadastralPanel() {
   updateActiveLayerCount();
 }
 
-// setZoningOpacity는 map.js에서 정의됨
+function setZoningOpacity(val) {
+  zoningOpacity = val / 100;
+}
+
+// 지도 이동 시 아무 작업 없음 (카카오 내장 레이어는 자동 갱신)
 function updateZoningWMS() {}
-
-/* ═══════════════════════════════════════════════
-   미분양 마커
-═══════════════════════════════════════════════ */
-let unsoldVisible = false;
-let unsoldOpacity = 1.0;
-const unsoldOverlays = [];
-
-// 배지 초기화

@@ -1,5 +1,38 @@
-/* js/unsold.js - 제주 부동산 플랫폼 */
+/* js/unsold.js - extracted from index.html */
+/* ═══════════════════════════════════════════════
+   미분양 마커
+═══════════════════════════════════════════════ */
+var unsoldVisible = false;
+var unsoldOpacity = 1.0;
+var unsoldOverlays = [];
+
+// 월 선택 버튼 동적 생성 (현재 연도 1월~현재월)
+function _initMonthPickers() {
+  var now = new Date();
+  var yr = now.getFullYear();
+  var curM = now.getMonth() + 1; // 1-indexed
+  var types = ['apt','house','rht','comm'];
+  types.forEach(function(t) {
+    var tradeEl = document.getElementById('trade-month-btns-' + t);
+    var bubbleEl = document.getElementById('bubble-month-btns-' + t);
+    var html = '';
+    for (var m = 1; m <= curM; m++) {
+      var key = yr + String(m).padStart(2,'0');
+      html += '<button class="tmp-btn" onclick="setTradeTypeMonth(\'' + t + '\',\'' + key + '\',this)">' + m + '월</button>';
+    }
+    if (tradeEl) tradeEl.innerHTML = html;
+    var html2 = '';
+    for (var m = 1; m <= curM; m++) {
+      var key = yr + String(m).padStart(2,'0');
+      html2 += '<button class="tmp-btn" onclick="setBubbleMonthForType(\'' + t + '\',\'' + key + '\',this)">' + m + '월</button>';
+    }
+    if (bubbleEl) bubbleEl.innerHTML = html2;
+  });
+}
+
+// 배지 초기화
 document.addEventListener('DOMContentLoaded', () => {
+  _initMonthPickers();
   const badge = document.getElementById('unsold-cnt-badge');
   if (badge) {
     const totalUnits = UNSOLD_DATA.reduce((sum, d) => sum + d.units, 0);
@@ -11,13 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
    카카오 Places keywordSearch로 실제 위치를 찾아 UNSOLD_DATA 좌표를 갱신.
    이미 마커가 표시 중이면 즉시 위치도 갱신.
 */
-let _geocodeStarted = false;
+var _geocodeStarted = false;
 function geocodeUnsoldByName() {
   if (_geocodeStarted) return;
   _geocodeStarted = true;
-  function doGeocode() {
-    const ps = new kakao.maps.services.Places();
-    const jejuCenter = new kakao.maps.LatLng(33.3617, 126.5292);
+  const ps = new kakao.maps.services.Places();
+  const jejuCenter = new kakao.maps.LatLng(33.3617, 126.5292);
 
   UNSOLD_DATA.forEach((item, idx) => {
     setTimeout(() => {
@@ -33,12 +65,6 @@ function geocodeUnsoldByName() {
       }, { location: jejuCenter, radius: 80000 });
     }, idx * 400); // 400ms 간격으로 rate-limit
   });
-  }
-  if (window._kakaoReady) {
-    doGeocode();
-  } else {
-    kakao.maps.load(doGeocode);
-  }
 }
 
 function applyCoord(item, result, idx) {
@@ -53,7 +79,7 @@ function applyCoord(item, result, idx) {
 
   // 이미 마커가 표시 중이면 위치 갱신
   if (unsoldVisible && unsoldOverlays[idx]) {
-    unsoldOverlays[idx].setLngLat([newLng, newLat]);
+    unsoldOverlays[idx].setPosition(new kakao.maps.LatLng(newLat, newLng));
   }
 
   // 좌표가 크게 바뀐 경우 콘솔에 기록 (디버그용)
@@ -64,7 +90,7 @@ function applyCoord(item, result, idx) {
 }
 
 function drawUnsoldMarkers() {
-  unsoldOverlays.forEach(o => o.remove());
+  unsoldOverlays.forEach(o => o.setMap(null));
   unsoldOverlays.length = 0;
   if (!unsoldVisible) return;
 
@@ -79,12 +105,15 @@ function drawUnsoldMarkers() {
       <div class="unsold-badge">${d.units}</div>`;
     el.addEventListener('click', (e) => {
       e.stopPropagation();
-      showUnsoldPopup(d, el);
+      showUnsoldPopup(d, new kakao.maps.LatLng(d.lat, d.lng));
     });
 
-    const overlay = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-      .setLngLat([d.lng, d.lat]);
-    overlay.addTo(map);
+    const overlay = new kakao.maps.CustomOverlay({
+      position: new kakao.maps.LatLng(d.lat, d.lng),
+      content: el,
+      yAnchor: 1.2
+    });
+    overlay.setMap(map);
     unsoldOverlays.push(overlay);
   });
 }
@@ -93,7 +122,7 @@ function toggleUnsold(btn) {
   unsoldVisible = btn.classList.toggle('on');
   if (unsoldVisible) drawUnsoldMarkers();
   else {
-    unsoldOverlays.forEach(o => o.remove());
+    unsoldOverlays.forEach(o => o.setMap(null));
     unsoldOverlays.length = 0;
     closeUnsoldPopup();
   }
@@ -105,7 +134,7 @@ function setUnsoldOpacity(val) {
   document.querySelectorAll('.unsold-marker').forEach(el => el.style.opacity = unsoldOpacity);
 }
 
-function showUnsoldPopup(d, markerEl) {
+function showUnsoldPopup(d, latlng) {
   closeUnsoldPopup();
   const popup = document.getElementById('unsold-popup');
   const mapEl = document.getElementById('map-wrap');
@@ -135,11 +164,11 @@ function showUnsoldPopup(d, markerEl) {
   `;
 
   // 마커 픽셀 위치 계산
-  const rect = markerEl ? markerEl.getBoundingClientRect() : { left: 400, top: 300, width: 0 };
-  const mapRect = mapEl.getBoundingClientRect();
+  const proj = map.getProjection();
+  const point = proj.containerPointFromCoords(latlng);
   const popW = 300, popH = 260;
-  const left = Math.max(8, Math.min(rect.left - mapRect.left + rect.width / 2 - popW / 2, mapEl.offsetWidth - popW - 8));
-  const top  = Math.max(8, rect.top - mapRect.top - popH - 10);
+  const left = Math.max(8, Math.min(point.x - popW / 2, mapEl.offsetWidth - popW - 8));
+  const top  = Math.max(8, point.y - popH - 55);
   popup.style.left = left + 'px';
   popup.style.top  = top  + 'px';
   popup.style.display = 'block';
@@ -150,20 +179,8 @@ function closeUnsoldPopup() {
 }
 
 // 지도 클릭 시 팝업 닫기
-// 지도 클릭 이벤트는 map 초기화 후 등록
-document.addEventListener('DOMContentLoaded', () => {
-  // map 로드 후 클릭 이벤트 등록
-  const registerClick = () => {
-    if (window.map) {
-      window.map.on('click', function() {
-        closeUnsoldPopup();
-        document.getElementById('search-results').style.display = 'none';
-        document.getElementById('trade-popup').style.display = 'none';
-      });
-    } else {
-      setTimeout(registerClick, 200);
-    }
-  };
-  registerClick();
+kakao.maps.event.addListener(map, 'click', function() {
+  closeUnsoldPopup();
+  document.getElementById('search-results').style.display = 'none';
+  document.getElementById('trade-popup').style.display = 'none';
 });
-

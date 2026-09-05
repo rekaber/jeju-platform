@@ -15,8 +15,36 @@ GitHub Actions (매일 / 수동)
         │
 Supabase (apt/house/rht/land/comm/arch/migration)
         │
-GitHub Pages (index.html → REST anon)
+GitHub Pages (`index.html` + `css/` + `js/` → REST anon)
 ```
+
+## 프론트 파일 구조
+
+```
+index.html          # 마크업 + CSS/JS 로드만 (~1k줄)
+css/
+  style.css         # 메인 UI
+  intro.css         # 인트로 오버레이
+js/
+  config.js         # Supabase URL/anon, 상수
+  supabase.js       # sbFetchAll
+  data-dong.js      # 법정동 기준점
+  geo.js            # 지오캐시·동좌표·지오코딩
+  intro.js          # 인트로
+  unsold-data.js    # 미분양 정적 데이터
+  map.js            # 카카오맵 초기화
+  load-trades.js    # 실거래/토지 Supabase 로드·배지
+  data-modal.js     # CSV/API 데이터 연결
+  reg-zone.js       # 규제구역
+  bid.js / arch.js / dev.js
+  bubble.js         # 지역별 건수 버블
+  trade.js / trade-layers.js
+  stats.js / land.js / unsold.js / search.js
+  migration.js / jiga.js / imde.js / land-stat.js
+  toast-ui.js / boot.js
+```
+
+스크립트는 ES module이 아닌 일반 `<script src>` (전역 `var`/`function`). Vite 없음.
 
 ## 테이블
 
@@ -64,12 +92,12 @@ Actions → **제주 부동산 전체 백필** → `from_ym=202401`, clear=`true
 
 ## 프론트 개선 요약
 
+- 실거래는 Supabase만 사용 (로컬 JSON 폴백 없음). 레이어 OFF 시 배지 0건
 - Supabase 페이지 fetch 동시성 제한 + count 검증
-- 로컬 JSON → Supabase 레이스 완화 (generation 토큰)
-- 배지 항상 전체 건수 표시, 기본 기간 **월간**
 - API 키 HTML 하드코딩 제거 (localStorage만)
-- 인구이동 Supabase 로드 추가
-- `geocodeByNameFallback` 전역화 (단독/연립/상업용 지오코딩 복구)
+- 인구이동 Supabase 로드
+- `geocodeByNameFallback` 전역화 (단독/연립/상업용 지오코딩)
+- `index.html` CSS/JS 모듈 분리 (유지보수)
 
 ## 보안
 

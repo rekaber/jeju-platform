@@ -1,12 +1,30 @@
-/* js/migration.js - 제주 부동산 플랫폼 */
+/* js/migration.js - extracted from index.html */
 /* ═══════════════════════════════════════════════
    인구이동 데이터 & 지도 화살표
 ═══════════════════════════════════════════════ */
-fetch('./migration_data.json').then(r=>r.json()).then(d=>{ window.MIGRATION_DATA=d; }).catch(()=>{});
+fetch('./migration_data.json').then(r=>r.json()).then(d=>{ window.MIGRATION_DATA=d; }).catch(e=>console.log('[인구이동] JSON 실패', e.message));
+(async function loadMigrationFromSb(){
+  try {
+    const rows = await sbFetchAll('migration_data');
+    if (!rows || !rows.length) return;
+    const months = [...new Set(rows.map(r => r.year_month))].sort();
+    const build = (dir) => {
+      const map = {};
+      rows.filter(r => r.direction === dir).forEach(r => {
+        if (!map[r.region]) map[r.region] = { region: r.region, counts: months.map(()=>0), nets: months.map(()=>0), lat: r.lat, lng: r.lng };
+        const i = months.indexOf(r.year_month);
+        if (i >= 0) { map[r.region].counts[i] = r.count || 0; map[r.region].nets[i] = r.net_count || 0; }
+      });
+      return Object.values(map);
+    };
+    window.MIGRATION_DATA = { months, outflow: build('out'), inflow: build('in') };
+    console.log('[인구이동] Supabase 로드', rows.length);
+  } catch(e) { console.log('[인구이동] Supabase 실패', e.message); }
+})();
 
-let migActiveDir = null; // 'out' | 'in' | null
+var migActiveDir = null; // 'out' | 'in' | null
 
-const JEJU_CENTER = {lat:33.3617, lng:126.5292};
+var JEJU_CENTER = {lat:33.3617, lng:126.5292};
 
 function toggleMigration(dir, btn) {
   const tog = document.getElementById('toggle-mig-' + dir);
@@ -24,7 +42,8 @@ function toggleMigration(dir, btn) {
     tog.classList.add('on');
     migActiveDir = dir;
     // 한국 전체가 보이는 뷰로 줌 조정 후 화살표 그리기
-    map.flyTo({ center: [127.8, 36.0], zoom: 7 });
+    map.setCenter(new kakao.maps.LatLng(36.0, 127.8));
+    map.setLevel(10);
     setTimeout(() => drawMigrationArrows(dir), 500);
   }
 }
@@ -35,8 +54,14 @@ function clearMigrationArrows() {
 }
 
 function latlngToPixel(lat, lng) {
-  const pt = map.project([lng, lat]);
-  return { x: pt.x, y: pt.y };
+  const proj   = map.getProjection();
+  const mapEl  = document.getElementById('map');
+  const center = proj.pointFromCoords(map.getCenter());
+  const pt     = proj.pointFromCoords(new kakao.maps.LatLng(lat, lng));
+  return {
+    x: (pt.x - center.x) + mapEl.offsetWidth  / 2,
+    y: (pt.y - center.y) + mapEl.offsetHeight / 2
+  };
 }
 
 function drawMigrationArrows(dir) {
@@ -116,23 +141,13 @@ function drawMigrationArrows(dir) {
 }
 
 // 지도 이동/줌 시 화살표 재렌더
-// map 초기화 후 moveend 이벤트 등록
-document.addEventListener('DOMContentLoaded', () => {
-  const registerMove = () => {
-    if (window.map) {
-      window.map.on('moveend', function() {
-        if (migActiveDir) drawMigrationArrows(migActiveDir);
-      });
-    } else {
-      setTimeout(registerMove, 200);
-    }
-  };
-  registerMove();
+kakao.maps.event.addListener(map, 'idle', function() {
+  if (migActiveDir) drawMigrationArrows(migActiveDir);
 });
 
 /* ─── 인구이동 통계 모달 ─── */
-let migTab = 'trend';
-let migYear = 'all';
+var migTab = 'trend';
+var migYear = 'all';
 
 function setMigYear(year, btn) {
   migYear = year;
@@ -224,7 +239,14 @@ function renderMigChart() {
     // 순이동 막대
     const zeroY=toY(0);
     netVals.forEach((v,i)=>{const bh=Math.abs((v/(maxV||1))*cH*0.4);const by=v>=0?zeroY-bh:zeroY;content+=`<rect x="${(toX(i)-12).toFixed(1)}" y="${by.toFixed(1)}" width="24" height="${bh.toFixed(1)}" fill="${v>=0?'#1976D2':'#E53935'}" fill-opacity="0.25" rx="3"/>`;});
-    const xLbls=months.map((m,i)=>`<text x="${toX(i).toFixed(1)}" y="${H-22}" text-anchor="middle" font-size="11" fill="#666" font-weight="600">${m.replace('-','년 ')}월</text>`).join('');
+    // x축: 데이터 수에 따라 간격 조정, 1월이면 연도 표시
+    const xStep = months.length > 18 ? 3 : months.length > 12 ? 2 : 1;
+    const xLbls=months.map((m,i)=>{
+      if(i % xStep !== 0) return '';
+      const [yr,mo] = m.split('-');
+      const lbl = mo==='01' ? yr+'년' : mo+'월';
+      return `<text x="${toX(i).toFixed(1)}" y="${H-22}" text-anchor="middle" font-size="10" fill="#666" font-weight="${mo==='01'?'700':'400'}">${lbl}</text>`;
+    }).join('');
     svg.innerHTML=`<rect x="${padL}" y="${padT}" width="${cW}" height="${cH}" fill="#fafbfc" rx="2"/>${grids}<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+cH}" stroke="#bbb" stroke-width="1.5"/>${yLbls}${content}${xLbls}`;
     document.getElementById('mig-modal-body').querySelector('.sm-legend')?.remove();
     const leg=document.createElement('div');leg.className='sm-legend';leg.style.marginTop='8px';
@@ -283,4 +305,3 @@ function renderMigChart() {
     }</tbody></table>`;
   }
 }
-

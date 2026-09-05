@@ -1,4 +1,4 @@
-/* js/data.js - 제주 부동산 플랫폼 */
+/* js/data-dong.js - extracted from index.html */
 /* ═══════════════════════════════════════════════
    실거래 샘플 데이터 (국토부 실거래가 기반 샘플)
 ═══════════════════════════════════════════════ */
@@ -77,60 +77,8 @@ window.JEJU_BEOPJEONGDONG = [
 ];
 
 (function() {
-  const now = new Date('2026-08-21');
-  const BJ = window.JEJU_BEOPJEONGDONG;
-  // 법정동별 가격 범위 (시세 반영)
-  const priceMap = {
-    '연동':5.2,'노형동':5.5,'이도이동':4.8,'이도일동':4.5,'삼도일동':4.2,'삼도이동':4.1,
-    '일도일동':4.0,'일도이동':3.9,'건입동':3.8,'용담이동':4.3,'용담일동':4.1,
-    '화북일동':3.8,'화북이동':3.7,'아라일동':4.2,'아라이동':4.0,'오라일동':3.9,
-    '오라이동':3.8,'오라삼동':3.7,'도련일동':3.5,'도련이동':3.4,'봉개동':3.2,
-    '외도일동':3.8,'외도이동':3.6,'이호일동':4.1,'이호이동':4.0,'도두일동':3.8,'도두이동':3.7,
-    '용강동':3.5,'회천동':3.3,'오등동':3.2,'삼양일동':3.4,'삼양이동':3.3,'삼양삼동':3.2,
-    '애월읍':4.8,'한림읍':3.2,'한경면':2.8,'조천읍':3.8,'구좌읍':3.0,'우도면':3.5,'추자면':1.8,
-    '서귀동':4.2,'서홍동':4.5,'동홍동':4.3,'서호동':3.8,'호근동':3.6,'법환동':3.5,
-    '강정동':3.4,'도순동':3.2,'회수동':3.1,'월평동':3.3,'하원동':3.0,'색달동':5.8,
-    '중문동':5.5,'대포동':4.8,'예래동':4.2,'보목동':3.6,'토평동':3.8,'상효동':3.2,
-    '하효동':3.1,'효돈동':3.0,'신효동':3.1,'남원읍':3.2,'표선면':2.8,'성산읍':3.5,
-    '대정읍':3.0,'안덕면':3.2,
-  };
-  const types = ['아파트','아파트','아파트','오피스텔','빌라','단독'];
-  const areas = [33,49,59,75,84,101,112,132,148,178,200];
-  const TRADE_DATA = [];
-  let id = 1;
-  for (let d = 0; d < 365; d++) {
-    const dt = new Date(now); dt.setDate(dt.getDate() - d);
-    const count = d < 7 ? 4 : d < 30 ? 3 : 2;
-    for (let c = 0; c < count; c++) {
-      const bj = BJ[Math.floor(Math.random()*BJ.length)];
-      const base = priceMap[bj.dong] || 3.5;
-      const price = Math.round((base + (Math.random()-0.5)*1.6) * 10) / 10;
-      const type = types[Math.floor(Math.random()*types.length)];
-      const area = areas[Math.floor(Math.random()*areas.length)];
-      const jitter = (Math.random()-0.5)*0.008;
-      TRADE_DATA.push({
-        id: id++,
-        name: bj.dong + ' ' + type,
-        addr: bj.sigungu + ' ' + bj.dong,
-        sigungu: bj.sigungu,
-        dong: bj.dong,
-        code: bj.code,
-        lawdCd: bj.lawdCd,
-        lat: bj.lat + jitter, lng: bj.lng + jitter,
-        type, area, price: Math.max(0.5, price),
-        date: dt.toISOString().slice(0,10)
-      });
-    }
-  }
-  window.TRADE_DATA = TRADE_DATA; // 샘플 데이터 (기본값)
+  // Supabase 전용: 샘플/로컬 JSON 없음. 로드 전·빈 DB는 빈 배열
+  window.MULTI_DATA = { apt: [], offi: [], rht: [], house: [] };
+  window.TRADE_DATA = [];
+  window.LAND_DATA = [];
 })();
-
-// ── 도로명주소 → 좌표 캐시 (localStorage 영속) ──────────────────────────
-const GEOCACHE_KEY = 'jeju_geocache_v1';
-function loadGeoCache() {
-  try { return JSON.parse(localStorage.getItem(GEOCACHE_KEY) || '{}'); } catch(e) { return {}; }
-}
-function saveGeoCache(cache) {
-  try { localStorage.setItem(GEOCACHE_KEY, JSON.stringify(cache)); } catch(e) {}
-}
-
