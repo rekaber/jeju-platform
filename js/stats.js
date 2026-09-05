@@ -119,7 +119,6 @@ function renderStatChart() {
   const W=840, H=300, padL=62, padB=44, padR=50, padT=20;
   const cW=W-padL-padR, cH=H-padT-padB;
   const n = months.length;
-  const xStep = cW / (n - 1);
 
   // 라인 설정
   let lines = [];   // [{vals, color, label}]
@@ -157,8 +156,13 @@ function renderStatChart() {
   const maxV = Math.max(...allVals);
   const minV = isBar ? 0 : Math.max(0, Math.min(...allVals) * 0.88);
 
+  // 막대: 월별 칸 중앙 / 라인: 좌우 끝점 배치
+  const xStep = isBar ? (cW / Math.max(n, 1)) : (n > 1 ? cW / (n - 1) : 0);
   function toY(v) { return v==null ? null : padT + cH - ((v-minV)/(maxV-minV||1))*cH; }
-  function toX(i) { return padL + i * xStep; }
+  function toX(i) {
+    if (isBar) return padL + (i + 0.5) * xStep;
+    return padL + i * xStep;
+  }
 
   // 그리드
   const gridN = 5;
@@ -175,15 +179,16 @@ function renderStatChart() {
   // 바 or 라인
   let chartContent = '';
   if (isBar) {
-    const bw = xStep * 0.35;
-    const offset = lines.length > 1 ? [-bw*0.6, bw*0.6] : [0];
+    const bw = Math.min(xStep * 0.32, 28);
+    const offset = lines.length > 1 ? [-bw * 0.55, bw * 0.55] : [0];
     lines.forEach((line, li) => {
       line.vals.forEach((v, i) => {
         if (!v) return;
         const bh = ((v-minV)/(maxV-minV))*cH;
         const ox = lines.length > 1 ? offset[li] : 0;
-        chartContent += `<rect x="${(toX(i)-bw/2+ox).toFixed(1)}" y="${(padT+cH-bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="${line.color}" fill-opacity="0.75" rx="3"/>`;
-        if (v > 0) chartContent += `<text x="${(toX(i)+ox).toFixed(1)}" y="${(padT+cH-bh-4).toFixed(1)}" text-anchor="middle" font-size="9" fill="${line.color}" font-weight="600">${v}</text>`;
+        const cx = toX(i) + ox;
+        chartContent += `<rect x="${(cx - bw/2).toFixed(1)}" y="${(padT+cH-bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="${line.color}" fill-opacity="0.75" rx="3"/>`;
+        if (v > 0) chartContent += `<text x="${cx.toFixed(1)}" y="${(padT+cH-bh-4).toFixed(1)}" text-anchor="middle" font-size="9" fill="${line.color}" font-weight="600">${v}</text>`;
       });
     });
   } else {
@@ -216,8 +221,8 @@ function renderStatChart() {
   // hover 영역
   let hoverRects = '';
   months.forEach((m, i) => {
-    const x = i===0 ? padL : toX(i) - xStep/2;
-    const w = i===0||i===n-1 ? xStep/2 : xStep;
+    const x = isBar ? (padL + i * xStep) : (i === 0 ? padL : toX(i) - xStep / 2);
+    const w = isBar ? xStep : (i === 0 || i === n - 1 ? xStep / 2 : xStep);
     const fmtV = v => statTab==='pyung'?(v?v.toLocaleString()+'만/평':'-'):statTab==='total'?(v?v.toFixed(2)+'억':'-'):(v||0)+'건';
     const vals = lines.map(l => `${l.label}: ${fmtV(l.vals[i])}`).join('\n');
     const tip = `${m.key} (${m.allCnt}건)\n${vals}`;
