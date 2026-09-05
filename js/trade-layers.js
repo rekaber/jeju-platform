@@ -14,14 +14,44 @@ var _typeMeta = {
   comm: { color:'#7B1FA2', label:'상업용' }
 };
 
-// 타입별 상태
+// 타입별 상태 — bubblePeriod 기본값은 HTML(주간 active)과 일치
 window._typeState = {};
 ['apt','house','rht','comm'].forEach(function(t) {
-  window._typeState[t] = { visible:false, period:'month', month:'all', bubbleVisible:false, bubblePeriod:'month', bubbleMonth:'all' };
+  window._typeState[t] = { visible:false, period:'month', month:'all', bubbleVisible:false, bubblePeriod:'week', bubbleMonth:'all' };
 });
 
 // 타입별 마커 오버레이 배열
 window._typeOverlays = { apt:[], house:[], rht:[], comm:[] };
+
+/** 실거래 기간 ↔ 지역별 건수 기간 UI/상태 동기화 */
+function _syncPeriodButtons(type, period, source) {
+  var st = window._typeState[type];
+  var needle = ",'" + period + "',";
+  if (source !== 'trade') {
+    st.period = period;
+    if (period !== 'pick') st.month = 'all';
+    var row = document.getElementById('trade-filter-row-' + type);
+    if (row) {
+      row.querySelectorAll('.trade-filter-btn').forEach(function(b) {
+        b.classList.toggle('active', (b.getAttribute('onclick') || '').indexOf(needle) >= 0);
+      });
+    }
+    var tp = document.getElementById('trade-month-picker-' + type);
+    if (tp) tp.style.display = (period === 'pick' && st.visible) ? 'block' : 'none';
+  }
+  if (source !== 'bubble') {
+    st.bubblePeriod = period;
+    if (period !== 'pick') st.bubbleMonth = 'all';
+    var wrap = document.getElementById('bubble-period-wrap-' + type);
+    if (wrap) {
+      wrap.querySelectorAll('.trade-filter-btn').forEach(function(b) {
+        b.classList.toggle('active', (b.getAttribute('onclick') || '').indexOf(needle) >= 0);
+      });
+    }
+    var bp = document.getElementById('bubble-month-picker-' + type);
+    if (bp) bp.style.display = (period === 'pick') ? 'block' : 'none';
+  }
+}
 
 function _getTypeData(type) {
   var key = _typeToDataKey[type];
@@ -295,6 +325,8 @@ function setTradeTypePeriod(type, period, btn) {
     picker.style.pointerEvents = st.visible ? 'auto' : 'none';
   }
   if (period !== 'pick') st.month = 'all';
+  // 지역별 건수 기간도 동일하게 맞춤 (표시·집계 불일치 방지)
+  _syncPeriodButtons(type, period, 'trade');
   if (st.visible) { renderTradeMarkersForType(type); renderTradeChartForType(type); }
   if (st.bubbleVisible) _renderCombinedBubbles();
 }
@@ -305,6 +337,22 @@ function setTradeTypeMonth(type, month, btn) {
   var picker = document.getElementById('trade-month-picker-'+type);
   if (picker) picker.querySelectorAll('.tmp-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
+  // 월 선택 시 버블도 동일 월로
+  st.bubblePeriod = 'pick';
+  st.bubbleMonth = month;
+  var bPicker = document.getElementById('bubble-month-picker-'+type);
+  if (bPicker) {
+    bPicker.style.display = 'block';
+    bPicker.querySelectorAll('.tmp-btn').forEach(function(b){b.classList.remove('active');});
+    var match = bPicker.querySelector('[onclick*="\'' + month + '\'"]');
+    if (match) match.classList.add('active');
+  }
+  var bWrap = document.getElementById('bubble-period-wrap-'+type);
+  if (bWrap) {
+    bWrap.querySelectorAll('.trade-filter-btn').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'pick'") >= 0);
+    });
+  }
   if (st.visible) { renderTradeMarkersForType(type); renderTradeChartForType(type); }
   if (st.bubbleVisible) _renderCombinedBubbles();
 }
@@ -334,14 +382,36 @@ function setBubblePeriodForType(type, period, btn) {
   var picker = document.getElementById('bubble-month-picker-'+type);
   if (picker) picker.style.display = (period === 'pick') ? 'block' : 'none';
   if (period !== 'pick') st.bubbleMonth = 'all';
+  // 실거래 내역 기간도 동일하게 맞춤
+  _syncPeriodButtons(type, period, 'bubble');
+  if (st.visible) { renderTradeMarkersForType(type); renderTradeChartForType(type); }
   _renderCombinedBubbles();
 }
 
 function setBubbleMonthForType(type, month, btn) {
   window._typeState[type].bubbleMonth = month;
+  window._typeState[type].bubblePeriod = 'pick';
   var picker = document.getElementById('bubble-month-picker-'+type);
   if (picker) picker.querySelectorAll('.tmp-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
+  // 실거래도 동일 월
+  var st = window._typeState[type];
+  st.period = 'pick';
+  st.month = month;
+  var tPicker = document.getElementById('trade-month-picker-'+type);
+  if (tPicker) {
+    tPicker.style.display = st.visible ? 'block' : 'none';
+    tPicker.querySelectorAll('.tmp-btn').forEach(function(b){b.classList.remove('active');});
+    var match = tPicker.querySelector('[onclick*="\'' + month + '\'"]');
+    if (match) match.classList.add('active');
+  }
+  var row = document.getElementById('trade-filter-row-'+type);
+  if (row) {
+    row.querySelectorAll('.trade-filter-btn').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'pick'") >= 0);
+    });
+  }
+  if (st.visible) { renderTradeMarkersForType(type); renderTradeChartForType(type); }
   _renderCombinedBubbles();
 }
 
