@@ -343,11 +343,16 @@ function escHtml(s) {
 // 토지 실거래 로드 — Supabase land_trades
 (function loadLandData() {
   function normalizeLand(d) {
-    d.perM2     = parseFloat(d.per_m2 ?? d.perM2)  || 0;
-    d.jibunType = d.jibun_type  || d.jibunType || '';
-    d.tradeType = d.trade_type  || d.tradeType || '';
     d.price     = parseFloat(d.price) || 0;
     d.area      = parseFloat(d.area)  || 0;
+    d.perM2     = parseFloat(d.per_m2 ?? d.perM2)  || 0;
+    // area·price만 있으면 ㎡당가 재계산 (만원/㎡)
+    if (!d.perM2 && d.price > 0 && d.area > 0) {
+      d.perM2 = Math.round(d.price * 10000 / d.area * 10) / 10;
+    }
+    d.jibunType = d.jibun_type  || d.jibunType || '';
+    d.tradeType = d.trade_type  || d.tradeType || '';
+    d.jimok     = (d.jimok || '').trim();
     return d;
   }
   function applyLandData(data, source) {

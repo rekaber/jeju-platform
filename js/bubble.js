@@ -159,6 +159,7 @@ function toggleLandBubble(btn) {
   landBubbleVisible = btn.classList.toggle('on');
   document.getElementById('land-bubble-period-wrap').style.display = landBubbleVisible ? 'block' : 'none';
   if (landBubbleVisible) {
+    // 켤 때마다 기본 기간 = 주간
     landBubblePeriod = 'week';
     landBubbleMonth = 'all';
     var wrap = document.getElementById('land-bubble-period-wrap');
@@ -168,7 +169,12 @@ function toggleLandBubble(btn) {
       });
     }
     var picker = document.getElementById('land-bubble-month-picker');
-    if (picker) picker.style.display = 'none';
+    if (picker) {
+      picker.style.display = 'none';
+      picker.querySelectorAll('.tmp-btn').forEach(function(b){ b.classList.remove('active'); });
+      var allBtn = picker.querySelector('.tmp-btn');
+      if (allBtn) allBtn.classList.add('active');
+    }
     renderLandBubbles();
   } else {
     clearLandBubbles();
@@ -177,8 +183,8 @@ function toggleLandBubble(btn) {
 }
 
 function clearLandBubbles() {
-  landBubbleOverlays.forEach(o => o.setMap(null));
-  landBubbleOverlays = [];
+  landBubbleOverlays.forEach(function(o) { try { o.setMap(null); } catch(_){} });
+  landBubbleOverlays.length = 0;
 }
 
 function getLandBubbleFiltered() {

@@ -310,7 +310,7 @@ def parse_land(items, sigungu):
         일 = text(it, '일') or text(it, 'dealDay')
         if not (년 and 월 and 일): continue
         area = None
-        for tag in ['면적', '토지면적', 'landAr', 'officialLandPriceAr']:
+        for tag in ['거래면적', '면적', '토지면적', 'landAr', 'dealArea', 'officialLandPriceAr']:
             v = float_or_none(text(it, tag))
             if v: area = v; break
         price = price_eok(text(it, '거래금액') or text(it, 'dealAmount'))
@@ -325,8 +325,8 @@ def parse_land(items, sigungu):
             'sigungu':    sigungu,
             'dong':       dong,
             'jibun':      jibun,
-            'jimok':      text(it, '지목'),
-            'yongdo':     text(it, '용도지역'),
+            'jimok':      text(it, '지목') or text(it, 'lndcgrCodeNm'),
+            'yongdo':     text(it, '용도지역') or text(it, 'zoning'),
             'doro':       text(it, '도로명'),
             'area':       area,
             'price':      price,

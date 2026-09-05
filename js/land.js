@@ -19,6 +19,10 @@ function toggleLand(btn) {
   const picker     = document.getElementById('land-month-picker');
   periodRow.style.opacity       = on ? '1' : '0.4';
   periodRow.style.pointerEvents = on ? 'auto' : 'none';
+  if (picker) {
+    picker.style.opacity = on ? '1' : '0.4';
+    picker.style.pointerEvents = on ? 'auto' : 'none';
+  }
   filterWrap.style.display = on ? 'block' : 'none';
   chartWrap.style.display  = on ? 'block' : 'none';
   document.getElementById('land-popup').style.display = 'none';
@@ -32,6 +36,9 @@ function toggleLand(btn) {
       });
     }
     if (picker) picker.style.display = 'none';
+    var allBtn = document.querySelector('#land-month-picker .land-tmp-btn, #land-month-picker .tmp-btn');
+    document.querySelectorAll('#land-month-picker .land-tmp-btn, #land-month-picker .tmp-btn').forEach(function(b){ b.classList.remove('active'); });
+    if (allBtn) allBtn.classList.add('active');
     renderLandMarkers();
     renderLandChart();
   } else {
@@ -69,10 +76,11 @@ function getFilteredLands() {
   if (!window.LAND_DATA) return [];
   const now = new Date();
   const jimokFilter = t => {
-    if (landJimok === 'dae'  && t.jimok !== '대') return false;
-    if (landJimok === 'farm' && !FARM_JIMOK.includes(t.jimok)) return false;
-    if (landJimok === 'imya' && t.jimok !== '임야') return false;
-    if (landJimok === 'etc'  && (t.jimok === '대' || FARM_JIMOK.includes(t.jimok) || t.jimok === '임야')) return false;
+    var j = (t.jimok || '').trim();
+    if (landJimok === 'dae'  && j !== '대' && j !== '대지') return false;
+    if (landJimok === 'farm' && !FARM_JIMOK.includes(j)) return false;
+    if (landJimok === 'imya' && j !== '임야') return false;
+    if (landJimok === 'etc'  && (j === '대' || j === '대지' || FARM_JIMOK.includes(j) || j === '임야')) return false;
     return true;
   };
   // 월 선택 모드
@@ -97,16 +105,35 @@ function getFilteredLands() {
 }
 
 function getLandClass(jimok) {
-  if (jimok === '대') return 'lm-dae';
-  if (FARM_JIMOK.includes(jimok)) return 'lm-farm';
-  if (jimok === '임야') return 'lm-imya';
+  var j = (jimok || '').trim();
+  if (j === '대' || j === '대지') return 'lm-dae';
+  if (FARM_JIMOK.includes(j)) return 'lm-farm';
+  if (j === '임야') return 'lm-imya';
   return 'lm-etc';
 }
 
+function formatLandMarkerPrice(t) {
+  var pm = Number(t.perM2) || 0;
+  if (!pm && t.price > 0 && t.area > 0) {
+    pm = Math.round(t.price * 10000 / t.area * 10) / 10;
+    t.perM2 = pm;
+  }
+  if (pm > 0) {
+    return pm >= 100
+      ? Math.round(pm).toLocaleString() + '만/㎡'
+      : pm.toFixed(1) + '만/㎡';
+  }
+  // 면적 없는 기존 DB: 거래금액(억)으로 표시
+  if (t.price > 0) {
+    return (t.price >= 1 ? t.price.toFixed(1) : t.price.toFixed(2)) + '억';
+  }
+  return '-';
+}
+
 function clearLandMarkers() {
-  renderLandMarkers._token = (renderLandMarkers._token || 0) + 1; // 진행 중 렌더링 취소
-  landOverlays.forEach(o => o.setMap(null));
-  landOverlays = [];
+  renderLandMarkers._token = (renderLandMarkers._token || 0) + 1;
+  landOverlays.forEach(function(o) { try { o.setMap(null); } catch(_){} });
+  landOverlays.length = 0;
 }
 
 function renderLandChart() {
@@ -184,14 +211,17 @@ function renderLandMarkers() {
     for (; i < end; i++) {
       const t = lands[i];
       const cls = getLandClass(t.jimok);
-      const perM2str = t.perM2 >= 100
-        ? Math.round(t.perM2).toLocaleString() + '만'
-        : t.perM2.toFixed(1) + '만';
+      const priceStr = formatLandMarkerPrice(t);
       const el = document.createElement('div');
       el.className = 'land-marker ' + cls;
-      const dongShort = (t.dong || t.sigungu || '').replace(/^제주시\s*|^서귀포시\s*/,'');
-      el.innerHTML = '<span class="lm-dong">' + (dongShort || '') + '</span>' +
-                     '<span class="lm-price">' + perM2str + '/㎡</span>';
+      // 동명만 짧게 (읍·면·동 단위)
+      var dongShort = (t.dong || '').trim();
+      if (dongShort.indexOf(' ') >= 0) {
+        var parts = dongShort.split(/\s+/);
+        dongShort = parts[parts.length - 1]; // "한림읍 상대리" → "상대리"
+      }
+      el.innerHTML = '<span class="lm-dong">' + (dongShort || t.sigungu || '') + '</span>' +
+                     '<span class="lm-price">' + priceStr + '</span>';
       el.addEventListener('click', (function(td){ return function(e) {
         e.stopPropagation();
         showLandPopup(td, this);
@@ -222,12 +252,14 @@ function showLandPopup(t, el) {
   const hdrColor = colorMap[t.jimok] || '#1565C0';
   popup.style.borderTopColor = hdrColor;
   const jimokEl = document.getElementById('lp-jimok');
-  jimokEl.textContent = t.jimok + (t.yongdo ? ' · ' + t.yongdo : '');
+  jimokEl.textContent = (t.jimok || '지목 미상') + (t.yongdo ? ' · ' + t.yongdo : '');
   jimokEl.style.color = hdrColor;
   document.getElementById('lp-addr').textContent  = t.addr + ' ' + (t.jibun || '');
   document.getElementById('lp-price').textContent = t.price + '억원';
+  var areaStr = t.area ? t.area.toLocaleString() + '㎡' : '-';
+  var perStr = t.perM2 > 0 ? t.perM2.toLocaleString() + '만원/㎡' : '-';
   document.getElementById('lp-meta').innerHTML =
-    '면적: ' + t.area.toLocaleString() + '㎡ &nbsp;|&nbsp; ㎡당 ' + t.perM2.toLocaleString() + '만원<br>' +
+    '면적: ' + areaStr + ' &nbsp;|&nbsp; ㎡당 ' + perStr + '<br>' +
     '도로: ' + (t.doro || '-') + ' &nbsp;|&nbsp; ' + (t.tradeType || '') + '<br>' +
     '계약일: ' + t.date + (t.jibunType ? ' · ' + t.jibunType : '');
   const elRect = el.getBoundingClientRect();
