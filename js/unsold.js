@@ -28,6 +28,17 @@ function _initMonthPickers() {
     }
     if (bubbleEl) bubbleEl.innerHTML = html2;
   });
+  // 토지: 실거래·지역별 건수 월 선택 (1월~현재월, 새 달 자동 반영)
+  var landTradeEl = document.getElementById('land-month-btns');
+  var landBubbleEl = document.getElementById('land-bubble-month-btns');
+  var landHtml = '', landHtml2 = '';
+  for (var m = 1; m <= curM; m++) {
+    var key = yr + String(m).padStart(2,'0');
+    landHtml  += '<button class="tmp-btn" onclick="setLandMonth(\'' + key + '\',this)">' + m + '월</button>';
+    landHtml2 += '<button class="tmp-btn" onclick="setLandBubbleMonth(\'' + key + '\',this)">' + m + '월</button>';
+  }
+  if (landTradeEl) landTradeEl.innerHTML = landHtml;
+  if (landBubbleEl) landBubbleEl.innerHTML = landHtml2;
 }
 
 // 배지 초기화

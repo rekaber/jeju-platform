@@ -326,18 +326,11 @@
           <button class="trade-filter-btn" onclick="setLandPeriod('year',this)">연간</button>
           <button class="trade-filter-btn" onclick="setLandPeriod('pick',this)">월 선택</button>
         </div>
-        <!-- 토지 월 선택 피커 -->
+        <!-- 토지 월 선택 피커 (1월~현재월 동적 생성) -->
         <div id="land-month-picker" style="display:none;padding:2px 6px 6px;opacity:0.4;pointer-events:none;">
           <div style="display:flex;flex-wrap:wrap;gap:3px;">
-            <button class="land-tmp-btn active" onclick="setLandMonth('all',this)">전체</button>
-            <button class="land-tmp-btn" onclick="setLandMonth('202601',this)">1월</button>
-            <button class="land-tmp-btn" onclick="setLandMonth('202602',this)">2월</button>
-            <button class="land-tmp-btn" onclick="setLandMonth('202603',this)">3월</button>
-            <button class="land-tmp-btn" onclick="setLandMonth('202604',this)">4월</button>
-            <button class="land-tmp-btn" onclick="setLandMonth('202605',this)">5월</button>
-            <button class="land-tmp-btn" onclick="setLandMonth('202606',this)">6월</button>
-            <button class="land-tmp-btn" onclick="setLandMonth('202607',this)">7월</button>
-            <button class="land-tmp-btn" onclick="setLandMonth('202608',this)">8월</button>
+            <button class="tmp-btn active" onclick="setLandMonth('all',this)">전체</button>
+            <span id="land-month-btns"></span>
           </div>
         </div>
         <div id="land-filter-wrap" style="padding:4px 6px 6px 25px; display:none;">
@@ -359,7 +352,7 @@
         </div>
         <div class="layer-item" style="margin-top:2px;">
           <div class="layer-dot" style="background:#8D6E63; border-radius:2px;"></div>
-          <span class="layer-label">지역별 거래 건수</span>
+          <span class="layer-label">지역별 거래 건수<span id="land-bubble-badge" style="background:#8D6E63;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;margin-left:3px;">0건</span></span>
           <div class="layer-toggle" id="toggle-land-bubble" onclick="toggleLandBubble(this)"></div>
         </div>
         <div id="land-bubble-period-wrap" style="display:none;">
@@ -367,18 +360,13 @@
             <button class="trade-filter-btn active" onclick="setLandBubblePeriod('week',this)">주간</button>
             <button class="trade-filter-btn" onclick="setLandBubblePeriod('month',this)">월간</button>
             <button class="trade-filter-btn" onclick="setLandBubblePeriod('year',this)">연간</button>
-            <button class="trade-filter-btn" onclick="setLandBubblePeriod('pick',this)">월선택</button>
+            <button class="trade-filter-btn" onclick="setLandBubblePeriod('pick',this)">월 선택</button>
           </div>
-          <div id="land-bubble-month-picker" style="display:none;padding:4px 6px 2px;flex-wrap:wrap;gap:3px;">
-            <button class="tmp-btn active" onclick="setLandBubbleMonth('all',this)">전체</button>
-            <button class="tmp-btn" onclick="setLandBubbleMonth('202601',this)">1월</button>
-            <button class="tmp-btn" onclick="setLandBubbleMonth('202602',this)">2월</button>
-            <button class="tmp-btn" onclick="setLandBubbleMonth('202603',this)">3월</button>
-            <button class="tmp-btn" onclick="setLandBubbleMonth('202604',this)">4월</button>
-            <button class="tmp-btn" onclick="setLandBubbleMonth('202605',this)">5월</button>
-            <button class="tmp-btn" onclick="setLandBubbleMonth('202606',this)">6월</button>
-            <button class="tmp-btn" onclick="setLandBubbleMonth('202607',this)">7월</button>
-            <button class="tmp-btn" onclick="setLandBubbleMonth('202608',this)">8월</button>
+          <div id="land-bubble-month-picker" style="display:none;">
+            <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px;">
+              <button class="tmp-btn active" onclick="setLandBubbleMonth('all',this)">전체</button>
+              <span id="land-bubble-month-btns"></span>
+            </div>
           </div>
         </div>
       </div>

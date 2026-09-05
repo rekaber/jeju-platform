@@ -61,13 +61,18 @@ function setLandPeriod(p, btn) {
   btn.classList.add('active');
   const picker = document.getElementById('land-month-picker');
   if (picker) picker.style.display = (p === 'pick' && landVisible) ? 'block' : 'none';
-  if (p !== 'pick') { landMonth = 'all'; document.querySelectorAll('.land-tmp-btn').forEach(b => b.classList.remove('active')); const allBtn = document.querySelector('.land-tmp-btn'); if (allBtn) allBtn.classList.add('active'); }
+  if (p !== 'pick') {
+    landMonth = 'all';
+    document.querySelectorAll('#land-month-picker .tmp-btn, #land-month-picker .land-tmp-btn').forEach(b => b.classList.remove('active'));
+    const allBtn = document.querySelector('#land-month-picker .tmp-btn, #land-month-picker .land-tmp-btn');
+    if (allBtn) allBtn.classList.add('active');
+  }
   if (landVisible) { clearLandMarkers(); renderLandMarkers(); renderLandChart(); }
 }
 
 function setLandMonth(ym, btn) {
   landMonth = ym;
-  document.querySelectorAll('.land-tmp-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#land-month-picker .tmp-btn, #land-month-picker .land-tmp-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   if (landVisible) { clearLandMarkers(); renderLandMarkers(); renderLandChart(); }
 }

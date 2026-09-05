@@ -142,13 +142,14 @@ function setLandBubblePeriod(p, btn) {
   if (wrap) wrap.querySelectorAll('.trade-filter-btn').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
   var picker = document.getElementById('land-bubble-month-picker');
-  if (picker) picker.style.display = (p === 'pick') ? 'flex' : 'none';
+  if (picker) picker.style.display = (p === 'pick') ? 'block' : 'none';
   if (p !== 'pick') landBubbleMonth = 'all';
   if (landBubbleVisible) renderLandBubbles();
 }
 
 function setLandBubbleMonth(ym, btn) {
   landBubbleMonth = ym;
+  landBubblePeriod = 'pick';
   var picker = document.getElementById('land-bubble-month-picker');
   if (picker) picker.querySelectorAll('.tmp-btn').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
@@ -178,6 +179,8 @@ function toggleLandBubble(btn) {
     renderLandBubbles();
   } else {
     clearLandBubbles();
+    var bb = document.getElementById('land-bubble-badge');
+    if (bb) bb.textContent = '0건';
   }
   updateActiveLayerCount();
 }
@@ -206,6 +209,8 @@ function getLandBubbleFiltered() {
 function renderLandBubbles() {
   clearLandBubbles();
   const lands = getLandBubbleFiltered();
+  const bb = document.getElementById('land-bubble-badge');
+  if (bb) bb.textContent = landBubbleVisible ? ((lands.length || 0) + '건') : '0건';
   const now2 = new Date();
   const periodLabels = { week:'최근 7일', month:'최근 30일', year:now2.getFullYear()+'년', pick: landBubbleMonth !== 'all' ? landBubbleMonth.slice(0,4)+'년 '+parseInt(landBubbleMonth.slice(4))+'월' : now2.getFullYear()+'년 전체' };
   const periodLabel = periodLabels[landBubblePeriod] || '';
