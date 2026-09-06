@@ -19,6 +19,24 @@
 import os, sys, time, json, urllib.request, urllib.parse
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
+from pathlib import Path
+
+def _load_dotenv():
+    path = Path(__file__).resolve().parents[1] / '.env'
+    if not path.exists():
+        return
+    text = path.read_text(encoding='utf-8-sig')
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        k, v = line.split('=', 1)
+        os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+    # .env 별칭: MOLIT_KEY → MOLIT_API_KEY
+    if not os.environ.get('MOLIT_API_KEY') and os.environ.get('MOLIT_KEY'):
+        os.environ['MOLIT_API_KEY'] = os.environ['MOLIT_KEY']
+
+_load_dotenv()
 
 # ── CLI 옵션 ─────────────────────────────────────────────
 MONTHS_BACK = 3  # 기본값: 최근 3개월 (--from 없을 때)
@@ -51,7 +69,7 @@ for i, arg in enumerate(args):
         SKIP_GEOCODE = True
 
 # ── 설정 ─────────────────────────────────────────────────
-MOLIT_KEY      = os.environ.get('MOLIT_API_KEY', '')
+MOLIT_KEY      = os.environ.get('MOLIT_API_KEY') or os.environ.get('MOLIT_KEY', '')
 SUPABASE_URL   = os.environ.get('SUPABASE_URL', 'https://boukipzpoapqotvauzrj.supabase.co')
 SUPABASE_KEY   = os.environ.get('SUPABASE_SERVICE_KEY', '')
 KAKAO_REST_KEY = os.environ.get('KAKAO_REST_KEY', '')
