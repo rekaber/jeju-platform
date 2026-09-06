@@ -86,11 +86,6 @@ function renderArchMarkers() {
   clearArchMarkers();
   const list = getFilteredArch();
   document.getElementById('arch-cnt-badge').textContent = list.length;
-  const withCoord = list.filter(d => d.lat && d.lng).length;
-  const prog = document.getElementById('arch-progress');
-  if (prog && list.length && withCoord < list.length && window._archLoading !== true) {
-    // 좌표 변환 진행 중이면 geocodeArchData가 메시지를 갱신
-  }
   const token = {};
   window._archToken = token;
   let i = 0;
