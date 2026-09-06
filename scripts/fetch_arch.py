@@ -102,9 +102,8 @@ ARCH_TIMEOUT_ABORT = 3  # 연속 타임아웃 시 법정동 루프 중단
 
 
 def arch_fetch(sigungu_cd, start_date, end_date, bjdong_cd='00000'):
-    """세움터 건축인허가 이력 API. (items, status) status: ok|empty|timeout|error"""
+    """건축HUB 건축인허가 API (ArchPmsHubService). 구 ArchPmsHstService_v2 는 폐기됨."""
     endpoints = [
-        'https://apis.data.go.kr/1613000/ArchPmsHstService_v2/getApBasisOulnInfo',
         'https://apis.data.go.kr/1613000/ArchPmsHubService/getApBasisOulnInfo',
     ]
     last_status = 'empty'
@@ -120,16 +119,26 @@ def arch_fetch(sigungu_cd, start_date, end_date, bjdong_cd='00000'):
                 'numOfRows': 1000,
                 'pageNo': page,
             })
+            # 포털 Encoding 키를 그대로 쓰거나, Decoding 키면 quote
             raw_key = urllib.parse.unquote(MOLIT_KEY)
-            key = urllib.parse.quote(raw_key, safe='')
+            # 이미 % 포함(인코딩됨)이면 재인코딩하지 않음
+            if '%' in MOLIT_KEY:
+                key = MOLIT_KEY.strip()
+            else:
+                key = urllib.parse.quote(raw_key, safe='')
             url = f'{base}?serviceKey={key}&{params}'
             try:
                 with urllib.request.urlopen(url, timeout=ARCH_TIMEOUT) as r:
                     xml_str = r.read().decode('utf-8')
             except urllib.error.HTTPError as e:
-                body = e.read().decode('utf-8', errors='ignore')[:300]
-                print(f'  API HTTP {e.code} ({base.split("/")[-1]} p{page}): {body}')
-                last_status = 'error'
+                body = e.read().decode('utf-8', errors='ignore')[:400]
+                print(f'  API HTTP {e.code} ({base.split("/")[-1]} p{page}): {body[:200]}')
+                if 'SERVICE_KEY_IS_NOT_REGISTERED' in body:
+                    last_status = 'key_not_registered'
+                elif 'NO_OPENAPI_SERVICE' in body:
+                    last_status = 'service_gone'
+                else:
+                    last_status = 'error'
                 break
             except Exception as e:
                 err = str(e).lower()
@@ -142,6 +151,13 @@ def arch_fetch(sigungu_cd, start_date, end_date, bjdong_cd='00000'):
                 print(f'  XML 오류: {e}')
                 last_status = 'error'
                 break
+            # Hub는 resultCode 또는 cmmMsgHeader 둘 다 가능
+            if 'SERVICE_KEY_IS_NOT_REGISTERED' in xml_str:
+                print('  API: SERVICE_KEY_IS_NOT_REGISTERED_ERROR (키 미동기화/권한)')
+                return [], 'key_not_registered'
+            if 'NO_OPENAPI_SERVICE' in xml_str:
+                print('  API: NO_OPENAPI_SERVICE_ERROR')
+                return [], 'service_gone'
             code = (root.findtext('.//resultCode') or '').strip()
             if code not in ('00', '000', '0', ''):
                 msg = root.findtext('.//resultMsg') or ''
@@ -156,7 +172,6 @@ def arch_fetch(sigungu_cd, start_date, end_date, bjdong_cd='00000'):
                 return got, ('ok' if got else 'empty')
             page += 1
             time.sleep(0.2)
-        # 다음 엔드포인트 시도
     return [], last_status
 
 
@@ -174,8 +189,8 @@ def arch_fetch_all_regions(start_date, end_date):
             time.sleep(0.3)
             continue
 
-        if status in ('timeout', 'error'):
-            print(f'  → 시군구 조회 {status} — 법정동 전체 순회 생략 (API 장애 가능성)')
+        if status in ('timeout', 'error', 'key_not_registered', 'service_gone'):
+            print(f'  → 시군구 조회 {status} — 법정동 전체 순회 생략')
             api_down = True
             continue
 
