@@ -95,19 +95,19 @@ function renderLandStatChart() {
       <div class="sm-kpi ${color}"><div class="kpi-val">${rd.length ? Math.max(...rd.map(r=>r.price)).toFixed(1) : 0}억</div><div class="kpi-lbl">최고 거래금액</div></div>`;
   }
 
-  // 월 시계열 (데이터 없는 월 제외)
+  // 월 시계열 — 선택한 연도의 1~12월 (현재 연도는 당월까지)
   const months = [];
   const now = new Date();
-  for (let m = 11; m >= 0; m--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
-    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-    const lbl = String(d.getMonth()+1) + '월';
-    const yearLbl = m === 11 ? String(d.getFullYear()) : '';
-    const jeju = baseData.filter(r => r.date && r.date.startsWith(key) && r.sigungu==='제주시');
-    const seo  = baseData.filter(r => r.date && r.date.startsWith(key) && r.sigungu==='서귀포시');
+  const maxMonth = (landStatYear === now.getFullYear()) ? (now.getMonth() + 1) : 12;
+  for (let month = 1; month <= maxMonth; month++) {
+    const key = landStatYear + '-' + String(month).padStart(2, '0');
+    const lbl = month + '월';
+    const yearLbl = month === 1 ? String(landStatYear) : '';
+    const jeju = baseData.filter(r => r.date && r.date.startsWith(key) && r.sigungu === '제주시');
+    const seo  = baseData.filter(r => r.date && r.date.startsWith(key) && r.sigungu === '서귀포시');
     const all  = baseData.filter(r => r.date && r.date.startsWith(key));
-    const reg  = landStatRegion==='jeju' ? jeju : landStatRegion==='seo' ? seo : all;
-    if (all.length === 0) continue; // 데이터 없는 월 건너뜀
+    const reg  = landStatRegion === 'jeju' ? jeju : landStatRegion === 'seo' ? seo : all;
+    // 빈 월도 축에 남겨 연간 흐름이 보이게 함 (값은 null)
     months.push({
       key, lbl, yearLbl,
       jejuM2: perm2Avg(jeju), seoM2: perm2Avg(seo), regM2: perm2Avg(reg),
@@ -191,12 +191,20 @@ function renderLandStatChart() {
     });
   } else {
     lines.forEach(line => {
-      const pts = line.vals.map((v,i) => v!=null?{x:toX(i),y:toY(v),v}:null).filter(Boolean);
-      if (pts.length < 2) return;
-      const pathD = pts.map((p,j)=>(j===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
-      const areaD = pathD + ` L${pts[pts.length-1].x.toFixed(1)},${(padT+cH).toFixed(1)} L${pts[0].x.toFixed(1)},${(padT+cH).toFixed(1)} Z`;
-      const valLabels = pts.map(p=>`<text x="${p.x.toFixed(1)}" y="${(p.y-8).toFixed(1)}" text-anchor="middle" font-size="9" fill="${line.color}" font-weight="600">${fmtV(p.v)}</text>`).join('');
-      const gid = 'lg' + line.color.replace('#','');
+      const pts = line.vals.map((v, i) => (v != null && v > 0) ? { x: toX(i), y: toY(v), v } : null).filter(Boolean);
+      if (!pts.length) return;
+      // 점 1개만 있어도 표시
+      if (pts.length === 1) {
+        const p = pts[0];
+        chartContent += `
+          <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5" fill="${line.color}" stroke="#fff" stroke-width="2"/>
+          <text x="${p.x.toFixed(1)}" y="${(p.y - 8).toFixed(1)}" text-anchor="middle" font-size="9" fill="${line.color}" font-weight="600">${fmtV(p.v)}</text>`;
+        return;
+      }
+      const pathD = pts.map((p, j) => (j === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+      const areaD = pathD + ` L${pts[pts.length - 1].x.toFixed(1)},${(padT + cH).toFixed(1)} L${pts[0].x.toFixed(1)},${(padT + cH).toFixed(1)} Z`;
+      const valLabels = pts.map(p => `<text x="${p.x.toFixed(1)}" y="${(p.y - 8).toFixed(1)}" text-anchor="middle" font-size="9" fill="${line.color}" font-weight="600">${fmtV(p.v)}</text>`).join('');
+      const gid = 'lg' + line.color.replace('#', '');
       chartContent += `
         <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="${line.color}" stop-opacity="0.18"/>
@@ -204,7 +212,7 @@ function renderLandStatChart() {
         </linearGradient></defs>
         <path d="${areaD}" fill="url(#${gid})"/>
         <path d="${pathD}" fill="none" stroke="${line.color}" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>
-        ${pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5" fill="${line.color}" stroke="#fff" stroke-width="2"/>`).join('')}
+        ${pts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5" fill="${line.color}" stroke="#fff" stroke-width="2"/>`).join('')}
         ${valLabels}`;
     });
   }
