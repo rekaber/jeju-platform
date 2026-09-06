@@ -94,10 +94,14 @@ def load_dong_codes():
     return list(JEJU_BJDONG)
 
 
-ARCH_TIMEOUT = 60
-ARCH_RETRIES = 4
-ARCH_TIMEOUT_ABORT = 8  # 연속 실패 시에만 시군구 순회 중단
-ARCH_CHUNK_DAYS = 62    # 긴 기간은 잘라서 호출 (Hub 타임아웃 완화)
+ARCH_TIMEOUT = 90
+ARCH_RETRIES = 3
+ARCH_TIMEOUT_ABORT = 10  # 연속 실패 시에만 시군구 순회 중단
+ARCH_CHUNK_DAYS = 31     # Actions(해외)에서 Hub가 느려 짧게 자름
+ARCH_HOSTS = (
+    'https://apis.data.go.kr',
+    'http://apis.data.go.kr',  # HTTPS 타임아웃 시 폴백
+)
 
 
 def _service_key():
@@ -118,8 +122,7 @@ def _date_chunks(start_ymd, end_ymd, chunk_days=ARCH_CHUNK_DAYS):
 
 
 def arch_fetch_page(sigungu_cd, start_date, end_date, bjdong_cd, page):
-    """한 페이지 호출. 타임아웃 시 재시도."""
-    base = 'https://apis.data.go.kr/1613000/ArchPmsHubService/getApBasisOulnInfo'
+    """한 페이지 호출. https→http 폴백, 타임아웃 재시도."""
     params = urllib.parse.urlencode({
         'sigunguCd': sigungu_cd,
         'bjdongCd': bjdong_cd,
@@ -128,34 +131,36 @@ def arch_fetch_page(sigungu_cd, start_date, end_date, bjdong_cd, page):
         'numOfRows': 1000,
         'pageNo': page,
     })
-    url = f'{base}?serviceKey={_service_key()}&{params}'
+    path = f'/1613000/ArchPmsHubService/getApBasisOulnInfo?serviceKey={_service_key()}&{params}'
     last_err = None
-    for attempt in range(1, ARCH_RETRIES + 1):
-        try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'jeju-platform-arch/1.0'})
-            with urllib.request.urlopen(req, timeout=ARCH_TIMEOUT) as r:
-                return r.read().decode('utf-8'), None
-        except urllib.error.HTTPError as e:
-            body = e.read().decode('utf-8', errors='ignore')[:400]
-            if 'SERVICE_KEY_IS_NOT_REGISTERED' in body:
-                return '', 'key_not_registered'
-            if 'NO_OPENAPI_SERVICE' in body:
-                return '', 'service_gone'
-            return '', 'error'
-        except Exception as e:
-            last_err = e
-            err = str(e).lower()
-            if 'timed out' in err or 'timeout' in err:
-                if attempt < ARCH_RETRIES:
-                    wait = attempt * 2
-                    print(f'    retry {attempt}/{ARCH_RETRIES} timeout → {wait}s ({bjdong_cd} {start_date})')
-                    time.sleep(wait)
-                    continue
-                print(f'  API timeout ({bjdong_cd} {start_date}~{end_date} p{page}): {e}')
-                return '', 'timeout'
-            print(f'  API 오류 ({bjdong_cd} p{page}): {e}')
-            return '', 'error'
-    print(f'  API 실패: {last_err}')
+    for host in ARCH_HOSTS:
+        url = host + path
+        for attempt in range(1, ARCH_RETRIES + 1):
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'jeju-platform-arch/1.0'})
+                with urllib.request.urlopen(req, timeout=ARCH_TIMEOUT) as r:
+                    return r.read().decode('utf-8'), None
+            except urllib.error.HTTPError as e:
+                body = e.read().decode('utf-8', errors='ignore')[:400]
+                if 'SERVICE_KEY_IS_NOT_REGISTERED' in body:
+                    return '', 'key_not_registered'
+                if 'NO_OPENAPI_SERVICE' in body:
+                    return '', 'service_gone'
+                last_err = e
+                break  # 다음 host
+            except Exception as e:
+                last_err = e
+                err = str(e).lower()
+                if 'timed out' in err or 'timeout' in err:
+                    if attempt < ARCH_RETRIES:
+                        wait = attempt * 3
+                        print(f'    retry {attempt}/{ARCH_RETRIES} timeout → {wait}s ({bjdong_cd} {start_date} {host.split(":")[0]})')
+                        time.sleep(wait)
+                        continue
+                    break  # 다음 host
+                print(f'  API 오류 ({bjdong_cd} p{page}): {e}')
+                return '', 'error'
+    print(f'  API timeout ({bjdong_cd} {start_date}~{end_date} p{page}): {last_err}')
     return '', 'timeout'
 
 
