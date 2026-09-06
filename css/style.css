@@ -481,11 +481,13 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
 }
 .dev-popup {
   background: #fff; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.22);
-  width: 280px; overflow: hidden; position: relative;
+  width: 280px; overflow: hidden; position: fixed; z-index: 10050;
   pointer-events: auto;
 }
+.dev-popup.dragging { opacity: 0.96; box-shadow: 0 8px 28px rgba(0,0,0,0.28); }
 .dev-popup-header {
   padding: 10px 12px 8px; color: #fff; font-size: 12px; font-weight: 800;
+  cursor: move; user-select: none; touch-action: none;
 }
 .dev-popup-status {
   font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 8px;

@@ -56,11 +56,12 @@ var DEV_PROJECTS = [
 var devVisible = false;
 var devFilter  = 'all';
 var devOverlays = [];
-var devPopupOverlay = null;
+var devPopupOverlay = null;        // 호환용 (플로팅 팝업 참조)
 var devRadiusCircles = [];
 var devActiveRadii = new Set();
 var devPopupRadiusCircle = null;   // 팝업에서 선택한 반경 원
 var devNearbyOverlays = [];        // 반경 내 실거래 임시 마커
+var devPopupDragCleanup = null;
 
 function toggleDevProjects(btn) {
   devVisible = btn.classList.toggle('on');
@@ -114,8 +115,106 @@ function renderDevRadius() {
 function clearDevProjects() {
   devOverlays.forEach(o => o.setMap(null));
   devOverlays = [];
-  if (devPopupOverlay) { devPopupOverlay.setMap(null); devPopupOverlay = null; }
-  clearDevPopupRadius();
+  if (typeof window._closeDevPopup === 'function') window._closeDevPopup();
+  else {
+    if (devPopupOverlay && typeof devPopupOverlay.remove === 'function') {
+      if (devPopupDragCleanup) { devPopupDragCleanup(); devPopupDragCleanup = null; }
+      devPopupOverlay.remove();
+    } else if (devPopupOverlay && typeof devPopupOverlay.setMap === 'function') {
+      devPopupOverlay.setMap(null);
+    }
+    devPopupOverlay = null;
+    window._devPopup = null;
+    clearDevPopupRadius();
+  }
+}
+
+/** 헤더를 잡고 화면 어디서든 드래그 */
+function enableDevPopupDrag(el) {
+  const header = el.querySelector('.dev-popup-header');
+  if (!header) return;
+  header.style.cursor = 'move';
+  let dragging = false, sx = 0, sy = 0, sl = 0, st = 0;
+
+  const onDown = (e) => {
+    if (e.target.closest('.dev-popup-close')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const point = e.touches ? e.touches[0] : e;
+    dragging = true;
+    el.classList.add('dragging');
+    const rect = el.getBoundingClientRect();
+    sx = point.clientX; sy = point.clientY;
+    sl = rect.left; st = rect.top;
+    el.style.left = sl + 'px';
+    el.style.top = st + 'px';
+    el.style.right = 'auto';
+    el.style.bottom = 'auto';
+    document.body.style.userSelect = 'none';
+    if (map && map.setDraggable) map.setDraggable(false);
+  };
+  const onMove = (e) => {
+    if (!dragging) return;
+    const point = e.touches ? e.touches[0] : e;
+    if (!point) return;
+    if (e.cancelable) e.preventDefault();
+    let l = sl + (point.clientX - sx);
+    let t = st + (point.clientY - sy);
+    const maxL = Math.max(0, window.innerWidth - el.offsetWidth);
+    const maxT = Math.max(0, window.innerHeight - 48);
+    l = Math.max(0, Math.min(maxL, l));
+    t = Math.max(0, Math.min(maxT, t));
+    el.style.left = l + 'px';
+    el.style.top = t + 'px';
+  };
+  const onUp = () => {
+    if (!dragging) return;
+    dragging = false;
+    el.classList.remove('dragging');
+    document.body.style.userSelect = '';
+    if (map && map.setDraggable) map.setDraggable(true);
+  };
+
+  header.addEventListener('mousedown', onDown);
+  header.addEventListener('touchstart', onDown, { passive: false });
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('mouseup', onUp);
+  document.addEventListener('touchend', onUp);
+
+  if (devPopupDragCleanup) devPopupDragCleanup();
+  devPopupDragCleanup = () => {
+    header.removeEventListener('mousedown', onDown);
+    header.removeEventListener('touchstart', onDown);
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchend', onUp);
+    document.body.style.userSelect = '';
+    if (map && map.setDraggable) map.setDraggable(true);
+  };
+}
+
+/** 프로젝트 좌표 위에 팝업 초기 배치 */
+function placeDevPopupNearProject(el, p) {
+  let left = Math.max(12, (window.innerWidth - 280) / 2);
+  let top = 72;
+  try {
+    if (map && map.getProjection && typeof kakao !== 'undefined') {
+      const pt = map.getProjection().containerPointFromCoords(
+        new kakao.maps.LatLng(p.lat, p.lng)
+      );
+      const mapRect = (map.getNode ? map.getNode() : document.getElementById('map')).getBoundingClientRect();
+      const w = el.offsetWidth || 280;
+      const h = el.offsetHeight || 320;
+      left = mapRect.left + pt.x - w / 2;
+      top = mapRect.top + pt.y - h - 16;
+    }
+  } catch (err) { /* fallback */ }
+  const maxL = Math.max(0, window.innerWidth - (el.offsetWidth || 280));
+  const maxT = Math.max(0, window.innerHeight - 48);
+  el.style.left = Math.max(0, Math.min(maxL, left)) + 'px';
+  el.style.top = Math.max(0, Math.min(maxT, top)) + 'px';
 }
 
 function renderDevProjects() {
@@ -228,7 +327,7 @@ function getDevNearbyTrades(p, km, tab) {
 }
 
 function showDevPopup(p) {
-  if (devPopupOverlay) { devPopupOverlay.setMap(null); devPopupOverlay = null; }
+  if (typeof window._closeDevPopup === 'function') window._closeDevPopup();
   clearDevPopupRadius();
   const color = STATUS_COLOR[p.status] || '#607D8B';
   const el = document.createElement('div');
@@ -389,7 +488,9 @@ function showDevPopup(p) {
   }
 
   function closePopup() {
-    if (window._devPopup) { window._devPopup.setMap(null); window._devPopup = null; }
+    if (devPopupDragCleanup) { devPopupDragCleanup(); devPopupDragCleanup = null; }
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+    window._devPopup = null;
     devPopupOverlay = null;
     clearDevPopupRadius();
   }
@@ -426,8 +527,7 @@ function showDevPopup(p) {
         <div class="dev-trade-header" style="font-size:11px;font-weight:700;color:#444;margin-bottom:5px;">최근 실거래 (${initTrades.length}건 · ${curKm}km)</div>
         <div class="dev-trade-list">${renderTradeList(curKm, curTab)}</div>
       </div>
-    </div>
-    <div class="dev-popup-arrow" style="border-top-color:${color};"></div>`;
+    </div>`;
 
   enableOverlayScroll(el);
   enableOverlayScroll(el.querySelector('.dev-popup-body'));
@@ -460,11 +560,13 @@ function showDevPopup(p) {
     };
   });
 
-  window._devPopup = new kakao.maps.CustomOverlay({
-    position: new kakao.maps.LatLng(p.lat, p.lng),
-    content: el, yAnchor: 1.05, zIndex: 10
-  });
-  window._devPopup.setMap(map);
-  devPopupOverlay = window._devPopup;
+  // 지도 핀에 고정하지 않고, 화면 위 플로팅 패널로 띄운 뒤 헤더 드래그 가능
+  el.style.position = 'fixed';
+  el.style.zIndex = '10050';
+  document.body.appendChild(el);
   applyRadiusToMap(curKm, curTab);
+  placeDevPopupNearProject(el, p);
+  enableDevPopupDrag(el);
+  window._devPopup = el;
+  devPopupOverlay = el;
 }
