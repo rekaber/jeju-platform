@@ -85,8 +85,20 @@ def preflight():
     print('✓ 환경변수 확인')
 
 
-def arch_fetch(sigungu_cd, start_date, end_date):
-    """세움터 건축인허가 이력 API (시군구 단위)."""
+def load_dong_codes():
+    """js/data-dong.js 에서 법정동 10자리 코드 추출 → (sigunguCd, bjdongCd, name)."""
+    path = os.path.join(os.path.dirname(__file__), '..', 'js', 'data-dong.js')
+    text = open(path, encoding='utf-8').read()
+    import re
+    out = []
+    for m in re.finditer(r"code:'(\d{10})'.*?dong:'([^']+)'", text):
+        code, dong = m.group(1), m.group(2)
+        out.append((code[:5], code[5:], dong))
+    return out
+
+
+def arch_fetch(sigungu_cd, start_date, end_date, bjdong_cd='00000'):
+    """세움터 건축인허가 이력 API."""
     endpoints = [
         'https://apis.data.go.kr/1613000/ArchPmsHstService_v2/getApBasisOulnInfo',
         'https://apis.data.go.kr/1613000/ArchPmsHubService/getApBasisOulnInfo',
@@ -98,17 +110,23 @@ def arch_fetch(sigungu_cd, start_date, end_date):
         while True:
             params = urllib.parse.urlencode({
                 'sigunguCd': sigungu_cd,
-                'bjdongCd': '00000',
+                'bjdongCd': bjdong_cd,
                 'startDate': start_date,
                 'endDate': end_date,
                 'numOfRows': 1000,
                 'pageNo': page,
             })
-            key = urllib.parse.quote(urllib.parse.unquote(MOLIT_KEY), safe='')
+            # data.go.kr 키는 이미 URL-encoded 인 경우가 많아 quote 한 번만
+            raw_key = urllib.parse.unquote(MOLIT_KEY)
+            key = urllib.parse.quote(raw_key, safe='')
             url = f'{base}?serviceKey={key}&{params}'
             try:
                 with urllib.request.urlopen(url, timeout=45) as r:
                     xml_str = r.read().decode('utf-8')
+            except urllib.error.HTTPError as e:
+                body = e.read().decode('utf-8', errors='ignore')[:300]
+                print(f'  API HTTP {e.code} ({base.split("/")[-1]} p{page}): {body}')
+                break
             except Exception as e:
                 print(f'  API 오류 ({base.split("/")[-1]} p{page}): {e}')
                 break
@@ -119,7 +137,8 @@ def arch_fetch(sigungu_cd, start_date, end_date):
                 break
             code = (root.findtext('.//resultCode') or '').strip()
             if code not in ('00', '000', '0', ''):
-                print(f'  API code {code}: {root.findtext(".//resultMsg")}')
+                msg = root.findtext('.//resultMsg') or ''
+                print(f'  API code {code}: {msg}')
                 break
             items = root.findall('.//item')
             got.extend(items)
@@ -128,13 +147,69 @@ def arch_fetch(sigungu_cd, start_date, end_date):
             if not items or page * 1000 >= total:
                 break
             page += 1
-            time.sleep(0.25)
+            time.sleep(0.2)
         if got:
-            print(f'  ✓ {base.split("/")[-2]}/{base.split("/")[-1]} → {len(got)}건')
-            all_items = got
-            break
-        print(f'  · {base.split("/")[-1]} 결과 없음, 다음 엔드포인트 시도')
+            return got
     return all_items
+
+
+def arch_fetch_all_regions(start_date, end_date):
+    """시군구 전체(bjdong=00000) 우선, 실패 시 법정동별 조회."""
+    all_rows = []
+    for cd, name in ARCH_SIGUNGU:
+        print(f'  {name} ({cd}) 시군구 단위…')
+        items = arch_fetch(cd, start_date, end_date, '00000')
+        if items:
+            rows = parse_arch(items, name)
+            print(f'  → {len(rows)}건')
+            all_rows.extend(rows)
+            time.sleep(0.3)
+            continue
+        print(f'  → 시군구 조회 실패, 법정동별 시도')
+        dongs = [d for d in load_dong_codes() if d[0] == cd]
+        for i, (sgg, bjd, dong) in enumerate(dongs, 1):
+            items = arch_fetch(sgg, start_date, end_date, bjd)
+            rows = parse_arch(items, name)
+            if rows:
+                # dong 보강
+                for r in rows:
+                    if not r.get('dong'):
+                        r['dong'] = dong
+                all_rows.extend(rows)
+                print(f'    {dong}: {len(rows)}건')
+            if i % 20 == 0:
+                print(f'    … 법정동 {i}/{len(dongs)}')
+            time.sleep(0.15)
+    return all_rows
+
+
+def fetch_and_upload():
+    print('\n▶ arch_permits 수집')
+    end = datetime.now()
+    start = end - timedelta(days=DAYS)
+    start_s, end_s = start.strftime('%Y%m%d'), end.strftime('%Y%m%d')
+    print(f'  기간: {start_s} ~ {end_s} ({DAYS}일)')
+
+    all_rows = arch_fetch_all_regions(start_s, end_s)
+
+    if not all_rows:
+        print('  데이터 없음 — 기존 DB 지오코딩만 수행')
+        geocode_only()
+        return
+
+    uniq = {}
+    for r in all_rows:
+        k = (r.get('addr'), r.get('pms_day'), r.get('bld_nm'), r.get('tot_area'))
+        uniq[k] = r
+    all_rows = list(uniq.values())
+    print(f'  중복 제거 후 {len(all_rows)}건')
+
+    geocode_rows(all_rows)
+    sb_clear_arch()
+    time.sleep(0.5)
+    sb_insert(all_rows)
+    with_lat = sum(1 for r in all_rows if r.get('lat'))
+    print(f'  ✓ 완료: {len(all_rows)}건 (좌표 {with_lat})')
 
 
 def parse_arch(items, sigungu):
@@ -306,42 +381,6 @@ def geocode_only():
         time.sleep(0.05)
     n = sb_patch_coords(missing)
     print(f'  ✓ 좌표 갱신 {n}건')
-
-
-def fetch_and_upload():
-    print('\n▶ arch_permits 수집')
-    end = datetime.now()
-    start = end - timedelta(days=DAYS)
-    start_s, end_s = start.strftime('%Y%m%d'), end.strftime('%Y%m%d')
-    print(f'  기간: {start_s} ~ {end_s} ({DAYS}일)')
-
-    all_rows = []
-    for cd, name in ARCH_SIGUNGU:
-        print(f'  {name} ({cd})…')
-        items = arch_fetch(cd, start_s, end_s)
-        rows = parse_arch(items, name)
-        print(f'  → 파싱 {len(rows)}건')
-        all_rows.extend(rows)
-        time.sleep(0.4)
-
-    if not all_rows:
-        print('  데이터 없음')
-        return
-
-    # 주소+허가일 기준 중복 제거
-    uniq = {}
-    for r in all_rows:
-        k = (r.get('addr'), r.get('pms_day'), r.get('bld_nm'), r.get('tot_area'))
-        uniq[k] = r
-    all_rows = list(uniq.values())
-    print(f'  중복 제거 후 {len(all_rows)}건')
-
-    geocode_rows(all_rows)
-    sb_clear_arch()
-    time.sleep(0.5)
-    sb_insert(all_rows)
-    with_lat = sum(1 for r in all_rows if r.get('lat'))
-    print(f'  ✓ 완료: {len(all_rows)}건 (좌표 {with_lat})')
 
 
 def main():
