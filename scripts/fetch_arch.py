@@ -27,6 +27,9 @@ SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://boukipzpoapqotvauzrj.supa
 SUPABASE_KEY = os.environ.get('SUPABASE_SERVICE_KEY', '')
 KAKAO_REST_KEY = os.environ.get('KAKAO_REST_KEY', '')
 
+# scripts/ 에서 jeju_bjdong 임포트
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 HEADERS = {
     'apikey': SUPABASE_KEY,
     'Authorization': f'Bearer {SUPABASE_KEY}',
@@ -86,15 +89,9 @@ def preflight():
 
 
 def load_dong_codes():
-    """js/data-dong.js 에서 법정동 10자리 코드 추출 → (sigunguCd, bjdongCd, name)."""
-    path = os.path.join(os.path.dirname(__file__), '..', 'js', 'data-dong.js')
-    text = open(path, encoding='utf-8').read()
-    import re
-    out = []
-    for m in re.finditer(r"code:'(\d{10})'.*?dong:'([^']+)'", text):
-        code, dong = m.group(1), m.group(2)
-        out.append((code[:5], code[5:], dong))
-    return out
+    """공식 법정동코드 (읍면동). data-dong.js 지도용 코드와 다름."""
+    from jeju_bjdong import JEJU_BJDONG
+    return list(JEJU_BJDONG)
 
 
 ARCH_TIMEOUT = 20
@@ -176,48 +173,48 @@ def arch_fetch(sigungu_cd, start_date, end_date, bjdong_cd='00000'):
 
 
 def arch_fetch_all_regions(start_date, end_date):
-    """시군구 단위 우선. 타임아웃/장애 시 법정동 전체 순회하지 않고 조기 중단."""
+    """Hub는 시군구(bjdongCd=00000)만으로는 비는 경우가 많아 읍면동 단위 순회."""
     all_rows = []
     api_down = False
     for cd, name in ARCH_SIGUNGU:
-        print(f'  {name} ({cd}) 시군구 단위…')
-        items, status = arch_fetch(cd, start_date, end_date, '00000')
-        if items:
-            rows = parse_arch(items, name)
-            print(f'  → {len(rows)}건')
-            all_rows.extend(rows)
-            time.sleep(0.3)
-            continue
-
-        if status in ('timeout', 'error', 'key_not_registered', 'service_gone'):
-            print(f'  → 시군구 조회 {status} — 법정동 전체 순회 생략')
-            api_down = True
-            continue
-
-        # empty만 법정동별 시도 (최대 연속 타임아웃이면 중단)
-        print(f'  → 시군구 0건, 법정동별 시도 (장애 시 조기 중단)')
         dongs = [d for d in load_dong_codes() if d[0] == cd]
+        print(f'  {name} ({cd}) 법정동 {len(dongs)}개 순회…')
         timeout_streak = 0
+        got_any = False
         for i, (sgg, bjd, dong) in enumerate(dongs, 1):
             items, st = arch_fetch(sgg, start_date, end_date, bjd)
+            if st in ('key_not_registered', 'service_gone'):
+                print(f'  → {st} — 순회 중단')
+                api_down = True
+                break
             if st == 'timeout':
                 timeout_streak += 1
                 if timeout_streak >= ARCH_TIMEOUT_ABORT:
-                    print(f'  ⚠ 연속 타임아웃 {timeout_streak}회 → {name} 법정동 순회 중단')
+                    print(f'  ⚠ 연속 타임아웃 {timeout_streak}회 → {name} 순회 중단')
+                    api_down = True
+                    break
+                continue
+            if st == 'error':
+                timeout_streak += 1
+                if timeout_streak >= ARCH_TIMEOUT_ABORT:
+                    print(f'  ⚠ 연속 오류 → {name} 순회 중단')
                     api_down = True
                     break
                 continue
             timeout_streak = 0
             rows = parse_arch(items, name) if items else []
             if rows:
+                got_any = True
                 for r in rows:
                     if not r.get('dong'):
                         r['dong'] = dong
                 all_rows.extend(rows)
-                print(f'    {dong}: {len(rows)}건')
+                print(f'    {dong}({bjd}): {len(rows)}건')
             if i % 20 == 0:
-                print(f'    … 법정동 {i}/{len(dongs)}')
+                print(f'    … {i}/{len(dongs)}')
             time.sleep(0.15)
+        if not got_any and not api_down:
+            print(f'  → {name} 0건')
     return all_rows, api_down
 
 
@@ -239,7 +236,7 @@ def fetch_and_upload():
 
     uniq = {}
     for r in all_rows:
-        k = (r.get('addr'), r.get('pms_day'), r.get('bld_nm'), r.get('tot_area'))
+        k = r.get('mgm_pk') or (r.get('addr'), r.get('pms_day'), r.get('bld_nm'), r.get('tot_area'))
         uniq[k] = r
     all_rows = list(uniq.values())
     print(f'  중복 제거 후 {len(all_rows)}건')
@@ -263,10 +260,12 @@ def parse_arch(items, sigungu):
     rows = []
     for it in items:
         addr = text_any(it, 'platPlc', 'newPlatPlc', 'platPlcNm')
-        pms = fmt_day(text_any(it, 'pmsDay', 'pmsDay'))
+        # Hub: archPmsDay / 구 API: pmsDay
+        pms = fmt_day(text_any(it, 'archPmsDay', 'pmsDay', 'pmsDay'))
         if not addr and not pms:
             continue
         tot = float_or_none(text_any(it, 'totArea', 'totArea'))
+        pk = text_any(it, 'mgmPmsrgstPk', 'mgmPmsRegstPk')
         rows.append({
             'sigungu': sigungu,
             'dong': text_any(it, 'bjdongCdNm', 'dongNm', 'umdNm') or '',
@@ -285,6 +284,7 @@ def parse_arch(items, sigungu):
             'ho_cnt': int_or_none(text_any(it, 'hoCnt')),
             'pms_day': pms,
             'use_apr_day': fmt_day(text_any(it, 'useAprDay')) or '',
+            'mgm_pk': pk or None,
             'lat': None,
             'lng': None,
         })
@@ -385,7 +385,10 @@ def sb_delete_arch_period(start_ymd, end_ymd):
 def sb_insert(rows, batch=300):
     ok = 0
     for i in range(0, len(rows), batch):
-        chunk = rows[i:i + batch]
+        chunk = []
+        for r in rows[i:i + batch]:
+            row = {k: v for k, v in r.items() if k != 'mgm_pk' and not k.startswith('_')}
+            chunk.append(row)
         data = json.dumps(chunk).encode('utf-8')
         req = urllib.request.Request(
             f'{SUPABASE_URL}/rest/v1/arch_permits',
