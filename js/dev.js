@@ -59,6 +59,8 @@ var devOverlays = [];
 var devPopupOverlay = null;
 var devRadiusCircles = [];
 var devActiveRadii = new Set();
+var devPopupRadiusCircle = null;   // 팝업에서 선택한 반경 원
+var devNearbyOverlays = [];        // 반경 내 실거래 임시 마커
 
 function toggleDevProjects(btn) {
   devVisible = btn.classList.toggle('on');
@@ -113,6 +115,7 @@ function clearDevProjects() {
   devOverlays.forEach(o => o.setMap(null));
   devOverlays = [];
   if (devPopupOverlay) { devPopupOverlay.setMap(null); devPopupOverlay = null; }
+  clearDevPopupRadius();
 }
 
 function renderDevProjects() {
@@ -146,21 +149,87 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-function getDevNearbyTrades(p, km, tab) {
-  if (tab === 'house') {
-    const src = (window.MULTI_DATA && window.MULTI_DATA.house) || [];
-    return src
-      .filter(t => t.lat && t.lng && haversineKm(p.lat, p.lng, t.lat, t.lng) <= km)
-      .sort((a,b) => b.date > a.date ? 1 : -1).slice(0, 30);
-  } else {
-    return (window.LAND_DATA || [])
-      .filter(t => t.lat && t.lng && haversineKm(p.lat, p.lng, t.lat, t.lng) <= km)
-      .sort((a,b) => b.date > a.date ? 1 : -1).slice(0, 30);
+function clearDevNearbyMarkers() {
+  devNearbyOverlays.forEach(o => o.setMap(null));
+  devNearbyOverlays = [];
+}
+
+function clearDevPopupRadius() {
+  if (devPopupRadiusCircle) {
+    devPopupRadiusCircle.setMap(null);
+    devPopupRadiusCircle = null;
   }
+  clearDevNearbyMarkers();
+}
+
+function drawDevPopupRadius(p, km) {
+  clearDevPopupRadius();
+  if (!p || !km || typeof kakao === 'undefined' || !map) return;
+  const meters = km * 1000;
+  const center = new kakao.maps.LatLng(p.lat, p.lng);
+  const color = STATUS_COLOR[p.status] || '#1565C0';
+  devPopupRadiusCircle = new kakao.maps.Circle({
+    center,
+    radius: meters,
+    strokeWeight: 2,
+    strokeColor: color,
+    strokeOpacity: 0.95,
+    strokeStyle: 'dashed',
+    fillColor: color,
+    fillOpacity: 0.08,
+  });
+  devPopupRadiusCircle.setMap(map);
+
+  // 지도 레벨을 반경에 맞게 조정
+  const levelByKm = { 1: 6, 3: 7, 5: 8 };
+  map.setCenter(center);
+  map.setLevel(levelByKm[km] || 7);
+}
+
+function renderDevNearbyMarkers(trades, tab) {
+  clearDevNearbyMarkers();
+  if (!trades || !trades.length) return;
+  const color = tab === 'house' ? '#00695C' : '#5D4037';
+  trades.slice(0, 40).forEach(t => {
+    if (!t.lat || !t.lng) return;
+    const el = document.createElement('div');
+    el.style.cssText = 'width:10px;height:10px;border-radius:50%;background:' + color +
+      ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:default;';
+    const dist = (t._distKm != null) ? t._distKm.toFixed(2) + 'km' : '';
+    el.title = (tab === 'house'
+      ? ('[단독/다가구] ' + (t.name || t.dong || '') + ' · ' + (t.price || '-') + '억')
+      : ((t.dong || '') + ' (' + (t.jimok || '-') + ') · ' + (t.price || '-') + '억')) +
+      (dist ? ' · ' + dist : '');
+    const ov = new kakao.maps.CustomOverlay({
+      position: new kakao.maps.LatLng(t.lat, t.lng),
+      content: el,
+      yAnchor: 0.5,
+      xAnchor: 0.5,
+      zIndex: 4,
+    });
+    ov.setMap(map);
+    devNearbyOverlays.push(ov);
+  });
+}
+
+function getDevNearbyTrades(p, km, tab) {
+  const src = tab === 'house'
+    ? ((window.MULTI_DATA && window.MULTI_DATA.house) || [])
+    : (window.LAND_DATA || []);
+  return src
+    .filter(t => t.lat && t.lng)
+    .map(t => {
+      const dist = haversineKm(p.lat, p.lng, t.lat, t.lng);
+      return Object.assign({}, t, { _distKm: dist });
+    })
+    .filter(t => t._distKm <= km)
+    .sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1)
+    .slice(0, 40);
 }
 
 function showDevPopup(p) {
   if (devPopupOverlay) { devPopupOverlay.setMap(null); devPopupOverlay = null; }
+  clearDevPopupRadius();
   const color = STATUS_COLOR[p.status] || '#607D8B';
   const el = document.createElement('div');
   el.className = 'dev-popup';
@@ -168,8 +237,11 @@ function showDevPopup(p) {
 
   function renderTradeList(km, tab) {
     const trades = getDevNearbyTrades(p, km, tab);
-    if (!trades.length) return `<div style="font-size:10px;color:#aaa;padding:6px 0;">데이터 없음</div>`;
+    if (!trades.length) {
+      return `<div style="font-size:10px;color:#aaa;padding:6px 0;">반경 ${km}km 내 실거래 없음</div>`;
+    }
     return trades.map(t => {
+      const distTxt = (t._distKm != null) ? ` · ${t._distKm.toFixed(1)}km` : '';
       if (tab === 'house') {
         const pyeong = t.area ? t.area / 3.3 : 0;
         const pp = pyeong > 0 ? ` · ${Math.round(t.price*10000/pyeong).toLocaleString()}만/평` : '';
@@ -177,25 +249,34 @@ function showDevPopup(p) {
         const name = t.name || t.dong || '단독/다가구';
         return `<div style="padding:4px 0;border-bottom:1px solid #f0f0f0;font-size:10px;">
           <div style="font-weight:700;color:${badgeColor};">[단독/다가구] ${name}</div>
-          <div style="color:#444;">${t.price}억${pp} · ${t.area?Math.round(t.area)+'㎡':'-'} · ${t.date||'-'}</div>
+          <div style="color:#444;">${t.price}억${pp} · ${t.area?Math.round(t.area)+'㎡':'-'} · ${t.date||'-'}${distTxt}</div>
         </div>`;
       } else {
         return `<div style="padding:4px 0;border-bottom:1px solid #f0f0f0;font-size:10px;">
           <div style="font-weight:700;color:#5D4037;">${t.dong||'-'} (${t.jimok||'-'})</div>
-          <div style="color:#444;">${t.price}억 · ${t.area?Math.round(t.area)+'㎡':'-'} · ${(t.perM2||0).toLocaleString()}원/㎡ · ${t.date||'-'}</div>
+          <div style="color:#444;">${t.price}억 · ${t.area?Math.round(t.area)+'㎡':'-'} · ${(t.perM2||0).toLocaleString()}원/㎡ · ${t.date||'-'}${distTxt}</div>
         </div>`;
       }
     }).join('');
+  }
+
+  function updateListHeader(km, count) {
+    const hdr = el.querySelector('.dev-trade-header');
+    if (hdr) hdr.textContent = `최근 실거래 (${count}건 · ${km}km)`;
+  }
+
+  function applyRadiusToMap(km, tab) {
+    const trades = getDevNearbyTrades(p, km, tab);
+    drawDevPopupRadius(p, km);
+    renderDevNearbyMarkers(trades, tab);
+    return trades;
   }
 
   function renderDevChart(km, tab) {
     const now = new Date();
     const curYear = now.getFullYear();
     const curMonth = now.getMonth() + 1;
-    const srcData = tab === 'house'
-      ? ((window.MULTI_DATA && window.MULTI_DATA.house) || [])
-      : (window.LAND_DATA || []);
-    const nearby = srcData.filter(t => t.lat && t.lng && haversineKm(p.lat, p.lng, t.lat, t.lng) <= km);
+    const nearby = getDevNearbyTrades(p, km, tab);
 
     const months = [];
     for (let m = 1; m <= curMonth; m++) {
@@ -250,7 +331,7 @@ function showDevPopup(p) {
     }).join('');
 
     return `
-      <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:3px;">📈 올해 월별 평균 (${unit}) · 반경 ${km}km</div>
+      <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:3px;">📈 올해 월별 평균 (${unit}) · 반경 ${km}km · ${nearby.length}건</div>
       <svg width="${W}" height="${H}" style="display:block;">
         <defs><linearGradient id="devGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="${c}" stop-opacity="0.2"/>
@@ -268,8 +349,10 @@ function showDevPopup(p) {
   }
 
   function rebuild(km, tab) {
+    const trades = applyRadiusToMap(km, tab);
     const list = el.querySelector('.dev-trade-list');
     if (list) list.innerHTML = renderTradeList(km, tab);
+    updateListHeader(km, trades.length);
     const chart = el.querySelector('.dev-chart-area');
     const statBtn = el.querySelector('.dev-stat-btn');
     // 통계가 열려 있으면 탭/거리 변경 시 즉시 다시 그림
@@ -277,7 +360,7 @@ function showDevPopup(p) {
       chart.innerHTML = renderDevChart(km, tab);
       if (statBtn) statBtn.textContent = '📉 통계 접기';
     }
-    el.querySelectorAll('.dev-km-btn').forEach(b => b.classList.toggle('active', b.dataset.km == km));
+    el.querySelectorAll('.dev-km-btn').forEach(b => b.classList.toggle('active', +b.dataset.km === km));
     el.querySelectorAll('.dev-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   }
 
@@ -305,10 +388,18 @@ function showDevPopup(p) {
     });
   }
 
+  function closePopup() {
+    if (window._devPopup) { window._devPopup.setMap(null); window._devPopup = null; }
+    devPopupOverlay = null;
+    clearDevPopupRadius();
+  }
+  window._closeDevPopup = closePopup;
+
   let curKm = 3, curTab = 'house';
+  const initTrades = getDevNearbyTrades(p, curKm, curTab);
   el.innerHTML = `
     <div class="dev-popup-header" style="background:${color};">
-      <button class="dev-popup-close" onclick="if(window._devPopup){window._devPopup.setMap(null);window._devPopup=null;}">×</button>
+      <button type="button" class="dev-popup-close">×</button>
       <div class="dev-popup-status">${p.status}</div>
       <div class="dev-popup-name">${p.name}</div>
     </div>
@@ -321,18 +412,18 @@ function showDevPopup(p) {
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <div style="font-size:11px;font-weight:700;color:#444;">주변 실거래</div>
           <div style="display:flex;gap:4px;">
-            <button class="dev-tab-btn active" data-tab="house">단독/다가구</button>
-            <button class="dev-tab-btn" data-tab="land">토지실거래</button>
+            <button type="button" class="dev-tab-btn active" data-tab="house">단독/다가구</button>
+            <button type="button" class="dev-tab-btn" data-tab="land">토지실거래</button>
           </div>
         </div>
         <div style="display:flex;gap:4px;margin-bottom:8px;">
-          <button class="dev-km-btn" data-km="1">1km</button>
-          <button class="dev-km-btn active" data-km="3">3km</button>
-          <button class="dev-km-btn" data-km="5">5km</button>
+          <button type="button" class="dev-km-btn" data-km="1">1km</button>
+          <button type="button" class="dev-km-btn active" data-km="3">3km</button>
+          <button type="button" class="dev-km-btn" data-km="5">5km</button>
         </div>
         <button type="button" class="dev-stat-btn" style="width:100%;font-size:11px;font-weight:700;padding:5px 0;border-radius:7px;border:1px solid #1565C0;background:#f0f4ff;color:#1565C0;cursor:pointer;margin-bottom:6px;">📈 월별 가격 통계</button>
         <div class="dev-chart-area" style="display:none;margin-bottom:8px;"></div>
-        <div style="font-size:11px;font-weight:700;color:#444;margin-bottom:5px;">최근 실거래</div>
+        <div class="dev-trade-header" style="font-size:11px;font-weight:700;color:#444;margin-bottom:5px;">최근 실거래 (${initTrades.length}건 · ${curKm}km)</div>
         <div class="dev-trade-list">${renderTradeList(curKm, curTab)}</div>
       </div>
     </div>
@@ -342,6 +433,11 @@ function showDevPopup(p) {
   enableOverlayScroll(el.querySelector('.dev-popup-body'));
   enableOverlayScroll(el.querySelector('.dev-trade-list'));
 
+  el.querySelector('.dev-popup-close').onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closePopup();
+  };
   el.querySelector('.dev-stat-btn').onclick = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -349,6 +445,7 @@ function showDevPopup(p) {
   };
   el.querySelectorAll('.dev-km-btn').forEach(btn => {
     btn.onclick = (e) => {
+      e.preventDefault();
       e.stopPropagation();
       curKm = parseInt(btn.dataset.km, 10);
       rebuild(curKm, curTab);
@@ -356,6 +453,7 @@ function showDevPopup(p) {
   });
   el.querySelectorAll('.dev-tab-btn').forEach(btn => {
     btn.onclick = (e) => {
+      e.preventDefault();
       e.stopPropagation();
       curTab = btn.dataset.tab;
       rebuild(curKm, curTab);
@@ -368,6 +466,5 @@ function showDevPopup(p) {
   });
   window._devPopup.setMap(map);
   devPopupOverlay = window._devPopup;
-  map.setCenter(new kakao.maps.LatLng(p.lat, p.lng));
-  map.setLevel(7);
+  applyRadiusToMap(curKm, curTab);
 }
