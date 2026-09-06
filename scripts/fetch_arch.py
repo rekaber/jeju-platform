@@ -162,18 +162,23 @@ def arch_fetch_page(sigungu_cd, start_date, end_date, bjdong_cd, page):
 def arch_fetch(sigungu_cd, start_date, end_date, bjdong_cd='00000'):
     """건축HUB 건축인허가 API. 긴 기간은 청크로 나눠 조회."""
     got = []
-    last_status = 'empty'
+    soft_fail = None
     for c_start, c_end in _date_chunks(start_date, end_date):
         page = 1
         while True:
             xml_str, err = arch_fetch_page(sigungu_cd, c_start, c_end, bjdong_cd, page)
             if err:
-                return got, err  # 부분 수집분이 있으면 상위에서 활용
+                if err in ('key_not_registered', 'service_gone'):
+                    return got, err
+                print(f'    chunk skip {bjdong_cd} {c_start}~{c_end}: {err}')
+                soft_fail = err
+                break
             try:
                 root = ET.fromstring(xml_str)
             except ET.ParseError as e:
                 print(f'  XML 오류: {e}')
-                return got, 'error'
+                soft_fail = 'error'
+                break
             if 'SERVICE_KEY_IS_NOT_REGISTERED' in xml_str:
                 print('  API: SERVICE_KEY_IS_NOT_REGISTERED_ERROR')
                 return [], 'key_not_registered'
@@ -184,18 +189,20 @@ def arch_fetch(sigungu_cd, start_date, end_date, bjdong_cd='00000'):
             if code not in ('00', '000', '0', ''):
                 msg = root.findtext('.//resultMsg') or ''
                 print(f'  API code {code}: {msg}')
-                return got, 'error'
+                soft_fail = 'error'
+                break
             items = root.findall('.//item')
             got.extend(items)
             total_el = root.find('.//totalCount')
             total = int(total_el.text) if total_el is not None and total_el.text else 0
             if not items or page * 1000 >= total:
-                last_status = 'ok' if got else 'empty'
                 break
             page += 1
             time.sleep(0.25)
         time.sleep(0.2)
-    return got, last_status
+    if got:
+        return got, 'ok'
+    return got, (soft_fail or 'empty')
 
 
 def arch_fetch_all_regions(start_date, end_date):
