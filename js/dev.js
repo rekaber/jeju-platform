@@ -262,7 +262,11 @@ function clearDevPopupRadius() {
 }
 
 function drawDevPopupRadius(p, km) {
-  clearDevPopupRadius();
+  clearDevNearbyMarkers();
+  if (devPopupRadiusCircle) {
+    devPopupRadiusCircle.setMap(null);
+    devPopupRadiusCircle = null;
+  }
   if (!p || !km || typeof kakao === 'undefined' || !map) return;
   const meters = km * 1000;
   const center = new kakao.maps.LatLng(p.lat, p.lng);
@@ -279,28 +283,73 @@ function drawDevPopupRadius(p, km) {
   });
   devPopupRadiusCircle.setMap(map);
 
-  // 지도 레벨을 반경에 맞게 조정
   const levelByKm = { 1: 6, 3: 7, 5: 8 };
   map.setCenter(center);
   map.setLevel(levelByKm[km] || 7);
 }
 
+/** 반경 내 실거래. yearOnly면 해당 연도만, limit 없으면 전체 */
+function getDevNearbyTrades(p, km, tab, opts) {
+  opts = opts || {};
+  const year = opts.year != null ? opts.year : new Date().getFullYear();
+  const yearOnly = !!opts.yearOnly;
+  const limit = opts.limit != null ? opts.limit : null;
+  const src = tab === 'house'
+    ? ((window.MULTI_DATA && window.MULTI_DATA.house) || [])
+    : (window.LAND_DATA || []);
+  const yearPrefix = String(year) + '-';
+  let list = src
+    .filter(t => t.lat && t.lng)
+    .map(t => {
+      const dist = haversineKm(p.lat, p.lng, t.lat, t.lng);
+      return Object.assign({}, t, { _distKm: dist });
+    })
+    .filter(t => t._distKm <= km);
+  if (yearOnly) {
+    list = list.filter(t => t.date && String(t.date).startsWith(yearPrefix));
+  }
+  list.sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1);
+  if (limit != null && limit > 0) list = list.slice(0, limit);
+  return list;
+}
+
+/** 동일 좌표 거래는 한 점으로 묶고 건수 배지 표시 (좌표 근사/동중심 겹침 대응) */
 function renderDevNearbyMarkers(trades, tab) {
   clearDevNearbyMarkers();
   if (!trades || !trades.length) return;
   const color = tab === 'house' ? '#00695C' : '#5D4037';
-  trades.slice(0, 40).forEach(t => {
+  const groups = new Map();
+  trades.forEach(t => {
     if (!t.lat || !t.lng) return;
+    const key = Number(t.lat).toFixed(5) + ',' + Number(t.lng).toFixed(5);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(t);
+  });
+
+  groups.forEach((items) => {
+    const t0 = items[0];
+    const count = items.length;
     const el = document.createElement('div');
-    el.style.cssText = 'width:10px;height:10px;border-radius:50%;background:' + color +
-      ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:default;';
-    const dist = (t._distKm != null) ? t._distKm.toFixed(2) + 'km' : '';
-    el.title = (tab === 'house'
-      ? ('[단독/다가구] ' + (t.name || t.dong || '') + ' · ' + (t.price || '-') + '억')
-      : ((t.dong || '') + ' (' + (t.jimok || '-') + ') · ' + (t.price || '-') + '억')) +
-      (dist ? ' · ' + dist : '');
+    if (count > 1) {
+      el.style.cssText = 'min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:' + color +
+        ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);color:#fff;font-size:9px;font-weight:800;' +
+        'display:flex;align-items:center;justify-content:center;line-height:1;cursor:default;';
+      el.textContent = String(count);
+    } else {
+      el.style.cssText = 'width:10px;height:10px;border-radius:50%;background:' + color +
+        ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:default;';
+    }
+    const sample = items.slice(0, 5).map(t => {
+      const dist = (t._distKm != null) ? t._distKm.toFixed(2) + 'km' : '';
+      const head = tab === 'house'
+        ? ('[단독/다가구] ' + (t.name || t.dong || '') + ' · ' + (t.price || '-') + '억')
+        : ((t.dong || '') + ' (' + (t.jimok || '-') + ') · ' + (t.price || '-') + '억');
+      return head + (dist ? ' · ' + dist : '') + (t.date ? ' · ' + t.date : '');
+    }).join('\n');
+    el.title = (count > 1 ? count + '건 동일/근접 좌표\n' : '') + sample + (count > 5 ? '\n…' : '');
+
     const ov = new kakao.maps.CustomOverlay({
-      position: new kakao.maps.LatLng(t.lat, t.lng),
+      position: new kakao.maps.LatLng(t0.lat, t0.lng),
       content: el,
       yAnchor: 0.5,
       xAnchor: 0.5,
@@ -311,21 +360,6 @@ function renderDevNearbyMarkers(trades, tab) {
   });
 }
 
-function getDevNearbyTrades(p, km, tab) {
-  const src = tab === 'house'
-    ? ((window.MULTI_DATA && window.MULTI_DATA.house) || [])
-    : (window.LAND_DATA || []);
-  return src
-    .filter(t => t.lat && t.lng)
-    .map(t => {
-      const dist = haversineKm(p.lat, p.lng, t.lat, t.lng);
-      return Object.assign({}, t, { _distKm: dist });
-    })
-    .filter(t => t._distKm <= km)
-    .sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1)
-    .slice(0, 40);
-}
-
 function showDevPopup(p) {
   if (typeof window._closeDevPopup === 'function') window._closeDevPopup();
   clearDevPopupRadius();
@@ -334,10 +368,14 @@ function showDevPopup(p) {
   el.className = 'dev-popup';
   el.style.width = '280px';
 
+  function yearTrades(km, tab) {
+    return getDevNearbyTrades(p, km, tab, { yearOnly: true });
+  }
+
   function renderTradeList(km, tab) {
-    const trades = getDevNearbyTrades(p, km, tab);
+    const trades = yearTrades(km, tab);
     if (!trades.length) {
-      return `<div style="font-size:10px;color:#aaa;padding:6px 0;">반경 ${km}km 내 실거래 없음</div>`;
+      return `<div style="font-size:10px;color:#aaa;padding:6px 0;">올해 반경 ${km}km 내 실거래 없음</div>`;
     }
     return trades.map(t => {
       const distTxt = (t._distKm != null) ? ` · ${t._distKm.toFixed(1)}km` : '';
@@ -359,23 +397,39 @@ function showDevPopup(p) {
     }).join('');
   }
 
-  function updateListHeader(km, count) {
+  function updateListHeader(km, count, mapPoints) {
     const hdr = el.querySelector('.dev-trade-header');
-    if (hdr) hdr.textContent = `최근 실거래 (${count}건 · ${km}km)`;
+    if (!hdr) return;
+    const y = new Date().getFullYear();
+    let txt = `올해 실거래 (${count}건 · ${km}km)`;
+    if (mapPoints != null && mapPoints < count) {
+      txt += ` · 지도 ${mapPoints}지점`;
+    }
+    hdr.textContent = txt;
+    hdr.title = y + '년 반경 ' + km + 'km 내 거래. 동일 좌표는 지도에서 한 점으로 합쳐 표시됩니다.';
   }
 
   function applyRadiusToMap(km, tab) {
-    const trades = getDevNearbyTrades(p, km, tab);
+    const trades = yearTrades(km, tab);
     drawDevPopupRadius(p, km);
     renderDevNearbyMarkers(trades, tab);
     return trades;
+  }
+
+  function countMapPoints(trades) {
+    const keys = new Set();
+    (trades || []).forEach(t => {
+      if (!t.lat || !t.lng) return;
+      keys.add(Number(t.lat).toFixed(5) + ',' + Number(t.lng).toFixed(5));
+    });
+    return keys.size;
   }
 
   function renderDevChart(km, tab) {
     const now = new Date();
     const curYear = now.getFullYear();
     const curMonth = now.getMonth() + 1;
-    const nearby = getDevNearbyTrades(p, km, tab);
+    const nearby = yearTrades(km, tab);
 
     const months = [];
     for (let m = 1; m <= curMonth; m++) {
@@ -429,8 +483,9 @@ function showDevPopup(p) {
       return `<text x="${x}" y="${H}" text-anchor="middle" font-size="7" fill="#aaa">${mo.label}</text>`;
     }).join('');
 
+    const mapPts = countMapPoints(nearby);
     return `
-      <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:3px;">📈 올해 월별 평균 (${unit}) · 반경 ${km}km · ${nearby.length}건</div>
+      <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:3px;">📈 ${curYear} 월별 평균 (${unit}) · ${km}km · ${nearby.length}건${mapPts < nearby.length ? ' · 지도 ' + mapPts + '지점' : ''}</div>
       <svg width="${W}" height="${H}" style="display:block;">
         <defs><linearGradient id="devGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="${c}" stop-opacity="0.2"/>
@@ -451,10 +506,9 @@ function showDevPopup(p) {
     const trades = applyRadiusToMap(km, tab);
     const list = el.querySelector('.dev-trade-list');
     if (list) list.innerHTML = renderTradeList(km, tab);
-    updateListHeader(km, trades.length);
+    updateListHeader(km, trades.length, countMapPoints(trades));
     const chart = el.querySelector('.dev-chart-area');
     const statBtn = el.querySelector('.dev-stat-btn');
-    // 통계가 열려 있으면 탭/거리 변경 시 즉시 다시 그림
     if (chart && chart.style.display !== 'none') {
       chart.innerHTML = renderDevChart(km, tab);
       if (statBtn) statBtn.textContent = '📉 통계 접기';
@@ -497,7 +551,8 @@ function showDevPopup(p) {
   window._closeDevPopup = closePopup;
 
   let curKm = 3, curTab = 'house';
-  const initTrades = getDevNearbyTrades(p, curKm, curTab);
+  const initTrades = yearTrades(curKm, curTab);
+  const initMapPts = countMapPoints(initTrades);
   el.innerHTML = `
     <div class="dev-popup-header" style="background:${color};">
       <button type="button" class="dev-popup-close">×</button>
@@ -524,7 +579,7 @@ function showDevPopup(p) {
         </div>
         <button type="button" class="dev-stat-btn" style="width:100%;font-size:11px;font-weight:700;padding:5px 0;border-radius:7px;border:1px solid #1565C0;background:#f0f4ff;color:#1565C0;cursor:pointer;margin-bottom:6px;">📈 월별 가격 통계</button>
         <div class="dev-chart-area" style="display:none;margin-bottom:8px;"></div>
-        <div class="dev-trade-header" style="font-size:11px;font-weight:700;color:#444;margin-bottom:5px;">최근 실거래 (${initTrades.length}건 · ${curKm}km)</div>
+        <div class="dev-trade-header" style="font-size:11px;font-weight:700;color:#444;margin-bottom:5px;" title="올해 반경 내 거래. 동일 좌표는 지도에서 한 점으로 합쳐 표시됩니다.">올해 실거래 (${initTrades.length}건 · ${curKm}km${initMapPts < initTrades.length ? ' · 지도 ' + initMapPts + '지점' : ''})</div>
         <div class="dev-trade-list">${renderTradeList(curKm, curTab)}</div>
       </div>
     </div>`;
