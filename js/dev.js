@@ -147,8 +147,9 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 }
 
 function getDevNearbyTrades(p, km, tab) {
-  if (tab === 'apt') {
-    return (window.TRADE_DATA || [])
+  if (tab === 'house') {
+    const src = (window.MULTI_DATA && window.MULTI_DATA.house) || [];
+    return src
       .filter(t => t.lat && t.lng && haversineKm(p.lat, p.lng, t.lat, t.lng) <= km)
       .sort((a,b) => b.date > a.date ? 1 : -1).slice(0, 30);
   } else {
@@ -169,13 +170,13 @@ function showDevPopup(p) {
     const trades = getDevNearbyTrades(p, km, tab);
     if (!trades.length) return `<div style="font-size:10px;color:#aaa;padding:6px 0;">데이터 없음</div>`;
     return trades.map(t => {
-      if (tab === 'apt') {
+      if (tab === 'house') {
         const pyeong = t.area ? t.area / 3.3 : 0;
         const pp = pyeong > 0 ? ` · ${Math.round(t.price*10000/pyeong).toLocaleString()}만/평` : '';
-        const badgeColor = t._typeColor || '#1976D2';
-        const badgeLabel = t._typeLabel || '아파트';
+        const badgeColor = '#00695C';
+        const name = t.name || t.dong || '단독/다가구';
         return `<div style="padding:4px 0;border-bottom:1px solid #f0f0f0;font-size:10px;">
-          <div style="font-weight:700;color:${badgeColor};">[${badgeLabel}] ${t.name}</div>
+          <div style="font-weight:700;color:${badgeColor};">[단독/다가구] ${name}</div>
           <div style="color:#444;">${t.price}억${pp} · ${t.area?Math.round(t.area)+'㎡':'-'} · ${t.date||'-'}</div>
         </div>`;
       } else {
@@ -191,7 +192,9 @@ function showDevPopup(p) {
     const now = new Date();
     const curYear = now.getFullYear();
     const curMonth = now.getMonth() + 1;
-    const srcData = tab === 'apt' ? (window.TRADE_DATA || []) : (window.LAND_DATA || []);
+    const srcData = tab === 'house'
+      ? ((window.MULTI_DATA && window.MULTI_DATA.house) || [])
+      : (window.LAND_DATA || []);
     const nearby = srcData.filter(t => t.lat && t.lng && haversineKm(p.lat, p.lng, t.lat, t.lng) <= km);
 
     const months = [];
@@ -199,7 +202,7 @@ function showDevPopup(p) {
       const key = curYear + '-' + String(m).padStart(2,'0');
       const items = nearby.filter(t => t.date && t.date.startsWith(key));
       let avg = null;
-      if (tab === 'apt') {
+      if (tab === 'house') {
         const valid = items.filter(t => t.price && t.area && t.area > 0);
         if (valid.length) avg = Math.round(valid.reduce((s,t) => s + t.price*10000/(t.area/3.3058), 0) / valid.length);
       } else {
@@ -217,8 +220,8 @@ function showDevPopup(p) {
     const cW = W-padL-padR, cH = H-padT-padB;
     const xStep = cW / Math.max(months.length - 1, 1);
     const toY = v => padT + cH - ((v - minV + 0.5) / (maxV - minV + 1)) * cH;
-    const c = tab === 'apt' ? '#1976D2' : '#5D4037';
-    const unit = tab === 'apt' ? '만/평' : '만/㎡';
+    const c = tab === 'house' ? '#00695C' : '#5D4037';
+    const unit = tab === 'house' ? '만/평' : '만/㎡';
 
     const points = months.map((mo, i) => ({
       x: padL + i * xStep,
@@ -233,7 +236,7 @@ function showDevPopup(p) {
     const areaD = pathD + ' L'+last.x.toFixed(1)+','+(padT+cH)+' L'+first.x.toFixed(1)+','+(padT+cH)+' Z';
 
     const fmtV = v => {
-      if (tab === 'apt') return (Math.round(v/100)/10).toFixed(1)+'천만';
+      if (tab === 'house') return (Math.round(v/100)/10).toFixed(1)+'천만';
       return v >= 10000 ? (v/10000).toFixed(1)+'억' : Math.round(v).toLocaleString()+'만';
     };
     const yLbls = [fmtV(minV), fmtV((minV+maxV)/2), fmtV(maxV)];
@@ -285,7 +288,7 @@ function showDevPopup(p) {
     }
   }, true);
 
-  let curKm = 2, curTab = 'apt';
+  let curKm = 2, curTab = 'house';
   el.innerHTML = `
     <div class="dev-popup-header" style="background:${color};">
       <button class="dev-popup-close" onclick="if(window._devPopup){window._devPopup.setMap(null);window._devPopup=null;}">×</button>
@@ -301,8 +304,8 @@ function showDevPopup(p) {
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <div style="font-size:11px;font-weight:700;color:#444;">주변 실거래</div>
           <div style="display:flex;gap:4px;">
-            <button class="dev-tab-btn active" data-tab="apt">아파트</button>
-            <button class="dev-tab-btn" data-tab="land">토지</button>
+            <button class="dev-tab-btn active" data-tab="house">단독/다가구</button>
+            <button class="dev-tab-btn" data-tab="land">토지실거래</button>
           </div>
         </div>
         <div style="display:flex;gap:4px;margin-bottom:8px;">
