@@ -80,3 +80,19 @@ makeDraggable('jiga-modal-inner',      'jiga-modal-hd');
 makeDraggable('imde-modal-inner',      'imde-modal-hd');
 makeDraggable('mig-modal-inner',       'mig-modal-hd');
 makeDraggable('visitor-modal-inner',   'visitor-modal-hd');
+makeDraggable('manual-modal-inner',    'manual-modal-hd');
+
+function openManualModal() {
+  const modal = document.getElementById('manual-modal');
+  const iframe = document.getElementById('manual-iframe');
+  if (!modal || !iframe) return;
+  if (!iframe.getAttribute('src') || iframe.getAttribute('src') === 'about:blank') {
+    iframe.src = './docs/manual/index.html';
+  }
+  modal.style.display = 'block';
+}
+
+function closeManualModal() {
+  const modal = document.getElementById('manual-modal');
+  if (modal) modal.style.display = 'none';
+}
