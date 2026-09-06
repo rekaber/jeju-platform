@@ -70,6 +70,7 @@ jobs:
           python scripts/fetch_incremental.py --months "$MONTHS" --force
 
       - name: 건축인허가 기간 upsert
+        continue-on-error: true
         env:
           MOLIT_API_KEY: ${{ secrets.MOLIT_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

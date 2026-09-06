@@ -97,13 +97,17 @@ def load_dong_codes():
     return out
 
 
+ARCH_TIMEOUT = 20
+ARCH_TIMEOUT_ABORT = 3  # 연속 타임아웃 시 법정동 루프 중단
+
+
 def arch_fetch(sigungu_cd, start_date, end_date, bjdong_cd='00000'):
-    """세움터 건축인허가 이력 API."""
+    """세움터 건축인허가 이력 API. (items, status) status: ok|empty|timeout|error"""
     endpoints = [
         'https://apis.data.go.kr/1613000/ArchPmsHstService_v2/getApBasisOulnInfo',
         'https://apis.data.go.kr/1613000/ArchPmsHubService/getApBasisOulnInfo',
     ]
-    all_items = []
+    last_status = 'empty'
     for base in endpoints:
         page = 1
         got = []
@@ -116,62 +120,81 @@ def arch_fetch(sigungu_cd, start_date, end_date, bjdong_cd='00000'):
                 'numOfRows': 1000,
                 'pageNo': page,
             })
-            # data.go.kr 키는 이미 URL-encoded 인 경우가 많아 quote 한 번만
             raw_key = urllib.parse.unquote(MOLIT_KEY)
             key = urllib.parse.quote(raw_key, safe='')
             url = f'{base}?serviceKey={key}&{params}'
             try:
-                with urllib.request.urlopen(url, timeout=45) as r:
+                with urllib.request.urlopen(url, timeout=ARCH_TIMEOUT) as r:
                     xml_str = r.read().decode('utf-8')
             except urllib.error.HTTPError as e:
                 body = e.read().decode('utf-8', errors='ignore')[:300]
                 print(f'  API HTTP {e.code} ({base.split("/")[-1]} p{page}): {body}')
+                last_status = 'error'
                 break
             except Exception as e:
+                err = str(e).lower()
+                last_status = 'timeout' if 'timed out' in err or 'timeout' in err else 'error'
                 print(f'  API 오류 ({base.split("/")[-1]} p{page}): {e}')
                 break
             try:
                 root = ET.fromstring(xml_str)
             except ET.ParseError as e:
                 print(f'  XML 오류: {e}')
+                last_status = 'error'
                 break
             code = (root.findtext('.//resultCode') or '').strip()
             if code not in ('00', '000', '0', ''):
                 msg = root.findtext('.//resultMsg') or ''
                 print(f'  API code {code}: {msg}')
+                last_status = 'error'
                 break
             items = root.findall('.//item')
             got.extend(items)
             total_el = root.find('.//totalCount')
             total = int(total_el.text) if total_el is not None and total_el.text else 0
             if not items or page * 1000 >= total:
-                break
+                return got, ('ok' if got else 'empty')
             page += 1
             time.sleep(0.2)
-        if got:
-            return got
-    return all_items
+        # 다음 엔드포인트 시도
+    return [], last_status
 
 
 def arch_fetch_all_regions(start_date, end_date):
-    """시군구 전체(bjdong=00000) 우선, 실패 시 법정동별 조회."""
+    """시군구 단위 우선. 타임아웃/장애 시 법정동 전체 순회하지 않고 조기 중단."""
     all_rows = []
+    api_down = False
     for cd, name in ARCH_SIGUNGU:
         print(f'  {name} ({cd}) 시군구 단위…')
-        items = arch_fetch(cd, start_date, end_date, '00000')
+        items, status = arch_fetch(cd, start_date, end_date, '00000')
         if items:
             rows = parse_arch(items, name)
             print(f'  → {len(rows)}건')
             all_rows.extend(rows)
             time.sleep(0.3)
             continue
-        print(f'  → 시군구 조회 실패, 법정동별 시도')
+
+        if status in ('timeout', 'error'):
+            print(f'  → 시군구 조회 {status} — 법정동 전체 순회 생략 (API 장애 가능성)')
+            api_down = True
+            continue
+
+        # empty만 법정동별 시도 (최대 연속 타임아웃이면 중단)
+        print(f'  → 시군구 0건, 법정동별 시도 (장애 시 조기 중단)')
         dongs = [d for d in load_dong_codes() if d[0] == cd]
+        timeout_streak = 0
         for i, (sgg, bjd, dong) in enumerate(dongs, 1):
-            items = arch_fetch(sgg, start_date, end_date, bjd)
-            rows = parse_arch(items, name)
+            items, st = arch_fetch(sgg, start_date, end_date, bjd)
+            if st == 'timeout':
+                timeout_streak += 1
+                if timeout_streak >= ARCH_TIMEOUT_ABORT:
+                    print(f'  ⚠ 연속 타임아웃 {timeout_streak}회 → {name} 법정동 순회 중단')
+                    api_down = True
+                    break
+                continue
+            timeout_streak = 0
+            rows = parse_arch(items, name) if items else []
             if rows:
-                # dong 보강
                 for r in rows:
                     if not r.get('dong'):
                         r['dong'] = dong
@@ -180,7 +203,7 @@ def arch_fetch_all_regions(start_date, end_date):
             if i % 20 == 0:
                 print(f'    … 법정동 {i}/{len(dongs)}')
             time.sleep(0.15)
-    return all_rows
+    return all_rows, api_down
 
 
 def fetch_and_upload():
@@ -190,10 +213,12 @@ def fetch_and_upload():
     start_s, end_s = start.strftime('%Y%m%d'), end.strftime('%Y%m%d')
     print(f'  기간: {start_s} ~ {end_s} ({DAYS}일)')
 
-    all_rows = arch_fetch_all_regions(start_s, end_s)
+    all_rows, api_down = arch_fetch_all_regions(start_s, end_s)
 
     if not all_rows:
-        print('  데이터 없음 — 기존 DB 지오코딩만 수행')
+        print('  데이터 없음 — 기존 DB 유지, 좌표만 보강')
+        if api_down:
+            print('  ⚠ 건축인허가 API 장애/타임아웃 — 기간 삭제·재삽입 생략')
         geocode_only()
         return
 
@@ -203,6 +228,12 @@ def fetch_and_upload():
         uniq[k] = r
     all_rows = list(uniq.values())
     print(f'  중복 제거 후 {len(all_rows)}건')
+
+    # API가 불안정한데 일부만 오면 기간 DELETE 하면 구멍 → 보류
+    if api_down and len(all_rows) < 50:
+        print(f'  ⚠ API 불안정 + 수집 {len(all_rows)}건뿐 → 기간 교체 생략, 기존 유지')
+        geocode_only()
+        return
 
     geocode_rows(all_rows)
     # 전체 clear 금지 — 수집 기간만 삭제 후 INSERT (기간 upsert)
