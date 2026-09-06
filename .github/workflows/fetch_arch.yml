@@ -1,12 +1,18 @@
-name: 건축인허가 수집
+name: 건축인허가 수집 (수동·비권장)
+
+# Hub API는 GitHub Actions(해외)에서 타임아웃이 잦음.
+# 권장: 로컬에서 실행
+#   python scripts/fetch_arch.py --days 120
+#
+# 이 워크플로는 비상용 수동 실행만 남김.
 
 on:
   workflow_dispatch:
     inputs:
       days:
-        description: '수집 일수 (허가일 기준)'
+        description: '수집 일수 (허가일 기준) — Actions 타임아웃 가능, 로컬 권장'
         required: true
-        default: '400'
+        default: '120'
         type: string
       geocode_only:
         description: '기존 DB 행만 지오코딩 (재수집 안 함)'

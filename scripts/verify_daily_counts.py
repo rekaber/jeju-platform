@@ -72,7 +72,7 @@ def main():
     if arch_total <= 0:
         warn.append('arch_permits 전체 0건')
     elif arch_recent <= 0:
-        warn.append(f'arch_permits 최근 기간 0건 (API 장애 가능 — 기존 데이터는 유지됐을 수 있음)')
+        warn.append('arch_permits 최근 기간 0건 (로컬 fetch_arch 미실행 가능)')
 
     summary = '\n'.join(lines)
     print(summary)
