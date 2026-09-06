@@ -288,7 +288,7 @@ function showDevPopup(p) {
     }
   }, true);
 
-  let curKm = 2, curTab = 'house';
+  let curKm = 3, curTab = 'house';
   el.innerHTML = `
     <div class="dev-popup-header" style="background:${color};">
       <button class="dev-popup-close" onclick="if(window._devPopup){window._devPopup.setMap(null);window._devPopup=null;}">×</button>
@@ -310,7 +310,7 @@ function showDevPopup(p) {
         </div>
         <div style="display:flex;gap:4px;margin-bottom:8px;">
           <button class="dev-km-btn" data-km="1">1km</button>
-          <button class="dev-km-btn active" data-km="2">2km</button>
+          <button class="dev-km-btn active" data-km="3">3km</button>
           <button class="dev-km-btn" data-km="5">5km</button>
         </div>
         <button class="dev-stat-btn" onclick="(function(btn){var c=btn.closest('.dev-popup-body').querySelector('.dev-chart-area');if(c.style.display==='none'){c.style.display='block';btn.textContent='📉 통계 접기';}else{c.style.display='none';btn.textContent='📈 월별 가격 통계';}})(this)" style="width:100%;font-size:11px;font-weight:700;padding:5px 0;border-radius:7px;border:1px solid #1565C0;background:#f0f4ff;color:#1565C0;cursor:pointer;margin-bottom:6px;">📈 월별 가격 통계</button>
