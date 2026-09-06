@@ -22,11 +22,6 @@ jobs:
   arch:
     runs-on: ubuntu-latest
     timeout-minutes: 180
-    defaults:
-      run:
-        # Hub API가 Actions에서 간헐 타임아웃 → 재시도는 스크립트에서 처리
-        shell: bash
-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -55,23 +50,5 @@ jobs:
           if [ "${{ github.event.inputs.geocode_only }}" = "true" ]; then
             python scripts/fetch_arch.py --geocode-only
           else
-            # 첫 동(일도일동) 사전 호출로 Hub 연결 확인
-            python - <<'PY'
-import os, urllib.parse, urllib.request
-key = os.environ["MOLIT_API_KEY"].strip()
-sk = key if "%" in key else urllib.parse.quote(urllib.parse.unquote(key), safe="")
-url = (
-  "https://apis.data.go.kr/1613000/ArchPmsHubService/getApBasisOulnInfo"
-  f"?serviceKey={sk}&sigunguCd=50110&bjdongCd=10100"
-  "&startDate=20240101&endDate=20240131&numOfRows=1&pageNo=1"
-)
-try:
-  req = urllib.request.Request(url, headers={"User-Agent": "jeju-platform-arch/1.0"})
-  with urllib.request.urlopen(req, timeout=60) as r:
-    body = r.read().decode("utf-8", "replace")
-  print("preflight OK" if "NORMAL SERVICE" in body or "resultCode>00" in body else body[:300])
-except Exception as e:
-  print("preflight WARN:", e)
-PY
             python scripts/fetch_arch.py --days "${{ github.event.inputs.days }}"
           fi
