@@ -1,0 +1,50 @@
+name: 건축인허가 수집
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: '수집 일수 (허가일 기준)'
+        required: true
+        default: '400'
+        type: string
+      geocode_only:
+        description: '기존 DB 행만 지오코딩 (재수집 안 함)'
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  arch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 시크릿 확인
+        env:
+          MOLIT_API_KEY: ${{ secrets.MOLIT_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
+        run: |
+          missing=0
+          for name in MOLIT_API_KEY SUPABASE_URL SUPABASE_SERVICE_KEY KAKAO_REST_KEY; do
+            if [ -z "${!name}" ]; then echo "::error::Secret $name 비어 있음"; missing=1; else echo "OK $name"; fi
+          done
+          exit $missing
+      - name: 건축인허가 수집/지오코딩
+        env:
+          MOLIT_API_KEY: ${{ secrets.MOLIT_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
+          PYTHONUNBUFFERED: '1'
+        run: |
+          if [ "${{ github.event.inputs.geocode_only }}" = "true" ]; then
+            python scripts/fetch_arch.py --geocode-only
+          else
+            python scripts/fetch_arch.py --days "${{ github.event.inputs.days }}"
+          fi

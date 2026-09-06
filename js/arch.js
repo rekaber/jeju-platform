@@ -86,6 +86,11 @@ function renderArchMarkers() {
   clearArchMarkers();
   const list = getFilteredArch();
   document.getElementById('arch-cnt-badge').textContent = list.length;
+  const withCoord = list.filter(d => d.lat && d.lng).length;
+  const prog = document.getElementById('arch-progress');
+  if (prog && list.length && withCoord < list.length && window._archLoading !== true) {
+    // 좌표 변환 진행 중이면 geocodeArchData가 메시지를 갱신
+  }
   const token = {};
   window._archToken = token;
   let i = 0;
@@ -241,8 +246,10 @@ function geocodeArchData(data, geoCache) {
         data.forEach(d => { if (d.platPlc === addr && !d.lat) { d.lat = lat; d.lng = lng; } });
         newEntries++;
       }
-      if (prog && done % 10 === 0) prog.textContent = `좌표 변환 중 ${done}/${total}...`;
-      setTimeout(next, 200);
+      if (prog) prog.textContent = `좌표 변환 중 ${done}/${total}...`;
+      // 변환되는 대로 지도에 표시 (완료까지 빈 맵으로 보이지 않게)
+      if (archVisible && (done % 5 === 0 || done >= total)) renderArchMarkers();
+      setTimeout(next, 120);
     });
   }
   next();
