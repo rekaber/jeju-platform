@@ -94,63 +94,88 @@ def load_dong_codes():
     return list(JEJU_BJDONG)
 
 
-ARCH_TIMEOUT = 20
-ARCH_TIMEOUT_ABORT = 3  # 연속 타임아웃 시 법정동 루프 중단
+ARCH_TIMEOUT = 60
+ARCH_RETRIES = 4
+ARCH_TIMEOUT_ABORT = 8  # 연속 실패 시에만 시군구 순회 중단
+ARCH_CHUNK_DAYS = 62    # 긴 기간은 잘라서 호출 (Hub 타임아웃 완화)
+
+
+def _service_key():
+    raw_key = urllib.parse.unquote(MOLIT_KEY)
+    if '%' in MOLIT_KEY:
+        return MOLIT_KEY.strip()
+    return urllib.parse.quote(raw_key, safe='')
+
+
+def _date_chunks(start_ymd, end_ymd, chunk_days=ARCH_CHUNK_DAYS):
+    start = datetime.strptime(start_ymd, '%Y%m%d')
+    end = datetime.strptime(end_ymd, '%Y%m%d')
+    cur = start
+    while cur <= end:
+        chunk_end = min(cur + timedelta(days=chunk_days - 1), end)
+        yield cur.strftime('%Y%m%d'), chunk_end.strftime('%Y%m%d')
+        cur = chunk_end + timedelta(days=1)
+
+
+def arch_fetch_page(sigungu_cd, start_date, end_date, bjdong_cd, page):
+    """한 페이지 호출. 타임아웃 시 재시도."""
+    base = 'https://apis.data.go.kr/1613000/ArchPmsHubService/getApBasisOulnInfo'
+    params = urllib.parse.urlencode({
+        'sigunguCd': sigungu_cd,
+        'bjdongCd': bjdong_cd,
+        'startDate': start_date,
+        'endDate': end_date,
+        'numOfRows': 1000,
+        'pageNo': page,
+    })
+    url = f'{base}?serviceKey={_service_key()}&{params}'
+    last_err = None
+    for attempt in range(1, ARCH_RETRIES + 1):
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'jeju-platform-arch/1.0'})
+            with urllib.request.urlopen(req, timeout=ARCH_TIMEOUT) as r:
+                return r.read().decode('utf-8'), None
+        except urllib.error.HTTPError as e:
+            body = e.read().decode('utf-8', errors='ignore')[:400]
+            if 'SERVICE_KEY_IS_NOT_REGISTERED' in body:
+                return '', 'key_not_registered'
+            if 'NO_OPENAPI_SERVICE' in body:
+                return '', 'service_gone'
+            return '', 'error'
+        except Exception as e:
+            last_err = e
+            err = str(e).lower()
+            if 'timed out' in err or 'timeout' in err:
+                if attempt < ARCH_RETRIES:
+                    wait = attempt * 2
+                    print(f'    retry {attempt}/{ARCH_RETRIES} timeout → {wait}s ({bjdong_cd} {start_date})')
+                    time.sleep(wait)
+                    continue
+                print(f'  API timeout ({bjdong_cd} {start_date}~{end_date} p{page}): {e}')
+                return '', 'timeout'
+            print(f'  API 오류 ({bjdong_cd} p{page}): {e}')
+            return '', 'error'
+    print(f'  API 실패: {last_err}')
+    return '', 'timeout'
 
 
 def arch_fetch(sigungu_cd, start_date, end_date, bjdong_cd='00000'):
-    """건축HUB 건축인허가 API (ArchPmsHubService). 구 ArchPmsHstService_v2 는 폐기됨."""
-    endpoints = [
-        'https://apis.data.go.kr/1613000/ArchPmsHubService/getApBasisOulnInfo',
-    ]
+    """건축HUB 건축인허가 API. 긴 기간은 청크로 나눠 조회."""
+    got = []
     last_status = 'empty'
-    for base in endpoints:
+    for c_start, c_end in _date_chunks(start_date, end_date):
         page = 1
-        got = []
         while True:
-            params = urllib.parse.urlencode({
-                'sigunguCd': sigungu_cd,
-                'bjdongCd': bjdong_cd,
-                'startDate': start_date,
-                'endDate': end_date,
-                'numOfRows': 1000,
-                'pageNo': page,
-            })
-            # 포털 Encoding 키를 그대로 쓰거나, Decoding 키면 quote
-            raw_key = urllib.parse.unquote(MOLIT_KEY)
-            # 이미 % 포함(인코딩됨)이면 재인코딩하지 않음
-            if '%' in MOLIT_KEY:
-                key = MOLIT_KEY.strip()
-            else:
-                key = urllib.parse.quote(raw_key, safe='')
-            url = f'{base}?serviceKey={key}&{params}'
-            try:
-                with urllib.request.urlopen(url, timeout=ARCH_TIMEOUT) as r:
-                    xml_str = r.read().decode('utf-8')
-            except urllib.error.HTTPError as e:
-                body = e.read().decode('utf-8', errors='ignore')[:400]
-                print(f'  API HTTP {e.code} ({base.split("/")[-1]} p{page}): {body[:200]}')
-                if 'SERVICE_KEY_IS_NOT_REGISTERED' in body:
-                    last_status = 'key_not_registered'
-                elif 'NO_OPENAPI_SERVICE' in body:
-                    last_status = 'service_gone'
-                else:
-                    last_status = 'error'
-                break
-            except Exception as e:
-                err = str(e).lower()
-                last_status = 'timeout' if 'timed out' in err or 'timeout' in err else 'error'
-                print(f'  API 오류 ({base.split("/")[-1]} p{page}): {e}')
-                break
+            xml_str, err = arch_fetch_page(sigungu_cd, c_start, c_end, bjdong_cd, page)
+            if err:
+                return got, err  # 부분 수집분이 있으면 상위에서 활용
             try:
                 root = ET.fromstring(xml_str)
             except ET.ParseError as e:
                 print(f'  XML 오류: {e}')
-                last_status = 'error'
-                break
-            # Hub는 resultCode 또는 cmmMsgHeader 둘 다 가능
+                return got, 'error'
             if 'SERVICE_KEY_IS_NOT_REGISTERED' in xml_str:
-                print('  API: SERVICE_KEY_IS_NOT_REGISTERED_ERROR (키 미동기화/권한)')
+                print('  API: SERVICE_KEY_IS_NOT_REGISTERED_ERROR')
                 return [], 'key_not_registered'
             if 'NO_OPENAPI_SERVICE' in xml_str:
                 print('  API: NO_OPENAPI_SERVICE_ERROR')
@@ -159,17 +184,18 @@ def arch_fetch(sigungu_cd, start_date, end_date, bjdong_cd='00000'):
             if code not in ('00', '000', '0', ''):
                 msg = root.findtext('.//resultMsg') or ''
                 print(f'  API code {code}: {msg}')
-                last_status = 'error'
-                break
+                return got, 'error'
             items = root.findall('.//item')
             got.extend(items)
             total_el = root.find('.//totalCount')
             total = int(total_el.text) if total_el is not None and total_el.text else 0
             if not items or page * 1000 >= total:
-                return got, ('ok' if got else 'empty')
+                last_status = 'ok' if got else 'empty'
+                break
             page += 1
-            time.sleep(0.2)
-    return [], last_status
+            time.sleep(0.25)
+        time.sleep(0.2)
+    return got, last_status
 
 
 def arch_fetch_all_regions(start_date, end_date):
@@ -187,19 +213,22 @@ def arch_fetch_all_regions(start_date, end_date):
                 print(f'  → {st} — 순회 중단')
                 api_down = True
                 break
-            if st == 'timeout':
+            if st in ('timeout', 'error'):
+                # 부분 성공분이 있으면 반영 후 다음 동으로 (전체 중단은 연속 실패 시)
+                if items:
+                    rows = parse_arch(items, name)
+                    for r in rows:
+                        if not r.get('dong'):
+                            r['dong'] = dong
+                    all_rows.extend(rows)
+                    got_any = True
+                    print(f'    {dong}({bjd}): 부분 {len(rows)}건 ({st})')
                 timeout_streak += 1
                 if timeout_streak >= ARCH_TIMEOUT_ABORT:
-                    print(f'  ⚠ 연속 타임아웃 {timeout_streak}회 → {name} 순회 중단')
+                    print(f'  ⚠ 연속 {st} {timeout_streak}회 → {name} 순회 중단')
                     api_down = True
                     break
-                continue
-            if st == 'error':
-                timeout_streak += 1
-                if timeout_streak >= ARCH_TIMEOUT_ABORT:
-                    print(f'  ⚠ 연속 오류 → {name} 순회 중단')
-                    api_down = True
-                    break
+                time.sleep(1.5)
                 continue
             timeout_streak = 0
             rows = parse_arch(items, name) if items else []
@@ -210,9 +239,9 @@ def arch_fetch_all_regions(start_date, end_date):
                         r['dong'] = dong
                 all_rows.extend(rows)
                 print(f'    {dong}({bjd}): {len(rows)}건')
-            if i % 20 == 0:
-                print(f'    … {i}/{len(dongs)}')
-            time.sleep(0.15)
+            if i % 10 == 0:
+                print(f'    … {i}/{len(dongs)} (누적 {len(all_rows)}건)')
+            time.sleep(0.3)
         if not got_any and not api_down:
             print(f'  → {name} 0건')
     return all_rows, api_down
