@@ -3,6 +3,7 @@
 GitHub Pages 웹서비스 + data.go.kr 실거래 수집 + **Supabase** DB
 
 - 사이트: https://rekaber.github.io/jeju-platform/
+- 일반 사용자 매뉴얼: [docs/manual/사용자매뉴얼.md](docs/manual/사용자매뉴얼.md) · [HTML 보기](docs/manual/index.html)
 - Supabase: `boukipzpoapqotvauzrj` (프로젝트명 jeju-platform)
 
 ## 구조
