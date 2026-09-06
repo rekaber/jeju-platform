@@ -783,10 +783,7 @@ def main():
 
         # 월 단위로 수집→지오코딩→업로드 (중간에 끊겨도 이미 넣은 월은 보존)
         for ym in months:
-            if _api_fail_streak >= API_FAIL_ABORT:
-                print(f'  ⚠ {table}: API 연속 실패로 남은 월 스킵')
-                break
-
+            streak_before = _api_fail_streak
             month_rows = []
             for lawd_cd, sigungu in REGIONS:
                 items = molit_fetch_all(service, lawd_cd, ym)
@@ -795,15 +792,24 @@ def main():
                 month_rows.extend(rows)
                 time.sleep(0.35)
 
+            # 이번 달 수집 중 API가 크게 실패 → 부분 데이터로 DELETE/INSERT 하지 않음
+            month_fail = _api_fail_streak - streak_before
+            if _api_fail_streak >= API_FAIL_ABORT or month_fail >= 4:
+                print(
+                    f'  ⚠ {table} {ym}: API 불안정'
+                    f'(streak={_api_fail_streak}, +{month_fail}) → 이번 달 스킵, 다음 달 계속'
+                )
+                # 다음 달 재시도 여지 확보
+                _api_fail_streak = max(0, _api_fail_streak - 4)
+                continue
+
             if not month_rows:
                 consecutive_empty += 1
                 # 빈 월은 DELETE 하지 않음 (clear 모드가 아닐 때 기존 유지)
-                if CLEAR_TABLES:
-                    # clear 후에는 빈 월도 그대로 두면 됨 (이미 전체 삭제됨)
-                    pass
                 if consecutive_empty >= 6 and _api_fail_streak >= 4:
-                    print(f'  ⚠ {table}: 연속 빈 결과+API 실패 → 테이블 중단')
-                    break
+                    print(f'  ⚠ {table}: 연속 빈 결과+API 실패 → 이후 달도 시도는 계속')
+                    consecutive_empty = 0
+                    _api_fail_streak = max(0, _api_fail_streak - 2)
                 continue
 
             consecutive_empty = 0

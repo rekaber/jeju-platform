@@ -205,11 +205,12 @@ def fetch_and_upload():
     print(f'  중복 제거 후 {len(all_rows)}건')
 
     geocode_rows(all_rows)
-    sb_clear_arch()
+    # 전체 clear 금지 — 수집 기간만 삭제 후 INSERT (기간 upsert)
+    sb_delete_arch_period(start_s, end_s)
     time.sleep(0.5)
     sb_insert(all_rows)
     with_lat = sum(1 for r in all_rows if r.get('lat'))
-    print(f'  ✓ 완료: {len(all_rows)}건 (좌표 {with_lat})')
+    print(f'  ✓ 완료: {len(all_rows)}건 (좌표 {with_lat}) · 기간 {start_s}~{end_s}만 교체')
 
 
 def parse_arch(items, sigungu):
@@ -297,6 +298,7 @@ def geocode_rows(rows):
 
 
 def sb_clear_arch():
+    """(레거시) 전체 삭제 — 일일 수집에서는 사용하지 않음."""
     url = f'{SUPABASE_URL}/rest/v1/arch_permits?id=gte.0'
     req = urllib.request.Request(url, method='DELETE', headers=HEADERS)
     try:
@@ -304,6 +306,34 @@ def sb_clear_arch():
             print('  ✓ arch_permits 전체 삭제')
     except Exception as e:
         print(f'  [경고] clear 실패: {e}')
+
+
+def sb_delete_arch_period(start_ymd, end_ymd):
+    """수집 기간(pms_day)만 삭제. YYYY-MM-DD / YYYYMMDD 혼재 대응."""
+    start_iso = f'{start_ymd[:4]}-{start_ymd[4:6]}-{start_ymd[6:8]}'
+    end_iso = f'{end_ymd[:4]}-{end_ymd[4:6]}-{end_ymd[6:8]}'
+    queries = [
+        f'pms_day=gte.{start_iso}&pms_day=lte.{end_iso}',
+        f'pms_day=gte.{start_ymd}&pms_day=lte.{end_ymd}',
+    ]
+    ok = True
+    for q in queries:
+        url = f'{SUPABASE_URL}/rest/v1/arch_permits?{q}'
+        req = urllib.request.Request(url, method='DELETE', headers=HEADERS)
+        try:
+            with urllib.request.urlopen(req, timeout=120):
+                print(f'  ✓ 기간 삭제: {q}')
+        except urllib.error.HTTPError as e:
+            if e.code in (404, 204):
+                print(f'  · 기간 삭제 대상 없음: {q}')
+            else:
+                print(f'  [경고] 기간 삭제 실패 {e.code}: {e.read()[:150]}')
+                ok = False
+        except Exception as e:
+            print(f'  [경고] 기간 삭제 실패: {e}')
+            ok = False
+        time.sleep(0.2)
+    return ok
 
 
 def sb_insert(rows, batch=300):

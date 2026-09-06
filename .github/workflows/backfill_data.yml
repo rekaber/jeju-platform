@@ -24,6 +24,10 @@ on:
         default: false
         type: boolean
 
+concurrency:
+  group: jeju-data-update
+  cancel-in-progress: false
+
 jobs:
   backfill:
     runs-on: ubuntu-latest

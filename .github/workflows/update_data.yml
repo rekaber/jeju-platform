@@ -16,6 +16,15 @@ on:
           - '6'
           - '12'
 
+concurrency:
+  group: jeju-data-update
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -48,15 +57,59 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
 
-      - name: 데이터 수집 및 Supabase 업로드
+      - name: 실거래 증분 수집 (--force, 월 격리)
         env:
           MOLIT_API_KEY: ${{ secrets.MOLIT_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
+          PYTHONUNBUFFERED: '1'
         run: |
           MONTHS="${{ github.event.inputs.months }}"
           if [ -z "$MONTHS" ]; then MONTHS=3; fi
-          export PYTHONUNBUFFERED=1
-          python scripts/fetch_incremental.py --months "$MONTHS"
+          python scripts/fetch_incremental.py --months "$MONTHS" --force
+
+      - name: 건축인허가 기간 upsert
+        env:
+          MOLIT_API_KEY: ${{ secrets.MOLIT_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          KAKAO_REST_KEY: ${{ secrets.KAKAO_REST_KEY }}
+          PYTHONUNBUFFERED: '1'
+        run: |
           python scripts/fetch_arch.py --days 120
+
+      - name: 건수 검증
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          VERIFY_MONTHS: ${{ github.event.inputs.months || '3' }}
+          PYTHONUNBUFFERED: '1'
+        run: |
+          python scripts/verify_daily_counts.py
+
+      - name: 실패 시 GitHub Issue 알림
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="[자동] 일일 데이터 업데이트 실패 — run ${{ github.run_id }}"
+          BODY=$(cat <<EOF
+          ## 일일 데이터 업데이트 실패
+
+          - **워크플로:** ${{ github.workflow }}
+          - **실행:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          - **브랜치:** ${{ github.ref_name }}
+          - **시각(UTC):** $(date -u +"%Y-%m-%d %H:%M:%S")
+
+          Actions 로그를 확인한 뒤 필요하면 수동 \`workflow_dispatch\`로 재실행하세요.
+          EOF
+          )
+          # 동일 run 중복 이슈 방지: 최근 열린 동일 제목 검색
+          EXISTING=$(gh issue list --repo "${{ github.repository }}" --state open --search "run ${{ github.run_id }} in:title" --json number --jq '.[0].number' || true)
+          if [ -n "$EXISTING" ]; then
+            echo "이미 이슈 #$EXISTING 존재"
+            gh issue comment "$EXISTING" --repo "${{ github.repository }}" --body "재알림: job 실패 지속. ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          else
+            gh issue create --repo "${{ github.repository }}" --title "$TITLE" --body "$BODY"
+          fi
