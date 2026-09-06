@@ -271,22 +271,39 @@ function showDevPopup(p) {
     const list = el.querySelector('.dev-trade-list');
     if (list) list.innerHTML = renderTradeList(km, tab);
     const chart = el.querySelector('.dev-chart-area');
-    if (chart && chart.style.display !== 'none') chart.innerHTML = renderDevChart(km, tab);
-    else if (chart) chart.innerHTML = '';
+    const statBtn = el.querySelector('.dev-stat-btn');
+    // 통계가 열려 있으면 탭/거리 변경 시 즉시 다시 그림
+    if (chart && chart.style.display !== 'none') {
+      chart.innerHTML = renderDevChart(km, tab);
+      if (statBtn) statBtn.textContent = '📉 통계 접기';
+    }
     el.querySelectorAll('.dev-km-btn').forEach(b => b.classList.toggle('active', b.dataset.km == km));
     el.querySelectorAll('.dev-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   }
 
-  // 통계 버튼 클릭 시 차트 렌더링
-  el.addEventListener('click', function(e) {
-    const btn = e.target.closest('.dev-stat-btn');
-    if (btn) {
-      const chart = el.querySelector('.dev-chart-area');
-      if (chart && chart.style.display !== 'none' && !chart.innerHTML.trim()) {
-        chart.innerHTML = renderDevChart(curKm, curTab);
-      }
+  function toggleStatChart() {
+    const chart = el.querySelector('.dev-chart-area');
+    const statBtn = el.querySelector('.dev-stat-btn');
+    if (!chart || !statBtn) return;
+    const opening = chart.style.display === 'none' || !chart.style.display;
+    if (opening) {
+      chart.style.display = 'block';
+      chart.innerHTML = renderDevChart(curKm, curTab);
+      statBtn.textContent = '📉 통계 접기';
+    } else {
+      chart.style.display = 'none';
+      chart.innerHTML = '';
+      statBtn.textContent = '📈 월별 가격 통계';
     }
-  }, true);
+  }
+
+  function enableOverlayScroll(node) {
+    if (!node) return;
+    const stop = (e) => { e.stopPropagation(); };
+    ['wheel', 'mousewheel', 'DOMMouseScroll', 'touchstart', 'touchmove'].forEach(ev => {
+      node.addEventListener(ev, stop, { passive: true });
+    });
+  }
 
   let curKm = 3, curTab = 'house';
   el.innerHTML = `
@@ -313,22 +330,33 @@ function showDevPopup(p) {
           <button class="dev-km-btn active" data-km="3">3km</button>
           <button class="dev-km-btn" data-km="5">5km</button>
         </div>
-        <button class="dev-stat-btn" onclick="(function(btn){var c=btn.closest('.dev-popup-body').querySelector('.dev-chart-area');if(c.style.display==='none'){c.style.display='block';btn.textContent='📉 통계 접기';}else{c.style.display='none';btn.textContent='📈 월별 가격 통계';}})(this)" style="width:100%;font-size:11px;font-weight:700;padding:5px 0;border-radius:7px;border:1px solid #1565C0;background:#f0f4ff;color:#1565C0;cursor:pointer;margin-bottom:6px;">📈 월별 가격 통계</button>
+        <button type="button" class="dev-stat-btn" style="width:100%;font-size:11px;font-weight:700;padding:5px 0;border-radius:7px;border:1px solid #1565C0;background:#f0f4ff;color:#1565C0;cursor:pointer;margin-bottom:6px;">📈 월별 가격 통계</button>
         <div class="dev-chart-area" style="display:none;margin-bottom:8px;"></div>
         <div style="font-size:11px;font-weight:700;color:#444;margin-bottom:5px;">최근 실거래</div>
-        <div class="dev-trade-list" style="max-height:160px;overflow-y:auto;">${renderTradeList(curKm, curTab)}</div>
+        <div class="dev-trade-list">${renderTradeList(curKm, curTab)}</div>
       </div>
     </div>
     <div class="dev-popup-arrow" style="border-top-color:${color};"></div>`;
 
+  enableOverlayScroll(el);
+  enableOverlayScroll(el.querySelector('.dev-popup-body'));
+  enableOverlayScroll(el.querySelector('.dev-trade-list'));
+
+  el.querySelector('.dev-stat-btn').onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleStatChart();
+  };
   el.querySelectorAll('.dev-km-btn').forEach(btn => {
-    btn.onclick = () => {
-      curKm = parseInt(btn.dataset.km);
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      curKm = parseInt(btn.dataset.km, 10);
       rebuild(curKm, curTab);
     };
   });
   el.querySelectorAll('.dev-tab-btn').forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
       curTab = btn.dataset.tab;
       rebuild(curKm, curTab);
     };
