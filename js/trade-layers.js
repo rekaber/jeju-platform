@@ -627,14 +627,23 @@ function showTradePopup(t) {
   window._tradePopupOverlay.setMap(map);
 }
 
-/* ═══ 지역별 평균 거래가 TOP 5 ═══ */
+/* ═══ 아파트 지역별 평균 거래가 TOP 5 (apt 전용) ═══ */
 var arPeriod = 'year';
+var AR_MIN_TRADES = 3; // 표본 부족 동 제외 (1건 이상치 방지)
 
 function setArPeriod(period, btn) {
   arPeriod = period;
   document.querySelectorAll('.ar-period-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   renderAreaRank();
+}
+
+function _aptRankSource() {
+  // 패널 제목이 아파트이므로 항상 apt만 사용 (TRADE_DATA 합집합과 분리)
+  if (window.MULTI_DATA && Array.isArray(window.MULTI_DATA.apt) && window.MULTI_DATA.apt.length) {
+    return window.MULTI_DATA.apt;
+  }
+  return (window.TRADE_DATA || []).filter(t => !t._tradeType || t._tradeType === 'apt');
 }
 
 function filterByPeriod(data) {
@@ -651,10 +660,10 @@ function filterByPeriod(data) {
 }
 
 /* ──────────────────────────────────────────────
-   순위 캐시: 데이터 로드 시 1회만 계산, 이후엔 읽기만
+   순위 캐시: apt 데이터 로드/갱신 시 재계산
    ────────────────────────────────────────────── */
 function computeRankCache() {
-  const raw = window.TRADE_DATA || [];
+  const raw = _aptRankSource();
   if (!raw.length) { window._rankCache = null; return; }
 
   const now = new Date();
@@ -674,16 +683,16 @@ function computeRankCache() {
   const buildTop5 = (data) => {
     const byDong = {};
     data.forEach(t => {
-      const key = t.dong || '기타';
+      const key = (t.dong || '').trim() || '기타';
       const pyeong = t.area ? t.area / 3.3 : 0;
-      const perPyeong = (pyeong > 0) ? (t.price * 10000 / pyeong) : 0; // 만원/평
+      const perPyeong = (pyeong > 0 && t.price > 0) ? (t.price * 10000 / pyeong) : 0; // 만원/평
       if (!byDong[key]) byDong[key] = { ppSum: 0, ppCnt: 0, maxPP: 0, cnt: 0 };
       byDong[key].cnt++;
       if (perPyeong > byDong[key].maxPP) byDong[key].maxPP = perPyeong;
       if (perPyeong > 0) { byDong[key].ppSum += perPyeong; byDong[key].ppCnt++; }
     });
     return Object.entries(byDong)
-      .filter(([, s]) => s.ppCnt > 0)
+      .filter(([, s]) => s.ppCnt >= AR_MIN_TRADES)
       .map(([dong, s]) => ({ dong, avg: s.ppSum / s.ppCnt, max: s.maxPP, cnt: s.cnt }))
       .sort((a, b) => b.avg - a.avg)
       .slice(0, 5);
@@ -697,7 +706,7 @@ function computeRankCache() {
 }
 
 function updateInfoPanelApt() {
-  var data = (window.MULTI_DATA && window.MULTI_DATA.apt) ? window.MULTI_DATA.apt : (window.TRADE_DATA || []);
+  var data = _aptRankSource();
   if (!data.length) {
     var priceEl0 = document.getElementById('ip-apt-price');
     var countEl0 = document.getElementById('ip-apt-count');
@@ -742,15 +751,17 @@ function updateInfoPanelApt() {
 }
 
 function renderAreaRank() {
-  if (!window.TRADE_DATA || !window.TRADE_DATA.length) return;
-  if (!window._rankCache) computeRankCache();
+  const apt = _aptRankSource();
+  if (!apt.length) return;
+  // 데이터가 바뀌었을 수 있으므로 매번 apt 기준으로 재계산
+  computeRankCache();
 
   const top5 = (window._rankCache && window._rankCache[arPeriod]) || [];
   const list  = document.getElementById('area-rank-list');
   if (!list) return;
 
   if (!top5.length) {
-    list.innerHTML = `<div style="color:#7dd3c8;font-size:10px;text-align:center;padding:8px;opacity:0.6">해당 기간 데이터 없음</div>`;
+    list.innerHTML = `<div style="color:#7dd3c8;font-size:10px;text-align:center;padding:8px;opacity:0.6">해당 기간 아파트 데이터 없음<br><span style="opacity:0.8">(동별 ${AR_MIN_TRADES}건 이상)</span></div>`;
     return;
   }
 
@@ -758,7 +769,7 @@ function renderAreaRank() {
     <div class="rank-row" onclick="focusDong('${d.dong}')">
       <span class="r-rank">${i + 1}</span>
       <div class="rank-row-inner">
-        <div class="rank-row-name">${d.dong}</div>
+        <div class="rank-row-name">${d.dong} <span style="font-weight:400;opacity:0.55;font-size:10px">${d.cnt}건</span></div>
         <div class="rank-row-stats">
           <span class="rank-row-avg">평균 ${Math.round(d.avg).toLocaleString()}만/평</span>
           <span class="rank-row-max">최고 ${Math.round(d.max).toLocaleString()}만/평</span>
@@ -776,8 +787,8 @@ function focusDong(dongName) {
   const bjData = window.JEJU_BEOPJEONGDONG || [];
   const bjInfo = bjData.find(b => b.dong === dongName);
 
-  // 해당 동 거래 목록 — TOP 5와 동일한 기간 필터 적용
-  const allDong = (window.TRADE_DATA || []).filter(t => t.dong === dongName);
+  // 해당 동 아파트 거래 — TOP 5와 동일한 기간 필터
+  const allDong = _aptRankSource().filter(t => t.dong === dongName);
   const trades  = filterByPeriod(allDong).sort((a, b) => b.price - a.price);
 
   if (!trades.length) return;
