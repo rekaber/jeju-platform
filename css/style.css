@@ -479,6 +479,20 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
 .dev-km-btn.active {
   border-color:#37474F; background:#37474F; color:#fff;
 }
+.dev-chart-mode {
+  font-size:10px; padding:4px 7px; border-radius:7px; border:1px solid #c5cae9;
+  background:#f5f7ff; color:#3949ab; cursor:pointer; font-weight:700; white-space:nowrap;
+}
+.dev-chart-mode.active {
+  border-color:#1565C0; background:#1565C0; color:#fff;
+}
+.dev-stat-collapse {
+  font-size:10px; padding:4px 8px; border-radius:7px; border:1px solid #90a4ae;
+  background:#eceff1; color:#455a64; cursor:pointer; font-weight:700; white-space:nowrap;
+}
+.dev-stat-toolbar {
+  flex-wrap: wrap;
+}
 .dev-popup {
   background: #fff; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.22);
   width: 280px; overflow: hidden; position: fixed; z-index: 10050;

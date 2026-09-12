@@ -486,81 +486,157 @@ function showDevPopup(p) {
     return keys.size;
   }
 
-  function renderDevChart(km, tab) {
+  function renderDevChart(km, tab, mode) {
+    mode = mode || curChartMode;
     const now = new Date();
     const curYear = now.getFullYear();
     const curMonth = now.getMonth() + 1;
     const nearby = yearTrades(km, tab);
+    const isCount = mode === 'count';
+    const isHouse = tab === 'house';
 
     const months = [];
     for (let m = 1; m <= curMonth; m++) {
-      const key = curYear + '-' + String(m).padStart(2,'0');
+      const key = curYear + '-' + String(m).padStart(2, '0');
       const items = nearby.filter(t => t.date && t.date.startsWith(key));
       let avg = null;
-      if (tab === 'house') {
+      if (isHouse) {
         const valid = items.filter(t => t.price && t.area && t.area > 0);
-        if (valid.length) avg = Math.round(valid.reduce((s,t) => s + t.price*10000/(t.area/3.3058), 0) / valid.length);
+        if (valid.length) {
+          avg = Math.round(valid.reduce((s, t) => s + t.price * 10000 / (t.area / 3.3058), 0) / valid.length);
+        }
       } else {
-        const valid = items.filter(t => t.perM2 && t.perM2 > 0);
-        if (valid.length) avg = Math.round(valid.reduce((s,t) => s + t.perM2, 0) / valid.length);
+        const valid = items.filter(t => {
+          const pm = Number(t.perM2) || 0;
+          return pm > 0 || (t.price > 0 && t.area > 0);
+        });
+        if (valid.length) {
+          avg = Math.round(valid.reduce((s, t) => {
+            let pm = Number(t.perM2) || 0;
+            if (!(pm > 0) && t.price > 0 && t.area > 0) pm = t.price * 10000 / t.area;
+            return s + pm;
+          }, 0) / valid.length * 10) / 10;
+        }
       }
-      months.push({ label: m+'월', avg, count: items.length });
+      months.push({ label: m + '월', avg, count: items.length });
     }
 
-    const vals = months.map(m => m.avg || 0);
+    const c = isHouse ? '#00695C' : '#5D4037';
+    const unit = isHouse ? '만/평' : '만/㎡';
+    const metricLabel = isCount
+      ? '월별 거래건수'
+      : (isHouse ? '평당 평균단가' : '㎡당 평균단가');
+
+    const vals = months.map(m => isCount ? m.count : (m.avg || 0));
+    const hasData = isCount
+      ? vals.some(v => v > 0)
+      : months.some(m => m.avg != null && m.avg > 0);
+    if (!hasData) {
+      return `<div style="font-size:10px;color:#aaa;text-align:center;padding:8px;">올해 반경 ${km}km ${metricLabel} 데이터 없음</div>`;
+    }
+
     const maxV = Math.max(...vals, 1);
     const posVals = vals.filter(v => v > 0);
-    const minV = posVals.length ? Math.min(...posVals) : maxV;
-    const W = 254, H = 72, padL = 30, padB = 14, padR = 4, padT = 6;
-    const cW = W-padL-padR, cH = H-padT-padB;
+    const minV = isCount ? 0 : (posVals.length ? Math.min(...posVals) : 0);
+    const W = 254, H = 88, padL = 28, padB = 16, padR = 6, padT = 8;
+    const cW = W - padL - padR, cH = H - padT - padB;
     const xStep = cW / Math.max(months.length - 1, 1);
-    const toY = v => padT + cH - ((v - minV + 0.5) / (maxV - minV + 1)) * cH;
-    const c = tab === 'house' ? '#00695C' : '#5D4037';
-    const unit = tab === 'house' ? '만/평' : '만/㎡';
-
-    const points = months.map((mo, i) => ({
-      x: padL + i * xStep,
-      y: mo.avg ? toY(mo.avg) : null,
-      label: mo.label, avg: mo.avg, count: mo.count
-    })).filter(pt => pt.y !== null);
-
-    if (!points.length) return `<div style="font-size:10px;color:#aaa;text-align:center;padding:8px;">올해 반경 ${km}km 데이터 없음</div>`;
-
-    const pathD = points.map((pt,i) => (i===0?'M':'L')+pt.x.toFixed(1)+','+pt.y.toFixed(1)).join(' ');
-    const first = points[0], last = points[points.length-1];
-    const areaD = pathD + ' L'+last.x.toFixed(1)+','+(padT+cH)+' L'+first.x.toFixed(1)+','+(padT+cH)+' Z';
+    const span = Math.max(maxV - minV, isCount ? 1 : 0.5);
+    const toY = v => padT + cH - ((v - minV) / span) * cH;
 
     const fmtV = v => {
-      if (tab === 'house') return (Math.round(v/100)/10).toFixed(1)+'천만';
-      return v >= 10000 ? (v/10000).toFixed(1)+'억' : Math.round(v).toLocaleString()+'만';
+      if (isCount) return Math.round(v) + '건';
+      if (isHouse) return (Math.round(v / 100) / 10).toFixed(1) + '천만';
+      if (v >= 100) return Math.round(v).toLocaleString() + '만';
+      return (Math.round(v * 10) / 10).toFixed(1) + '만';
     };
-    const yLbls = [fmtV(minV), fmtV((minV+maxV)/2), fmtV(maxV)];
-    const yPos = [padT+cH, padT+cH/2, padT];
 
-    const xLbls = months.map((mo,i) => {
-      const x = (padL + i*xStep).toFixed(1);
+    const yTicks = isCount
+      ? [0, Math.round(maxV / 2), maxV]
+      : [minV, (minV + maxV) / 2, maxV];
+    const yPos = yTicks.map(v => toY(v));
+    const yLbls = yTicks.map(fmtV);
+
+    const xLbls = months.map((mo, i) => {
+      const x = (padL + i * xStep).toFixed(1);
       const step = months.length > 6 ? 3 : months.length > 4 ? 2 : 1;
-      if (i % step !== 0 && i !== months.length-1) return '';
-      return `<text x="${x}" y="${H}" text-anchor="middle" font-size="7" fill="#aaa">${mo.label}</text>`;
+      if (i % step !== 0 && i !== months.length - 1) return '';
+      return `<text x="${x}" y="${H - 2}" text-anchor="middle" font-size="7" fill="#aaa">${mo.label}</text>`;
     }).join('');
 
-    const mapPts = countMapPoints(nearby);
-    return `
-      <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:3px;">📈 ${curYear} 월별 평균 (${unit}) · ${km}km · ${nearby.length}건${mapPts < nearby.length ? ' · 지도 ' + mapPts + '지점' : ''}</div>
-      <svg width="${W}" height="${H}" style="display:block;">
+    let chartBody = '';
+    if (isCount) {
+      const barW = Math.max(6, Math.min(14, cW / months.length * 0.55));
+      chartBody = months.map((mo, i) => {
+        const x = padL + i * xStep;
+        const h = mo.count > 0 ? Math.max(2, (padT + cH) - toY(mo.count)) : 0;
+        const y = (padT + cH) - h;
+        return `<rect x="${(x - barW / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${c}" opacity="0.85">
+          <title>${mo.label}: ${mo.count}건</title>
+        </rect>`;
+      }).join('');
+    } else {
+      const points = months.map((mo, i) => ({
+        x: padL + i * xStep,
+        y: mo.avg != null && mo.avg > 0 ? toY(mo.avg) : null,
+        label: mo.label, avg: mo.avg, count: mo.count
+      })).filter(pt => pt.y !== null);
+      if (!points.length) {
+        return `<div style="font-size:10px;color:#aaa;text-align:center;padding:8px;">올해 반경 ${km}km 단가 데이터 없음</div>`;
+      }
+      const pathD = points.map((pt, i) => (i === 0 ? 'M' : 'L') + pt.x.toFixed(1) + ',' + pt.y.toFixed(1)).join(' ');
+      const first = points[0], last = points[points.length - 1];
+      const areaD = pathD + ' L' + last.x.toFixed(1) + ',' + (padT + cH) + ' L' + first.x.toFixed(1) + ',' + (padT + cH) + ' Z';
+      chartBody = `
         <defs><linearGradient id="devGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="${c}" stop-opacity="0.2"/>
           <stop offset="100%" stop-color="${c}" stop-opacity="0"/>
         </linearGradient></defs>
-        ${yPos.map((y,i) => `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#eee" stroke-width="1"/>`).join('')}
         <path d="${areaD}" fill="url(#devGrad)"/>
         <path d="${pathD}" fill="none" stroke="${c}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
         ${points.map(pt => `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="2.8" fill="${c}" stroke="#fff" stroke-width="1.2">
-          <title>${pt.label}: ${pt.avg ? fmtV(pt.avg)+unit : '-'} (${pt.count}건)</title>
-        </circle>`).join('')}
-        ${yLbls.map((l,i) => `<text x="${padL-2}" y="${(yPos[i]+3).toFixed(1)}" text-anchor="end" font-size="7" fill="#aaa">${l}</text>`).join('')}
+          <title>${pt.label}: ${fmtV(pt.avg)}${unit} (${pt.count}건)</title>
+        </circle>`).join('')}`;
+    }
+
+    const mapPts = countMapPoints(nearby);
+    return `
+      <div style="font-size:10px;font-weight:700;color:#555;margin-bottom:4px;">📈 ${curYear} ${metricLabel}${isCount ? '' : ' (' + unit + ')'} · ${km}km · ${nearby.length}건${mapPts < nearby.length ? ' · 지도 ' + mapPts + '지점' : ''}</div>
+      <svg width="${W}" height="${H}" style="display:block;">
+        ${yPos.map((y, i) => `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}" stroke="#eee" stroke-width="1"/>`).join('')}
+        ${chartBody}
+        ${yLbls.map((l, i) => `<text x="${padL - 2}" y="${(yPos[i] + 3).toFixed(1)}" text-anchor="end" font-size="7" fill="#aaa">${l}</text>`).join('')}
         ${xLbls}
       </svg>`;
+  }
+
+  function syncStatToolbar(tab) {
+    const priceBtn = el.querySelector('.dev-chart-mode[data-mode="price"]');
+    if (priceBtn) {
+      priceBtn.textContent = tab === 'house' ? '평당 평균단가' : '㎡당 평균단가';
+    }
+    el.querySelectorAll('.dev-chart-mode').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === curChartMode);
+    });
+  }
+
+  function setStatOpen(open) {
+    const openBtn = el.querySelector('.dev-stat-open');
+    const toolbar = el.querySelector('.dev-stat-toolbar');
+    const chart = el.querySelector('.dev-chart-area');
+    if (!openBtn || !toolbar || !chart) return;
+    if (open) {
+      openBtn.style.display = 'none';
+      toolbar.style.display = 'flex';
+      chart.style.display = 'block';
+      syncStatToolbar(curTab);
+      chart.innerHTML = renderDevChart(curKm, curTab, curChartMode);
+    } else {
+      openBtn.style.display = 'block';
+      toolbar.style.display = 'none';
+      chart.style.display = 'none';
+      chart.innerHTML = '';
+    }
   }
 
   function rebuild(km, tab) {
@@ -569,29 +645,13 @@ function showDevPopup(p) {
     if (list) list.innerHTML = renderTradeList(km, tab);
     updateListHeader(km, trades.length, countMapPoints(trades));
     const chart = el.querySelector('.dev-chart-area');
-    const statBtn = el.querySelector('.dev-stat-btn');
-    if (chart && chart.style.display !== 'none') {
-      chart.innerHTML = renderDevChart(km, tab);
-      if (statBtn) statBtn.textContent = '📉 통계 접기';
+    const toolbar = el.querySelector('.dev-stat-toolbar');
+    if (chart && toolbar && toolbar.style.display !== 'none') {
+      syncStatToolbar(tab);
+      chart.innerHTML = renderDevChart(km, tab, curChartMode);
     }
     el.querySelectorAll('.dev-km-btn').forEach(b => b.classList.toggle('active', +b.dataset.km === km));
     el.querySelectorAll('.dev-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  }
-
-  function toggleStatChart() {
-    const chart = el.querySelector('.dev-chart-area');
-    const statBtn = el.querySelector('.dev-stat-btn');
-    if (!chart || !statBtn) return;
-    const opening = chart.style.display === 'none' || !chart.style.display;
-    if (opening) {
-      chart.style.display = 'block';
-      chart.innerHTML = renderDevChart(curKm, curTab);
-      statBtn.textContent = '📉 통계 접기';
-    } else {
-      chart.style.display = 'none';
-      chart.innerHTML = '';
-      statBtn.textContent = '📈 월별 가격 통계';
-    }
   }
 
   function enableOverlayScroll(node) {
@@ -611,7 +671,7 @@ function showDevPopup(p) {
   }
   window._closeDevPopup = closePopup;
 
-  let curKm = 3, curTab = 'house';
+  let curKm = 3, curTab = 'house', curChartMode = 'price';
   const initTrades = yearTrades(curKm, curTab);
   const initMapPts = countMapPoints(initTrades);
   el.innerHTML = `
@@ -638,7 +698,12 @@ function showDevPopup(p) {
           <button type="button" class="dev-km-btn active" data-km="3">3km</button>
           <button type="button" class="dev-km-btn" data-km="5">5km</button>
         </div>
-        <button type="button" class="dev-stat-btn" style="width:100%;font-size:11px;font-weight:700;padding:5px 0;border-radius:7px;border:1px solid #1565C0;background:#f0f4ff;color:#1565C0;cursor:pointer;margin-bottom:6px;">📈 월별 가격 통계</button>
+        <button type="button" class="dev-stat-open" style="width:100%;font-size:11px;font-weight:700;padding:5px 0;border-radius:7px;border:1px solid #1565C0;background:#f0f4ff;color:#1565C0;cursor:pointer;margin-bottom:6px;">📈 월별 가격 통계</button>
+        <div class="dev-stat-toolbar" style="display:none;align-items:center;gap:4px;margin-bottom:6px;">
+          <button type="button" class="dev-chart-mode active" data-mode="price">평당 평균단가</button>
+          <button type="button" class="dev-chart-mode" data-mode="count">월별 거래건수</button>
+          <button type="button" class="dev-stat-collapse" style="margin-left:auto;flex-shrink:0;">통계 접기</button>
+        </div>
         <div class="dev-chart-area" style="display:none;margin-bottom:8px;"></div>
         <div class="dev-trade-header" style="font-size:11px;font-weight:700;color:#444;margin-bottom:5px;" title="올해 반경 내 거래. 동일 좌표는 지도에서 한 점으로 합쳐 표시됩니다.">올해 실거래 (${initTrades.length}건 · ${curKm}km${initMapPts < initTrades.length ? ' · 지도 ' + initMapPts + '지점' : ''})</div>
         <div class="dev-trade-list">${renderTradeList(curKm, curTab)}</div>
@@ -654,11 +719,26 @@ function showDevPopup(p) {
     e.stopPropagation();
     closePopup();
   };
-  el.querySelector('.dev-stat-btn').onclick = (e) => {
+  el.querySelector('.dev-stat-open').onclick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleStatChart();
+    setStatOpen(true);
   };
+  el.querySelector('.dev-stat-collapse').onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setStatOpen(false);
+  };
+  el.querySelectorAll('.dev-chart-mode').forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      curChartMode = btn.dataset.mode;
+      syncStatToolbar(curTab);
+      const chart = el.querySelector('.dev-chart-area');
+      if (chart) chart.innerHTML = renderDevChart(curKm, curTab, curChartMode);
+    };
+  });
   el.querySelectorAll('.dev-km-btn').forEach(btn => {
     btn.onclick = (e) => {
       e.preventDefault();
