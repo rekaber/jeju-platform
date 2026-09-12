@@ -182,36 +182,41 @@ function hideRegZone(key) {
 }
 
 // ── 클릭 규제조회 모드
+function closeZoneQueryPopup() {
+  if (_zoneQueryOverlay) {
+    try { _zoneQueryOverlay.setMap(null); } catch (_) {}
+    _zoneQueryOverlay = null;
+  }
+}
+
 function toggleZoneQueryMode(btn) {
   _zoneQueryMode = !_zoneQueryMode;
   if (_zoneQueryMode) {
     btn.style.background = '#7B1FA2';
     btn.style.color = '#fff';
     btn.textContent = '📍 조회 ON (클릭)';
-    _zoneQueryListener = kakao.maps.event.addListener(map, 'click', onMapZoneQuery);
+    btn.classList.add('active');
+    // 중복 등록 방지 후 동일 핸들러로 등록 (제거 시에도 같은 참조 사용)
+    try { kakao.maps.event.removeListener(map, 'click', onMapZoneQuery); } catch (_) {}
+    kakao.maps.event.addListener(map, 'click', onMapZoneQuery);
+    _zoneQueryListener = true;
   } else {
-    btn.style.background = '#EDE7F6';
-    btn.style.color = '#7B1FA2';
+    btn.style.background = 'rgba(123,31,162,0.15)';
+    btn.style.color = '#CE93D8';
     btn.textContent = '📍 클릭 규제조회';
-    if (_zoneQueryListener) kakao.maps.event.removeListener(map, 'click', _zoneQueryListener);
+    btn.classList.remove('active');
+    try { kakao.maps.event.removeListener(map, 'click', onMapZoneQuery); } catch (_) {}
     _zoneQueryListener = null;
-    if (_zoneQueryOverlay) { _zoneQueryOverlay.setMap(null); _zoneQueryOverlay = null; }
+    closeZoneQueryPopup();
   }
 }
 
 function onMapZoneQuery(mouseEvent) {
+  // 모드 OFF면 절대 팝업 생성하지 않음 (리스너 잔존 대비)
+  if (!_zoneQueryMode) return;
+
   const ll = mouseEvent.latLng;
   const lat = ll.getLat(), lng = ll.getLng();
-
-  // 현재 활성 구역 중 해당 위치 포함 여부 체크
-  const activeZones = [];
-  Object.entries(_zonePolygons).forEach(([key, polys]) => {
-    if (polys.length > 0) {
-      // 거리 기반 근사 포함 여부 체크
-      const def = REG_ZONE_DEF[key];
-      if (def) activeZones.push(def.name);
-    }
-  });
 
   // 모든 구역 대상으로 포인트 포함 여부 근사 확인 (ray-casting)
   const contained = [];
@@ -224,7 +229,7 @@ function onMapZoneQuery(mouseEvent) {
     }
   });
 
-  if (_zoneQueryOverlay) { _zoneQueryOverlay.setMap(null); _zoneQueryOverlay = null; }
+  closeZoneQueryPopup();
 
   const eumUrl = `https://www.eum.go.kr/web/ar/lu/luLandDynamic.jsp?lat=${lat.toFixed(5)}&lng=${lng.toFixed(5)}`;
 
@@ -237,32 +242,39 @@ function onMapZoneQuery(mouseEvent) {
     ).join('');
   }
 
-  const content = `<div class="zone-query-popup">
-    <button class="zq-close" onclick="this.closest('.zone-query-popup').parentNode._overlay&&this.closest('.zone-query-popup').parentNode._overlay.setMap(null)">✕</button>
+  const wrap = document.createElement('div');
+  wrap.className = 'zone-query-popup';
+  wrap.innerHTML =
+    `<button type="button" class="zq-close" aria-label="닫기">✕</button>
     <div class="zq-title">규제구역 조회 (근사)</div>
     <div class="zq-row"><span class="zq-label">좌표</span><span class="zq-val">${lat.toFixed(5)}, ${lng.toFixed(5)}</span></div>
     <hr style="margin:5px 0;border:none;border-top:1px solid #eee;">
     ${zonesHtml}
     <div class="zq-link">
-      <a href="${eumUrl}" target="_blank">🔗 토지이음에서 정확한 규제 확인 ↗</a>
+      <a href="${eumUrl}" target="_blank" rel="noopener">🔗 토지이음에서 정확한 규제 확인 ↗</a>
     </div>
-    <div style="font-size:9px;color:#bbb;margin-top:4px;">※ 위 경계는 근사값입니다</div>
-  </div>`;
+    <div style="font-size:9px;color:#bbb;margin-top:4px;">※ 위 경계는 근사값입니다</div>`;
+
+  // 팝업 클릭이 지도 click으로 전파되지 않게
+  ['mousedown', 'mouseup', 'click', 'touchstart', 'touchend', 'dblclick'].forEach(ev => {
+    wrap.addEventListener(ev, e => { e.stopPropagation(); }, true);
+  });
+
+  const closeBtn = wrap.querySelector('.zq-close');
+  closeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeZoneQueryPopup();
+  });
 
   _zoneQueryOverlay = new kakao.maps.CustomOverlay({
     position: ll,
-    content: content,
+    content: wrap,
     yAnchor: 1.1,
-    zIndex: 10
+    zIndex: 100,
+    clickable: true
   });
-  // close 버튼에 오버레이 참조 전달을 위해 약간 다른 방식 사용
   _zoneQueryOverlay.setMap(map);
-
-  // close 버튼 이벤트 직접 바인딩
-  setTimeout(() => {
-    const closeBtn = document.querySelector('.zone-query-popup .zq-close');
-    if (closeBtn) closeBtn.onclick = () => { _zoneQueryOverlay && _zoneQueryOverlay.setMap(null); _zoneQueryOverlay = null; };
-  }, 0);
 }
 
 // ── 레이 캐스팅 포인트-인-폴리곤
