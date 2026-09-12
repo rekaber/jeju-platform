@@ -236,8 +236,13 @@ function renderLandBubbles() {
 
   Object.values(stats).forEach(s => {
     if (!s.lat || !s.lng || s.count < 1) return;
-    const avgPerM2 = s.m2cnt > 0 ? Math.round(s.totalPerM2 / s.m2cnt) : 0;
-    const perM2Str = avgPerM2 >= 10000 ? (avgPerM2/10000).toFixed(1)+'만/㎡' : avgPerM2.toLocaleString()+'원/㎡';
+    const avgPerM2 = s.m2cnt > 0 ? (s.totalPerM2 / s.m2cnt) : 0;
+    // perM2는 만원/㎡ 단위. (>=10000이면 원 단위로 잘못 저장된 경우만 보정)
+    let perM2Str;
+    if (!(avgPerM2 > 0)) perM2Str = '-';
+    else if (avgPerM2 >= 10000) perM2Str = (avgPerM2 / 10000).toFixed(1) + '만/㎡';
+    else if (avgPerM2 >= 100) perM2Str = Math.round(avgPerM2).toLocaleString() + '만/㎡';
+    else perM2Str = (Math.round(avgPerM2 * 10) / 10).toFixed(1) + '만/㎡';
     const ratio = s.count / maxCnt;
     const colorCls = ratio < 0.3 ? 'cnt-low' : ratio < 0.65 ? 'cnt-mid' : 'cnt-high';
 

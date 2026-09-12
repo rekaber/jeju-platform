@@ -563,17 +563,40 @@ function showLandBubbleDetail(stat, trades) {
     modal.addEventListener('click', function(e){ if(e.target===modal) modal.style.display='none'; });
     document.body.appendChild(modal);
   }
+  function landPerM2(t) {
+    var pm = Number(t.perM2) || 0;
+    if ((!pm || pm <= 0) && t.price > 0 && t.area > 0) {
+      pm = Math.round(t.price * 10000 / t.area * 10) / 10; // 만원/㎡
+    }
+    return pm > 0 ? pm : 0;
+  }
+  function fmtLandPrice(p) {
+    if (typeof p !== 'number' || !(p > 0)) return (p || '-');
+    // 1억 미만은 소수 2자리(0.34억), 이상은 1자리 — 단가와 맞추기 위함
+    return (p < 1 ? p.toFixed(2) : p.toFixed(1)) + '억';
+  }
+  function fmtPerM2(pm) {
+    if (!(pm > 0)) return '-';
+    // 만원/㎡ — 정수 반올림 대신 소수 1자리 유지 (2.6만 ≠ 3만으로 보이는 문제 방지)
+    if (pm >= 100) return Math.round(pm).toLocaleString() + '만/㎡';
+    return (Math.round(pm * 10) / 10).toFixed(1) + '만/㎡';
+  }
   var sorted = trades.slice().sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
   var sigShort = (stat.sigungu||'').replace('제주특별자치도 ','').replace('특별자치도','');
-  var avgPerM2 = stat.m2cnt > 0 ? Math.round(stat.totalPerM2 / stat.m2cnt) : 0;
+  var sum = 0, cnt = 0;
+  sorted.forEach(function(t) {
+    var pm = landPerM2(t);
+    if (pm > 0) { sum += pm; cnt++; }
+  });
+  var avgPerM2 = cnt > 0 ? sum / cnt : 0;
   var rows = sorted.map(function(t) {
-    var pm2 = t.perM2 ? Math.round(t.perM2).toLocaleString()+'만/㎡' : '-';
-    var price = typeof t.price === 'number' ? t.price.toFixed(1)+'억' : (t.price||'-');
+    var pm2 = fmtPerM2(landPerM2(t));
+    var price = fmtLandPrice(typeof t.price === 'number' ? t.price : parseFloat(t.price));
     return '<tr style="border-bottom:1px solid #eee;">' +
       '<td style="padding:6px 8px;font-size:12px;color:#333;">'+(t.date||'-')+'</td>' +
       '<td style="padding:6px 8px;font-size:12px;font-weight:600;white-space:nowrap;">'+(t.jimok||'-')+'</td>' +
       '<td style="padding:6px 8px;font-size:12px;color:#5D4037;font-weight:700;">'+price+'</td>' +
-      '<td style="padding:6px 8px;font-size:11px;color:#666;">'+(t.area?Math.round(t.area)+'㎡':'-')+'</td>' +
+      '<td style="padding:6px 8px;font-size:11px;color:#666;">'+(t.area?Math.round(t.area).toLocaleString()+'㎡':'-')+'</td>' +
       '<td style="padding:6px 8px;font-size:11px;color:#666;">'+pm2+'</td>' +
       '<td style="padding:6px 8px;font-size:11px;color:#888;">'+(t.yongdo||'-')+'</td>' +
       '</tr>';
@@ -581,7 +604,7 @@ function showLandBubbleDetail(stat, trades) {
   document.getElementById('bubble-detail-inner').innerHTML =
     '<div style="background:linear-gradient(135deg,#4E342E,#795548);color:#fff;padding:14px 18px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">' +
       '<div><div style="font-size:15px;font-weight:700;">📍 '+sigShort+' '+stat.dong+'</div>' +
-      '<div style="font-size:12px;opacity:0.85;margin-top:2px;">총 '+stat.count+'건 · 평균 '+avgPerM2.toLocaleString()+'만/㎡</div></div>' +
+      '<div style="font-size:12px;opacity:0.85;margin-top:2px;">총 '+stat.count+'건 · 평균 '+fmtPerM2(avgPerM2)+'</div></div>' +
       '<button onclick="document.getElementById(\'bubble-detail-modal\').style.display=\'none\';" style="background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:28px;height:28px;">✕</button>' +
     '</div>' +
     '<div style="padding:12px 16px;overflow-x:auto;">' +
