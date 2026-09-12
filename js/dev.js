@@ -251,6 +251,8 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 function clearDevNearbyMarkers() {
   devNearbyOverlays.forEach(o => o.setMap(null));
   devNearbyOverlays = [];
+  const detail = document.getElementById('dev-nearby-detail-modal');
+  if (detail) detail.style.display = 'none';
 }
 
 function clearDevPopupRadius() {
@@ -331,22 +333,20 @@ function renderDevNearbyMarkers(trades, tab) {
     const count = items.length;
     const el = document.createElement('div');
     if (count > 1) {
-      el.style.cssText = 'min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:' + color +
-        ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);color:#fff;font-size:9px;font-weight:800;' +
-        'display:flex;align-items:center;justify-content:center;line-height:1;cursor:default;';
+      el.style.cssText = 'min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:' + color +
+        ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);color:#fff;font-size:10px;font-weight:800;' +
+        'display:flex;align-items:center;justify-content:center;line-height:1;cursor:pointer;';
       el.textContent = String(count);
     } else {
-      el.style.cssText = 'width:10px;height:10px;border-radius:50%;background:' + color +
-        ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:default;';
+      el.style.cssText = 'width:12px;height:12px;border-radius:50%;background:' + color +
+        ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:pointer;';
     }
-    const sample = items.slice(0, 5).map(t => {
-      const dist = (t._distKm != null) ? t._distKm.toFixed(2) + 'km' : '';
-      const head = tab === 'house'
-        ? ('[단독/다가구] ' + (t.name || t.dong || '') + ' · ' + (t.price || '-') + '억')
-        : ((t.dong || '') + ' (' + (t.jimok || '-') + ') · ' + (t.price || '-') + '억');
-      return head + (dist ? ' · ' + dist : '') + (t.date ? ' · ' + t.date : '');
-    }).join('\n');
-    el.title = (count > 1 ? count + '건 동일/근접 좌표\n' : '') + sample + (count > 5 ? '\n…' : '');
+    el.title = (count > 1 ? count + '건 — 클릭하여 상세 보기' : '클릭하여 상세 보기');
+    el.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showDevNearbyPointDetail(items, tab);
+    };
 
     const ov = new kakao.maps.CustomOverlay({
       position: new kakao.maps.LatLng(t0.lat, t0.lng),
@@ -354,10 +354,71 @@ function renderDevNearbyMarkers(trades, tab) {
       yAnchor: 0.5,
       xAnchor: 0.5,
       zIndex: 4,
+      clickable: true,
     });
     ov.setMap(map);
     devNearbyOverlays.push(ov);
   });
+}
+
+/** 지도 반경 마커 클릭 → 해당 좌표의 실거래 상세 목록 */
+function showDevNearbyPointDetail(items, tab) {
+  if (!items || !items.length) return;
+  let modal = document.getElementById('dev-nearby-detail-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'dev-nearby-detail-modal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:1200;';
+    modal.innerHTML = '<div id="dev-nearby-detail-inner" style="background:#F8FAFB;border-radius:12px;width:min(420px,94vw);max-height:78vh;overflow:auto;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 12px 40px rgba(0,0,0,0.3);"></div>';
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) modal.style.display = 'none';
+    });
+    document.body.appendChild(modal);
+  }
+
+  const color = tab === 'house' ? '#00695C' : '#5D4037';
+  const label = tab === 'house' ? '단독/다가구' : '토지실거래';
+  const sorted = items.slice().sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1);
+  const place = sorted[0].name || sorted[0].dong || '해당 지점';
+  const dist0 = sorted[0]._distKm != null ? sorted[0]._distKm.toFixed(1) + 'km' : '';
+
+  const rows = sorted.map(t => {
+    const distTxt = (t._distKm != null) ? ` · ${t._distKm.toFixed(1)}km` : '';
+    if (tab === 'house') {
+      const pyeong = t.area ? t.area / 3.3 : 0;
+      const pp = pyeong > 0 ? ` · ${Math.round(t.price * 10000 / pyeong).toLocaleString()}만/평` : '';
+      return `<div style="padding:10px 14px;border-bottom:1px solid #eee;">
+        <div style="font-size:12px;font-weight:700;color:${color};">[단독/다가구] ${t.name || t.dong || '-'}</div>
+        <div style="font-size:12px;color:#333;margin-top:3px;">${t.price}억${pp} · ${t.area ? Math.round(t.area) + '㎡' : '-'} · ${t.date || '-'}${distTxt}</div>
+      </div>`;
+    }
+    const pm = (t.perM2 > 0)
+      ? (t.perM2 >= 100 ? Math.round(t.perM2).toLocaleString() + '만/㎡' : (Math.round(t.perM2 * 10) / 10).toFixed(1) + '만/㎡')
+      : ((t.price > 0 && t.area > 0)
+        ? ((Math.round(t.price * 10000 / t.area * 10) / 10).toFixed(1) + '만/㎡')
+        : '-');
+    const priceStr = (typeof t.price === 'number')
+      ? ((t.price < 1 ? t.price.toFixed(2) : t.price.toFixed(1)) + '억')
+      : (t.price || '-');
+    return `<div style="padding:10px 14px;border-bottom:1px solid #eee;">
+      <div style="font-size:12px;font-weight:700;color:${color};">${t.dong || '-'} (${t.jimok || '-'})</div>
+      <div style="font-size:12px;color:#333;margin-top:3px;">${priceStr} · ${t.area ? Math.round(t.area).toLocaleString() + '㎡' : '-'} · ${pm} · ${t.date || '-'}${distTxt}</div>
+      ${t.yongdo ? `<div style="font-size:11px;color:#888;margin-top:2px;">${t.yongdo}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('dev-nearby-detail-inner').innerHTML =
+    `<div style="background:linear-gradient(135deg,${color},${color}cc);color:#fff;padding:14px 16px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:14px;font-weight:800;">📍 ${place}</div>
+        <div style="font-size:11px;opacity:0.9;margin-top:3px;">${label} ${sorted.length}건${dist0 ? ' · 사업지에서 ' + dist0 : ''}</div>
+      </div>
+      <button type="button" onclick="document.getElementById('dev-nearby-detail-modal').style.display='none';"
+        style="background:rgba(255,255,255,0.22);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:50%;width:28px;height:28px;line-height:1;">×</button>
+    </div>
+    <div style="max-height:58vh;overflow-y:auto;">${rows}</div>`;
+
+  modal.style.display = 'block';
 }
 
 function showDevPopup(p) {
