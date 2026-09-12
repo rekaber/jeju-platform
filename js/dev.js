@@ -566,15 +566,26 @@ function showDevPopup(p) {
 
     let chartBody = '';
     if (isCount) {
-      const barW = Math.max(6, Math.min(14, cW / months.length * 0.55));
-      chartBody = months.map((mo, i) => {
-        const x = padL + i * xStep;
-        const h = mo.count > 0 ? Math.max(2, (padT + cH) - toY(mo.count)) : 0;
-        const y = (padT + cH) - h;
-        return `<rect x="${(x - barW / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${c}" opacity="0.85">
-          <title>${mo.label}: ${mo.count}건</title>
-        </rect>`;
-      }).join('');
+      // 건수도 꺾은선 — 월별 증감 추이가 더 직관적
+      const points = months.map((mo, i) => ({
+        x: padL + i * xStep,
+        y: toY(mo.count),
+        label: mo.label,
+        count: mo.count
+      }));
+      const pathD = points.map((pt, i) => (i === 0 ? 'M' : 'L') + pt.x.toFixed(1) + ',' + pt.y.toFixed(1)).join(' ');
+      const first = points[0], last = points[points.length - 1];
+      const areaD = pathD + ' L' + last.x.toFixed(1) + ',' + (padT + cH) + ' L' + first.x.toFixed(1) + ',' + (padT + cH) + ' Z';
+      chartBody = `
+        <defs><linearGradient id="devGradCnt" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${c}" stop-opacity="0.2"/>
+          <stop offset="100%" stop-color="${c}" stop-opacity="0"/>
+        </linearGradient></defs>
+        <path d="${areaD}" fill="url(#devGradCnt)"/>
+        <path d="${pathD}" fill="none" stroke="${c}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+        ${points.map(pt => `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="2.8" fill="${c}" stroke="#fff" stroke-width="1.2">
+          <title>${pt.label}: ${pt.count}건</title>
+        </circle>`).join('')}`;
     } else {
       const points = months.map((mo, i) => ({
         x: padL + i * xStep,
