@@ -253,7 +253,7 @@ function onMapZoneQuery(mouseEvent) {
     ).join('');
   }
 
-  // CustomOverlay 대신 지도 위 고정 DOM 패널 — 닫기 클릭이 확실히 동작
+  // CustomOverlay 대신 body 고정 패널 — 닫기 클릭이 지도 이벤트를 타지 않음
   const wrap = document.createElement('div');
   wrap.id = 'zone-query-float';
   wrap.className = 'zone-query-popup';
@@ -268,30 +268,27 @@ function onMapZoneQuery(mouseEvent) {
     </div>
     <div style="font-size:9px;color:#bbb;margin-top:4px;">※ 위 경계는 근사값입니다</div>`;
 
-  const markPopupInteraction = () => { _zqSkipMapClick = true; };
-  ['mousedown', 'touchstart', 'pointerdown'].forEach(ev => {
-    wrap.addEventListener(ev, (e) => {
-      markPopupInteraction();
-      e.stopPropagation();
-    }, true);
-  });
-  ['click', 'mouseup', 'touchend'].forEach(ev => {
-    wrap.addEventListener(ev, (e) => { e.stopPropagation(); }, true);
+  // 중요: capture+stopPropagation 은 자식(닫기 버튼)으로 이벤트가 내려가지 않게 막음 → bubble만 사용
+  wrap.addEventListener('mousedown', () => { _zqSkipMapClick = true; });
+  wrap.addEventListener('touchstart', () => { _zqSkipMapClick = true; }, { passive: true });
+  wrap.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (e.target.closest('.zq-close')) {
+      _zqSkipMapClick = true;
+      closeZoneQueryPopup();
+      setTimeout(() => { _zqSkipMapClick = false; }, 100);
+    }
   });
 
   const closeBtn = wrap.querySelector('.zq-close');
-  const doClose = (e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+  closeBtn.onclick = function (e) {
+    e.preventDefault();
+    e.stopPropagation();
     _zqSkipMapClick = true;
     closeZoneQueryPopup();
-    setTimeout(() => { _zqSkipMapClick = false; }, 50);
+    setTimeout(() => { _zqSkipMapClick = false; }, 100);
+    return false;
   };
-  closeBtn.addEventListener('mousedown', doClose);
-  closeBtn.addEventListener('click', doClose);
-  closeBtn.addEventListener('touchstart', doClose, { passive: false });
 
   // 클릭 지점 근처에 배치
   let left = window.innerWidth / 2 - 120;
