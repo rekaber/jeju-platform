@@ -8,7 +8,7 @@
 <!-- 카카오맵 SDK -->
 <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=4d07c938f981753cdabafd6532b57da8&libraries=services"></script>
 
-<link rel="stylesheet" href="./css/style.css?v=20260912b">
+<link rel="stylesheet" href="./css/style.css?v=20260913b">
 <link rel="stylesheet" href="./css/intro.css">
 </head>
 <body>
@@ -535,11 +535,28 @@
           <button class="sm-close" onclick="closeStatModal()">✕</button>
         </div>
         <div id="stat-modal-body">
-          <!-- 지역 필터 -->
-          <div class="sm-region-tabs">
-            <button class="sm-region-tab active-all" onclick="setStatRegion('all',this)">🏝 전체</button>
-            <button class="sm-region-tab" onclick="setStatRegion('jeju',this)">🔵 제주시</button>
-            <button class="sm-region-tab" onclick="setStatRegion('seo',this)">🟠 서귀포시</button>
+          <!-- 지역 계층·비교 -->
+          <div class="sm-geo-panel">
+            <div class="sm-breadcrumb" id="sm-breadcrumb"></div>
+            <div class="sm-geo-row">
+              <input type="search" id="sm-geo-search" class="sm-geo-search" placeholder="읍·면·동 검색 (예: 애월읍, 성산읍)" autocomplete="off" />
+              <div class="sm-mode-toggle" id="sm-mode-toggle">
+                <button type="button" class="sm-mode-btn active" data-mode="single">단일 지역</button>
+                <button type="button" class="sm-mode-btn" data-mode="compare">비교</button>
+              </div>
+            </div>
+            <div id="sm-geo-chips" class="sm-geo-chips"></div>
+            <div id="sm-compare-row" class="sm-compare-row" style="display:none;">
+              <label class="sm-cmp-label">A</label>
+              <select id="sm-geo-a-si" class="sm-geo-select"></select>
+              <select id="sm-geo-a-dong" class="sm-geo-select"></select>
+              <span class="sm-cmp-vs">vs</span>
+              <label class="sm-cmp-label">B</label>
+              <select id="sm-geo-b-si" class="sm-geo-select"></select>
+              <select id="sm-geo-b-dong" class="sm-geo-select"></select>
+            </div>
+            <div id="sm-geo-note" class="sm-geo-note"></div>
+            <div id="sm-geo-search-results" class="sm-geo-search-results" style="display:none;"></div>
           </div>
           <!-- 데이터 유형 탭 -->
           <div class="sm-tabs">
@@ -567,10 +584,27 @@
           <button class="sm-close" onclick="closeLandStatModal()">✕</button>
         </div>
         <div id="land-stat-modal-body">
-          <div class="sm-region-tabs">
-            <button class="lsm-region-tab active-all" onclick="setLandStatRegion('all',this)">🏝 전체</button>
-            <button class="lsm-region-tab" onclick="setLandStatRegion('jeju',this)">🔵 제주시</button>
-            <button class="lsm-region-tab" onclick="setLandStatRegion('seo',this)">🟠 서귀포시</button>
+          <div class="sm-geo-panel">
+            <div class="sm-breadcrumb" id="lsm-breadcrumb"></div>
+            <div class="sm-geo-row">
+              <input type="search" id="lsm-geo-search" class="sm-geo-search" placeholder="읍·면·동 검색 (예: 성산읍, 애월읍)" autocomplete="off" />
+              <div class="sm-mode-toggle" id="lsm-mode-toggle">
+                <button type="button" class="sm-mode-btn active" data-mode="single">단일 지역</button>
+                <button type="button" class="sm-mode-btn" data-mode="compare">비교</button>
+              </div>
+            </div>
+            <div id="lsm-geo-chips" class="sm-geo-chips"></div>
+            <div id="lsm-compare-row" class="sm-compare-row" style="display:none;">
+              <label class="sm-cmp-label">A</label>
+              <select id="lsm-geo-a-si" class="sm-geo-select"></select>
+              <select id="lsm-geo-a-dong" class="sm-geo-select"></select>
+              <span class="sm-cmp-vs">vs</span>
+              <label class="sm-cmp-label">B</label>
+              <select id="lsm-geo-b-si" class="sm-geo-select"></select>
+              <select id="lsm-geo-b-dong" class="sm-geo-select"></select>
+            </div>
+            <div id="lsm-geo-note" class="sm-geo-note"></div>
+            <div id="lsm-geo-search-results" class="sm-geo-search-results" style="display:none;"></div>
           </div>
           <div class="sm-tabs" style="margin-bottom:8px;">
             <button class="lsm-jimok-tab active" onclick="setLandStatJimok('all',this)">전체 지목</button>
@@ -1082,7 +1116,7 @@
 <script src="./js/bubble.js"></script>
 <script src="./js/trade.js"></script>
 <script src="./js/trade-layers.js"></script>
-<script src="./js/stats.js"></script>
+<script src="./js/stats.js?v=20260913b"></script>
 <script src="./js/land.js"></script>
 <script src="./js/unsold.js"></script>
 <script src="./js/search.js"></script>
@@ -1090,7 +1124,7 @@
 <script src="./js/migration.js"></script>
 <script src="./js/jiga.js"></script>
 <script src="./js/imde.js"></script>
-<script src="./js/land-stat.js"></script>
+<script src="./js/land-stat.js?v=20260913b"></script>
 <script src="./js/boot.js"></script>
 </body>
 </html>

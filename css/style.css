@@ -271,6 +271,48 @@ body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; overflow
 .sm-region-tab.active-all  { background:#1F4E79; color:#fff; }
 .sm-region-tab.active-jeju { background:#1976D2; color:#fff; }
 .sm-region-tab.active-seo  { background:#E65100; color:#fff; }
+.sm-geo-panel { margin-bottom:12px; position:relative; }
+.sm-breadcrumb { font-size:12px; color:#555; margin-bottom:8px; display:flex; flex-wrap:wrap; gap:4px; align-items:center; min-height:22px; }
+.sm-breadcrumb button { border:none; background:none; color:#1565C0; font-size:12px; font-weight:700; cursor:pointer; padding:0 2px; }
+.sm-breadcrumb button:hover { text-decoration:underline; }
+.sm-breadcrumb .sm-bc-sep { color:#bbb; }
+.sm-breadcrumb .sm-bc-cur { color:#222; font-weight:800; }
+.sm-geo-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+.sm-geo-search { flex:1; min-width:160px; border:1px solid #D0D7E2; border-radius:8px; padding:7px 10px; font-size:12px; outline:none; }
+.sm-geo-search:focus { border-color:#1976D2; box-shadow:0 0 0 2px rgba(25,118,210,0.15); }
+.sm-mode-toggle { display:flex; gap:0; border:1px solid #D0D7E2; border-radius:8px; overflow:hidden; flex-shrink:0; }
+.sm-mode-btn { border:none; background:#fff; color:#555; font-size:12px; font-weight:700; padding:7px 12px; cursor:pointer; }
+.sm-mode-btn.active { background:#1F4E79; color:#fff; }
+.sm-geo-chips { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:6px; max-height:72px; overflow-y:auto; }
+.sm-geo-chip { border:1px solid #D0D7E2; background:#fff; color:#444; border-radius:14px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:600; }
+.sm-geo-chip:hover { border-color:#1976D2; color:#1565C0; }
+.sm-geo-chip.active { background:#1976D2; border-color:#1976D2; color:#fff; }
+.sm-geo-chip .sm-chip-cnt { opacity:0.75; font-weight:500; margin-left:3px; }
+.sm-compare-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; background:#f0f4f8; border-radius:8px; padding:8px 10px; margin-bottom:6px; }
+.sm-cmp-label { font-size:11px; font-weight:800; color:#1F4E79; }
+.sm-cmp-vs { font-size:11px; font-weight:800; color:#888; padding:0 2px; }
+.sm-geo-select { border:1px solid #D0D7E2; border-radius:6px; padding:5px 8px; font-size:12px; background:#fff; max-width:140px; }
+.sm-geo-note { font-size:11px; color:#e65100; min-height:16px; margin-bottom:4px; }
+.sm-geo-search-results {
+  position:absolute; left:0; right:0; top:70px; z-index:5;
+  background:#fff; border:1px solid #D0D7E2; border-radius:8px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.12); max-height:200px; overflow-y:auto;
+}
+.sm-geo-search-results button {
+  display:block; width:100%; text-align:left; border:none; background:#fff;
+  padding:8px 12px; font-size:12px; cursor:pointer; border-bottom:1px solid #f0f0f0;
+}
+.sm-geo-search-results button:hover { background:#eef5ff; }
+@media (max-width: 640px) {
+  .sm-geo-row { flex-direction:column; align-items:stretch; }
+  .sm-mode-toggle { width:100%; }
+  .sm-mode-btn { flex:1; }
+  .sm-geo-search { min-width:0; width:100%; }
+  .sm-compare-row { flex-direction:column; align-items:stretch; }
+  .sm-geo-select { max-width:none; width:100%; }
+  .sm-geo-chips { max-height:110px; }
+  #stat-chart-wrap, #land-stat-chart-wrap { width:100%; overflow-x:auto; }
+}
 /* 데이터 탭 */
 .sm-tabs { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
 .sm-tab { padding:5px 14px; border-radius:14px; border:1px solid #D0D7E2; font-size:12px; cursor:pointer; background:#fff; color:#555; }
