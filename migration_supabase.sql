@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS arch_permits (
   sigungu TEXT, dong TEXT, bld_nm TEXT, addr TEXT, purps TEXT,
   arch_gb TEXT, jimok TEXT, yongdo TEXT, tot_area NUMERIC, plat_area NUMERIC,
   arch_area NUMERIC, bc_rat NUMERIC, vl_rat NUMERIC, hhld_cnt INT, ho_cnt INT,
-  pms_day TEXT, use_apr_day TEXT, lat NUMERIC, lng NUMERIC
+  pms_day TEXT, stcns_day TEXT, use_apr_day TEXT, lat NUMERIC, lng NUMERIC
 );
 
 CREATE TABLE IF NOT EXISTS migration_data (

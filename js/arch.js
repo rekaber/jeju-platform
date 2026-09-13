@@ -66,11 +66,12 @@ function getFilteredArch() {
   return (window.ARCH_DATA || []).filter(d => {
     if (archStatus !== 'all' && d._status !== archStatus) return false;
     if (archType   !== 'all' && d._typeGroup !== archType) return false;
-    // 연도 필터: 허가일 또는 사용승인일 기준
+    // 연도 필터: 허가일·착공일·사용승인일 중 하나라도 해당 연도면 포함
     if (archYear && archYear !== 'all') {
       const pms = d.pmsDay    || '';
+      const stc = d.stcnsDay  || '';
       const apr = d.useAprDay || '';
-      if (!pms.startsWith(archYear) && !apr.startsWith(archYear)) return false;
+      if (!pms.startsWith(archYear) && !stc.startsWith(archYear) && !apr.startsWith(archYear)) return false;
     }
     return true;
   });
@@ -169,7 +170,7 @@ async function loadArchData() {
       d.hhldCnt       = d.hhld_cnt    || 0;
       d.pmsDay        = (d.pms_day     || '').replace(/-/g, '');
       d.useAprDay     = (d.use_apr_day || '').replace(/-/g, '');
-      d.stcnsDay      = '';
+      d.stcnsDay      = (d.stcns_day   || d.real_stcns_day || '').replace(/-/g, '');
 
       d.roadAddr = d.platPlc;
       if (!d.lat && d.platPlc && geoCache[d.platPlc]) {
@@ -183,15 +184,22 @@ async function loadArchData() {
 
     window.ARCH_DATA   = raw;
     window._archLoaded = true;
+    const withStcns = raw.filter(d => d.stcnsDay && d.stcnsDay.length >= 8).length;
+    const stcnsOnly = raw.filter(d => d._status === '착공').length;
     const badge = document.getElementById('arch-cnt-badge');
     if (badge) badge.textContent = raw.length;
     if (prog) {
-      prog.textContent = `✓ ${raw.length}건 로드 완료`;
-      setTimeout(() => { prog.style.display = 'none'; }, 2000);
+      prog.textContent = withStcns
+        ? `✓ ${raw.length}건 로드 (착공 ${stcnsOnly}건 · 착공일 있음 ${withStcns}건)`
+        : `✓ ${raw.length}건 로드 (착공일 없음 — DB 재수집 필요)`;
+      setTimeout(() => { prog.style.display = 'none'; }, withStcns ? 2000 : 5000);
     }
     if (archVisible) renderArchMarkers();
-    if (typeof showToast === 'function') showToast(`✓ 건축인허가 ${raw.length}건 로드 완료`);
-
+    if (typeof showToast === 'function') {
+      showToast(withStcns
+        ? `✓ 건축인허가 ${raw.length}건 로드 (착공 상태 ${stcnsOnly}건)`
+        : `✓ 건축인허가 ${raw.length}건 · 착공일 미수집(재수집 필요)`);
+    }
     geocodeArchData(raw, geoCache);
 
   } catch(e) {

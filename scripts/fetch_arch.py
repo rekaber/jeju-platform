@@ -22,7 +22,27 @@ for i, arg in enumerate(args):
     elif arg == '--geocode-only':
         GEOCODE_ONLY = True
 
-MOLIT_KEY = os.environ.get('MOLIT_API_KEY', '')
+
+def _load_dotenv():
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+    if not os.path.isfile(env_path):
+        return
+    raw = open(env_path, 'rb').read()
+    if raw.startswith(b'\xef\xbb\xbf'):
+        raw = raw[3:]
+    for line in raw.decode('utf-8', errors='ignore').splitlines():
+        line = line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        k, v = line.split('=', 1)
+        k, v = k.strip(), v.strip().strip('"').strip("'")
+        if k and k not in os.environ:
+            os.environ[k] = v
+
+
+_load_dotenv()
+
+MOLIT_KEY = os.environ.get('MOLIT_API_KEY') or os.environ.get('MOLIT_KEY', '')
 SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://boukipzpoapqotvauzrj.supabase.co')
 SUPABASE_KEY = os.environ.get('SUPABASE_SERVICE_KEY', '')
 KAKAO_REST_KEY = os.environ.get('KAKAO_REST_KEY', '')
@@ -324,6 +344,7 @@ def parse_arch(items, sigungu):
             'hhld_cnt': int_or_none(text_any(it, 'hhldCnt')),
             'ho_cnt': int_or_none(text_any(it, 'hoCnt')),
             'pms_day': pms,
+            'stcns_day': fmt_day(text_any(it, 'realStcnsDay', 'stcnsDay', 'real_stcns_day')) or '',
             'use_apr_day': fmt_day(text_any(it, 'useAprDay')) or '',
             'mgm_pk': pk or None,
             'lat': None,

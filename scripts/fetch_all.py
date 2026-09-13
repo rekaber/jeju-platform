@@ -440,7 +440,8 @@ def parse_arch(items, sigungu):
         arch_gb  = text(it, 'archGbCdNm')
         tot_area = float_or_none(text(it, 'totArea'))
         hhld_cnt = int_or_none(text(it, 'hhldCnt'))
-        pms_day  = text(it, 'pmsDay')      # 허가일 YYYYMMDD
+        pms_day  = text(it, 'pmsDay') or text(it, 'archPmsDay')  # 허가일 YYYYMMDD
+        stc_day  = text(it, 'realStcnsDay') or text(it, 'stcnsDay')  # 실제착공일/착공일
         use_day  = text(it, 'useAprDay')   # 사용승인일 YYYYMMDD
         # 날짜 포맷: YYYYMMDD → YYYY-MM-DD
         def fmt_day(s):
@@ -455,6 +456,7 @@ def parse_arch(items, sigungu):
             'tot_area':    tot_area,
             'hhld_cnt':    hhld_cnt,
             'pms_day':     fmt_day(pms_day),
+            'stcns_day':   fmt_day(stc_day),
             'use_apr_day': fmt_day(use_day),
             'lat':         None,
             'lng':         None,
