@@ -1,0 +1,237 @@
+/* css/market-welcome.css — 입장 후 제주 시장 요약 팝업 */
+#market-welcome {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(8, 22, 40, 0.55);
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+#market-welcome.open {
+  display: flex;
+  animation: mwBackdropIn 0.35s ease;
+}
+@keyframes mwBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+#market-welcome-inner {
+  width: min(480px, 100%);
+  max-height: min(92vh, 640px);
+  overflow: auto;
+  background: #F4F7FA;
+  border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(8, 22, 40, 0.35);
+  position: relative;
+  transform: translateY(16px);
+  opacity: 0;
+  animation: mwPanelIn 0.45s cubic-bezier(.22, 1, .36, 1) 0.05s forwards;
+}
+@keyframes mwPanelIn {
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.mw-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mw-close:hover { background: rgba(255, 255, 255, 0.35); }
+
+.mw-hero {
+  position: relative;
+  min-height: 168px;
+  padding: 28px 24px 26px;
+  color: #fff;
+  border-radius: 16px 16px 0 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 90% 80% at 15% 20%, rgba(125, 211, 200, 0.35), transparent 55%),
+    radial-gradient(ellipse 70% 60% at 90% 10%, rgba(46, 117, 182, 0.45), transparent 50%),
+    linear-gradient(165deg, #0a1628 0%, #0d3460 42%, #0e5e6f 78%, #127a7a 100%);
+}
+.mw-hero::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 48px;
+  background: linear-gradient(to top, #F4F7FA, transparent);
+  pointer-events: none;
+}
+.mw-hero-wave {
+  position: absolute;
+  left: 0; right: 0; bottom: 28px;
+  width: 100%;
+  height: 56px;
+  opacity: 0.35;
+  pointer-events: none;
+  animation: mwWave 7s ease-in-out infinite alternate;
+}
+@keyframes mwWave {
+  from { transform: translateX(0); }
+  to { transform: translateX(-18px); }
+}
+
+.mw-brand {
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #9fd9d1;
+  margin-bottom: 10px;
+}
+.mw-hero h2 {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 8px;
+  font-size: clamp(22px, 5vw, 28px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: #fff;
+}
+.mw-sub {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: 13px;
+  color: rgba(226, 240, 239, 0.88);
+  line-height: 1.45;
+  max-width: 28em;
+}
+
+.mw-body {
+  padding: 8px 22px 22px;
+}
+.mw-year {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7c8f;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.mw-asset {
+  margin-bottom: 10px;
+  padding: 10px 12px 4px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(15, 40, 70, 0.06);
+}
+.mw-asset-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #1F4E79;
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
+}
+.mw-asset + .mw-asset .mw-asset-title { color: #5D4037; }
+
+.mw-metric {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eef2f6;
+}
+.mw-asset .mw-metric:last-child { border-bottom: none; }
+.mw-metric-lbl {
+  font-size: 13px;
+  font-weight: 600;
+  color: #445566;
+  padding-top: 3px;
+}
+.mw-metric-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+.mw-metric-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1F4E79;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.mw-metric-val.muted { color: #9aa8b5; font-size: 14px; font-weight: 700; }
+
+.mw-yoy {
+  font-size: 11px;
+  font-weight: 700;
+  color: #c62828;
+}
+.mw-yoy-up,
+.mw-yoy-down,
+.mw-yoy-flat { color: #c62828; }
+
+.mw-note {
+  margin: 12px 0 16px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.08), rgba(31, 78, 121, 0.06));
+  border-radius: 10px;
+  border-left: 3px solid #0d9488;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #334455;
+  font-weight: 500;
+}
+
+.mw-cta {
+  display: block;
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  padding: 13px 16px;
+  background: #1F4E79;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, transform 0.15s;
+}
+.mw-cta:hover { background: #163d5f; }
+.mw-cta:active { transform: scale(0.98); }
+
+.mw-hide-today {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  border: none;
+  background: none;
+  color: #7a8a9a;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 6px;
+}
+.mw-hide-today:hover { color: #1F4E79; text-decoration: underline; }
+
+@media (max-width: 480px) {
+  #market-welcome { padding: 12px; align-items: flex-end; }
+  #market-welcome-inner { width: 100%; border-radius: 16px 16px 12px 12px; max-height: 88vh; }
+  .mw-hero { min-height: 148px; padding: 24px 18px 22px; }
+  .mw-body { padding: 6px 16px 18px; }
+}

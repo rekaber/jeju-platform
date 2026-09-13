@@ -27,5 +27,8 @@ function dismissIntro() {
   const overlay = document.getElementById('intro-overlay');
   if (!overlay) return;
   overlay.classList.add('fade-out');
-  setTimeout(() => { overlay.style.display = 'none'; }, 800);
+  setTimeout(() => {
+    overlay.style.display = 'none';
+    if (typeof openMarketWelcome === 'function') openMarketWelcome();
+  }, 800);
 }

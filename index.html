@@ -10,6 +10,7 @@
 
 <link rel="stylesheet" href="./css/style.css?v=20260913b">
 <link rel="stylesheet" href="./css/intro.css">
+<link rel="stylesheet" href="./css/market-welcome.css?v=20260913f">
 </head>
 <body>
 
@@ -515,6 +516,81 @@
 
     <div id="toast"></div>
     <div id="stat-tooltip"></div>
+
+    <!-- 입장 시장 요약 팝업 -->
+    <div id="market-welcome" aria-hidden="true">
+      <div id="market-welcome-inner" role="dialog" aria-modal="true" aria-labelledby="mw-title">
+        <button type="button" class="mw-close" onclick="closeMarketWelcome()" aria-label="닫기">×</button>
+        <div class="mw-hero">
+          <svg class="mw-hero-wave" viewBox="0 0 480 56" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M0,28 C80,48 160,8 240,28 C320,48 400,12 480,28 L480,56 L0,56 Z" fill="rgba(125,211,200,0.35)"/>
+            <path d="M0,36 C100,20 200,44 300,30 C380,20 440,36 480,34 L480,56 L0,56 Z" fill="rgba(255,255,255,0.12)"/>
+          </svg>
+          <div class="mw-brand">제주부동산플랫폼</div>
+          <h2 id="mw-title">제주 부동산 시장 한눈에</h2>
+          <p class="mw-sub" id="mw-sub">지금 조회한 실거래로 본 제주 아파트·토지 요약</p>
+        </div>
+        <div class="mw-body">
+          <div class="mw-year" id="mw-year">조회 시점 기준 집계</div>
+
+          <div class="mw-asset">
+            <div class="mw-asset-title">아파트</div>
+            <div class="mw-metric">
+              <span class="mw-metric-lbl">거래량 (올해 누적)</span>
+              <span class="mw-metric-right">
+                <span class="mw-metric-val muted" id="mw-apt-vol">집계 중…</span>
+                <span class="mw-yoy" id="mw-apt-yoy"></span>
+              </span>
+            </div>
+            <div class="mw-metric">
+              <span class="mw-metric-lbl">평균 거래금액</span>
+              <span class="mw-metric-right">
+                <span class="mw-metric-val muted" id="mw-apt-avg">집계 중…</span>
+                <span class="mw-yoy" id="mw-apt-avg-yoy"></span>
+              </span>
+            </div>
+            <div class="mw-metric">
+              <span class="mw-metric-lbl">평형당 평균 (천만원/평)</span>
+              <span class="mw-metric-right">
+                <span class="mw-metric-val muted" id="mw-apt-unit">집계 중…</span>
+                <span class="mw-yoy" id="mw-apt-unit-yoy"></span>
+              </span>
+            </div>
+          </div>
+
+          <div class="mw-asset">
+            <div class="mw-asset-title">토지</div>
+            <div class="mw-metric">
+              <span class="mw-metric-lbl">거래량 (올해 누적)</span>
+              <span class="mw-metric-right">
+                <span class="mw-metric-val muted" id="mw-land-vol">집계 중…</span>
+                <span class="mw-yoy" id="mw-land-yoy"></span>
+              </span>
+            </div>
+            <div class="mw-metric">
+              <span class="mw-metric-lbl">평균 거래금액</span>
+              <span class="mw-metric-right">
+                <span class="mw-metric-val muted" id="mw-land-avg">집계 중…</span>
+                <span class="mw-yoy" id="mw-land-avg-yoy"></span>
+              </span>
+            </div>
+            <div class="mw-metric">
+              <span class="mw-metric-lbl">㎡당 평균 (만원/㎡)</span>
+              <span class="mw-metric-right">
+                <span class="mw-metric-val muted" id="mw-land-unit">집계 중…</span>
+                <span class="mw-yoy" id="mw-land-unit-yoy"></span>
+              </span>
+            </div>
+          </div>
+
+          <div class="mw-note" id="mw-note">실거래 데이터를 불러오는 중입니다.</div>
+
+          <button type="button" class="mw-cta" onclick="closeMarketWelcome()">지도에서 살펴보기</button>
+          <button type="button" class="mw-hide-today" onclick="closeMarketWelcome(true)">오늘 하루 보지 않기</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 토지 팝업 -->
     <div id="land-popup">
       <button class="lp-close" onclick="document.getElementById('land-popup').style.display='none'">×</button>
@@ -1105,6 +1181,7 @@
 <script src="./js/data-dong.js"></script>
 <script src="./js/geo.js"></script>
 <script src="./js/intro.js"></script>
+<script src="./js/market-welcome.js?v=20260913g"></script>
 <script src="./js/unsold-data.js"></script>
 <script src="./js/map.js"></script>
 <script src="./js/load-trades.js"></script>

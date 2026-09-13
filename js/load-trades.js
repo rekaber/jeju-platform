@@ -116,6 +116,7 @@ function escHtml(s) {
     }
     if (typeof bubbleVisible !== 'undefined' && bubbleVisible) renderBubbles();
     console.log(`[실거래] ${source} 로드 완료: ${data.length}건`);
+    try { window.dispatchEvent(new CustomEvent('jeju-apt-loaded')); } catch (_) {}
     return { data, geoCache };
   }
   function startGeocoding(data, geoCache) {
@@ -391,6 +392,7 @@ function escHtml(s) {
       clearLandMarkers(); renderLandMarkers();
     }
     console.log(`[토지] ${source} 로드: ${data.length}건`);
+    try { window.dispatchEvent(new CustomEvent('jeju-land-loaded')); } catch (_) {}
   }
 
   // Supabase만 사용 (로컬 JSON 없음)
