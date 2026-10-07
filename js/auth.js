@@ -3,6 +3,7 @@ var AUTH_USERS_KEY = 'jeju_auth_users_v2';
 var AUTH_SESSION_KEY = 'jeju_auth_session';
 var AUTH_DEFAULT_PW = '1234!';
 var AUTH_ADMIN_ID = 'admin';
+var AUTH_PRESET_IDS = ['jejusoa6891', 'jjy0811', 'jeju'];
 var AUTH_PENDING_ID = null;
 
 function authLoadUsers() {
@@ -67,21 +68,37 @@ async function hashPw(pw) {
   return 'fb_' + (h >>> 0).toString(16);
 }
 
+function isPresetUserId(id) {
+  return AUTH_PRESET_IDS.indexOf(id) !== -1;
+}
+
 async function ensureAdminUser() {
   const users = authLoadUsers();
+  var changed = false;
   if (!users[AUTH_ADMIN_ID]) {
     users[AUTH_ADMIN_ID] = {
       hash: await hashPw(AUTH_DEFAULT_PW),
       mustChange: true,
       role: 'admin'
     };
-    authSaveUsers(users);
-    return;
-  }
-  if (users[AUTH_ADMIN_ID].role !== 'admin') {
+    changed = true;
+  } else if (users[AUTH_ADMIN_ID].role !== 'admin') {
     users[AUTH_ADMIN_ID].role = 'admin';
-    authSaveUsers(users);
+    changed = true;
   }
+  const defaultHash = await hashPw(AUTH_DEFAULT_PW);
+  for (var i = 0; i < AUTH_PRESET_IDS.length; i++) {
+    const id = AUTH_PRESET_IDS[i];
+    if (!users[id]) {
+      users[id] = {
+        hash: defaultHash,
+        mustChange: true,
+        role: 'user'
+      };
+      changed = true;
+    }
+  }
+  if (changed) authSaveUsers(users);
 }
 
 function authSetError(elId, msg) {
@@ -319,8 +336,9 @@ function renderAdminUsersList() {
   wrap.innerHTML = ids.map(function (id) {
     const u = users[id];
     const isAdmin = u.role === 'admin' || id === AUTH_ADMIN_ID;
+    const isPreset = isPresetUserId(id);
     const status = u.mustChange ? '최초 로그인 대기' : '사용 중';
-    const actions = isAdmin
+    const actions = (isAdmin || isPreset)
       ? '<button type="button" class="admin-row-btn" data-act="reset" data-id="' + id + '">비밀번호 초기화</button>'
       : '<button type="button" class="admin-row-btn" data-act="reset" data-id="' + id + '">비밀번호 초기화</button>' +
         '<button type="button" class="admin-row-btn danger" data-act="delete" data-id="' + id + '">삭제</button>';
@@ -388,6 +406,9 @@ async function handleAdminUserAction(e) {
   if (act === 'delete') {
     if (id === AUTH_ADMIN_ID || users[id].role === 'admin') {
       return authSetError('admin-users-msg', '관리자 계정은 삭제할 수 없습니다.');
+    }
+    if (isPresetUserId(id)) {
+      return authSetError('admin-users-msg', '기본 계정은 삭제할 수 없습니다.');
     }
     const session = getAuthSession();
     if (session && session.id === id) {
