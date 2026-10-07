@@ -162,7 +162,7 @@ function enterPlatform(id) {
 function validateNewPassword(pw, confirm) {
   if (!pw) return '새 비밀번호를 입력해 주세요.';
   if (pw.length < 4) return '비밀번호는 4자 이상이어야 합니다.';
-  if (pw === AUTH_DEFAULT_PW) return '최초 비밀번호(1234!)는 사용할 수 없습니다.';
+  if (pw === AUTH_DEFAULT_PW) return '최초 비밀번호는 사용할 수 없습니다.';
   if (pw !== confirm) return '새 비밀번호가 일치하지 않습니다.';
   return '';
 }
@@ -357,7 +357,7 @@ async function handleAdminAddUser(e) {
   const msg = document.getElementById('admin-users-msg');
   if (msg) {
     msg.classList.add('is-ok');
-    msg.textContent = id + ' 아이디를 등록했습니다. 최초 비밀번호는 1234! 입니다.';
+    msg.textContent = id + ' 아이디를 등록했습니다.';
   }
   renderAdminUsersList();
 }
@@ -379,7 +379,7 @@ async function handleAdminUserAction(e) {
     authSaveUsers(users);
     if (msg) {
       msg.classList.add('is-ok');
-      msg.textContent = id + ' 비밀번호를 1234! 로 초기화했습니다.';
+      msg.textContent = id + ' 비밀번호를 초기화했습니다.';
     }
     renderAdminUsersList();
     return;

@@ -60,7 +60,7 @@
           <label for="login-pw">비밀번호</label>
           <input id="login-pw" type="password" autocomplete="current-password" placeholder="비밀번호를 입력하세요">
         </div>
-        <p class="login-hint">관리자가 등록한 아이디만 사용할 수 있습니다.<br>최초 비밀번호는 <strong>1234!</strong> 입니다.</p>
+        <p class="login-hint">관리자가 등록한 아이디만 사용할 수 있습니다.</p>
         <p id="login-error" class="login-error"></p>
         <button type="submit" class="login-submit">로그인</button>
       </form>
@@ -69,7 +69,7 @@
         <p class="login-lead"><strong id="first-pw-who"></strong> 님, 처음 로그인입니다.<br>안전한 이용을 위해 비밀번호를 변경해 주세요.</p>
         <div class="login-field">
           <label for="first-pw-new">새 비밀번호</label>
-          <input id="first-pw-new" type="password" autocomplete="new-password" placeholder="4자 이상, 1234! 제외">
+          <input id="first-pw-new" type="password" autocomplete="new-password" placeholder="4자 이상">
         </div>
         <div class="login-field">
           <label for="first-pw-confirm">새 비밀번호 확인</label>
@@ -99,7 +99,7 @@
       <button type="button" onclick="closeAdminUsersModal()" aria-label="닫기">×</button>
     </div>
     <div class="pw-change-body">
-      <p class="admin-users-lead">여기서 등록한 아이디만 로그인할 수 있습니다. 최초 비밀번호는 <strong>1234!</strong> 입니다.</p>
+      <p class="admin-users-lead">여기서 등록한 아이디만 로그인할 수 있습니다.</p>
       <form id="admin-add-user-form" class="admin-add-row">
         <input id="admin-new-id" type="text" maxlength="20" placeholder="새 아이디 (영문·숫자·한글 2~20자)" autocomplete="off">
         <button type="submit" class="login-submit admin-add-btn">등록</button>
@@ -124,7 +124,7 @@
       </div>
       <div class="login-field">
         <label for="pw-new">새 비밀번호</label>
-        <input id="pw-new" type="password" autocomplete="new-password" placeholder="4자 이상, 1234! 제외">
+        <input id="pw-new" type="password" autocomplete="new-password" placeholder="4자 이상">
       </div>
       <div class="login-field">
         <label for="pw-confirm">새 비밀번호 확인</label>
@@ -1272,7 +1272,7 @@
 <script src="./js/data-dong.js"></script>
 <script src="./js/geo.js"></script>
 <script src="./js/intro.js"></script>
-<script src="./js/auth.js?v=20261007a"></script>
+<script src="./js/auth.js?v=20261007b"></script>
 <script src="./js/market-welcome.js?v=20260913g"></script>
 <script src="./js/unsold-data.js"></script>
 <script src="./js/map.js"></script>
