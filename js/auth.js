@@ -19,7 +19,7 @@ function authSaveUsers(users) {
 
 function getAuthSession() {
   try {
-    const s = JSON.parse(localStorage.getItem(AUTH_SESSION_KEY) || 'null');
+    const s = JSON.parse(sessionStorage.getItem(AUTH_SESSION_KEY) || 'null');
     if (!s || !s.id) return null;
     const user = authLoadUsers()[s.id];
     if (!user) {
@@ -35,13 +35,14 @@ function getAuthSession() {
 
 function setAuthSession(id) {
   const user = authLoadUsers()[id];
-  localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
+  sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
     id: id,
     role: (user && user.role) || 'user'
   }));
 }
 
 function clearAuthSession() {
+  sessionStorage.removeItem(AUTH_SESSION_KEY);
   localStorage.removeItem(AUTH_SESSION_KEY);
 }
 
@@ -112,16 +113,15 @@ function refreshAuthUI() {
 }
 
 function showLogin() {
-  if (getAuthSession()) {
-    dismissIntro();
-    refreshAuthUI();
-    return;
-  }
+  clearAuthSession();
+  refreshAuthUI();
   const intro = document.getElementById('intro-content');
   const panel = document.getElementById('login-panel');
   if (intro) intro.style.display = 'none';
   if (panel) panel.classList.add('is-open');
   showLoginView();
+  const pwInput = document.getElementById('login-pw');
+  if (pwInput) pwInput.value = '';
   setTimeout(function () {
     const idInput = document.getElementById('login-id');
     if (idInput) idInput.focus();
@@ -404,6 +404,7 @@ async function handleAdminUserAction(e) {
 }
 
 (function initAuth() {
+  localStorage.removeItem(AUTH_SESSION_KEY);
   ensureAdminUser().then(function () {
     refreshAuthUI();
   });
