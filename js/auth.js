@@ -1,48 +1,49 @@
-/* js/auth.js — 관리자 선등록 아이디 + 로그인 / 최초 비밀번호 변경 */
-var AUTH_USERS_KEY = 'jeju_auth_users_v2';
+/* js/auth.js — 관리자 선등록 아이디 + 로그인 / 최초 비밀번호 변경
+   계정·비밀번호는 Supabase app_users(서버)에 저장되어 모든 PC에서 공유된다. */
+var AUTH_LEGACY_USERS_KEY = 'jeju_auth_users_v2';
 var AUTH_SESSION_KEY = 'jeju_auth_session';
 var AUTH_DEFAULT_PW = '1234!';
 var AUTH_ADMIN_ID = 'admin';
 var AUTH_PRESET_IDS = ['jejusoa6891', 'jjy0811', 'jeju'];
-var AUTH_PENDING_ID = null;
+var AUTH_PENDING = null;
 
-function authLoadUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(AUTH_USERS_KEY) || '{}') || {};
-  } catch (e) {
-    return {};
-  }
+async function authRpc(fn, params) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON,
+      Authorization: 'Bearer ' + SUPABASE_ANON,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(params || {})
+  });
+  if (!res.ok) throw new Error('auth rpc ' + fn + ' ' + res.status);
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 }
 
-function authSaveUsers(users) {
-  localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
-}
+var AUTH_NETWORK_ERR = '서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.';
 
 function getAuthSession() {
   try {
     const s = JSON.parse(sessionStorage.getItem(AUTH_SESSION_KEY) || 'null');
-    if (!s || !s.id) return null;
-    const user = authLoadUsers()[s.id];
-    if (!user) {
-      clearAuthSession();
-      return null;
-    }
-    s.role = user.role || 'user';
-    return s;
+    return s && s.id && s.token ? s : null;
   } catch (e) {
     return null;
   }
 }
 
-function setAuthSession(id) {
-  const user = authLoadUsers()[id];
+function setAuthSession(id, role, token) {
   sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
     id: id,
-    role: (user && user.role) || 'user'
+    role: role || 'user',
+    token: token
   }));
 }
 
 function clearAuthSession() {
+  const s = getAuthSession();
+  if (s) authRpc('auth_logout', { p_token: s.token }).catch(function () {});
   sessionStorage.removeItem(AUTH_SESSION_KEY);
   localStorage.removeItem(AUTH_SESSION_KEY);
 }
@@ -52,53 +53,8 @@ function isAdminSession() {
   return !!(s && s.role === 'admin');
 }
 
-async function hashPw(pw) {
-  const raw = 'jeju-auth-v1:' + pw;
-  if (window.crypto && crypto.subtle) {
-    try {
-      const data = new TextEncoder().encode(raw);
-      const buf = await crypto.subtle.digest('SHA-256', data);
-      return [...new Uint8Array(buf)].map(function (b) {
-        return b.toString(16).padStart(2, '0');
-      }).join('');
-    } catch (e) { /* file:// 등 */ }
-  }
-  var h = 5381;
-  for (var i = 0; i < raw.length; i++) h = ((h << 5) + h) ^ raw.charCodeAt(i);
-  return 'fb_' + (h >>> 0).toString(16);
-}
-
 function isPresetUserId(id) {
   return AUTH_PRESET_IDS.indexOf(id) !== -1;
-}
-
-async function ensureAdminUser() {
-  const users = authLoadUsers();
-  var changed = false;
-  if (!users[AUTH_ADMIN_ID]) {
-    users[AUTH_ADMIN_ID] = {
-      hash: await hashPw(AUTH_DEFAULT_PW),
-      mustChange: true,
-      role: 'admin'
-    };
-    changed = true;
-  } else if (users[AUTH_ADMIN_ID].role !== 'admin') {
-    users[AUTH_ADMIN_ID].role = 'admin';
-    changed = true;
-  }
-  const defaultHash = await hashPw(AUTH_DEFAULT_PW);
-  for (var i = 0; i < AUTH_PRESET_IDS.length; i++) {
-    const id = AUTH_PRESET_IDS[i];
-    if (!users[id]) {
-      users[id] = {
-        hash: defaultHash,
-        mustChange: true,
-        role: 'user'
-      };
-      changed = true;
-    }
-  }
-  if (changed) authSaveUsers(users);
 }
 
 function authSetError(elId, msg) {
@@ -106,6 +62,18 @@ function authSetError(elId, msg) {
   if (!el) return;
   el.classList.remove('is-ok');
   el.textContent = msg || '';
+}
+
+function authSetOk(elId, msg) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.classList.add('is-ok');
+  el.textContent = msg || '';
+}
+
+function authSetBusy(form, busy) {
+  const btn = form && form.querySelector('button[type="submit"]');
+  if (btn) btn.disabled = !!busy;
 }
 
 function refreshAuthUI() {
@@ -146,6 +114,7 @@ function showLogin() {
 }
 
 function showLoginView() {
+  AUTH_PENDING = null;
   const loginForm = document.getElementById('login-form');
   const firstForm = document.getElementById('first-pw-form');
   if (loginForm) loginForm.classList.remove('is-hidden');
@@ -153,8 +122,8 @@ function showLoginView() {
   authSetError('login-error', '');
 }
 
-function showFirstPwView(id) {
-  AUTH_PENDING_ID = id;
+function showFirstPwView(id, curPw) {
+  AUTH_PENDING = { id: id, pw: curPw };
   const loginForm = document.getElementById('login-form');
   const firstForm = document.getElementById('first-pw-form');
   const who = document.getElementById('first-pw-who');
@@ -169,9 +138,9 @@ function showFirstPwView(id) {
   setTimeout(function () { if (nw) nw.focus(); }, 50);
 }
 
-function enterPlatform(id) {
-  setAuthSession(id);
-  AUTH_PENDING_ID = null;
+function enterPlatform(id, role, token) {
+  setAuthSession(id, role, token);
+  AUTH_PENDING = null;
   refreshAuthUI();
   dismissIntro();
 }
@@ -192,48 +161,70 @@ function validateUserId(id) {
   return '';
 }
 
+function setPasswordErrorText(code) {
+  switch (code) {
+    case 'bad_password': return '현재 비밀번호가 올바르지 않습니다.';
+    case 'too_short': return '비밀번호는 4자 이상이어야 합니다.';
+    case 'default_password': return '최초 비밀번호는 사용할 수 없습니다.';
+    case 'same_password': return '현재 비밀번호와 다른 비밀번호를 입력해 주세요.';
+    case 'not_found': return '등록되지 않은 아이디입니다.';
+    default: return '비밀번호를 변경하지 못했습니다.';
+  }
+}
+
 async function handleLoginSubmit(e) {
   e.preventDefault();
+  const form = e.currentTarget;
   const id = (document.getElementById('login-id').value || '').trim();
   const pw = document.getElementById('login-pw').value || '';
   authSetError('login-error', '');
   if (!id) return authSetError('login-error', '아이디를 입력해 주세요.');
   if (!pw) return authSetError('login-error', '비밀번호를 입력해 주세요.');
 
-  const users = authLoadUsers();
-  const user = users[id];
-  if (!user) {
-    return authSetError('login-error', '등록되지 않은 아이디입니다. 관리자에게 등록을 요청하세요.');
+  authSetBusy(form, true);
+  var r;
+  try {
+    r = await authRpc('auth_login', { p_id: id, p_pw: pw });
+  } catch (err) {
+    return authSetError('login-error', AUTH_NETWORK_ERR);
+  } finally {
+    authSetBusy(form, false);
   }
 
-  const pwHash = await hashPw(pw);
-  if (user.hash !== pwHash) {
+  if (!r || !r.ok) {
+    if (r && r.error === 'not_found') {
+      return authSetError('login-error', '등록되지 않은 아이디입니다. 관리자에게 등록을 요청하세요.');
+    }
     return authSetError('login-error', '아이디 또는 비밀번호가 올바르지 않습니다.');
   }
-  if (user.mustChange) {
-    showFirstPwView(id);
+  if (r.must_change) {
+    showFirstPwView(id, pw);
     return;
   }
-  enterPlatform(id);
+  enterPlatform(id, r.role, r.token);
 }
 
 async function handleFirstPwSubmit(e) {
   e.preventDefault();
-  const id = AUTH_PENDING_ID;
-  if (!id) return showLoginView();
+  const form = e.currentTarget;
+  const pending = AUTH_PENDING;
+  if (!pending) return showLoginView();
   const pw = document.getElementById('first-pw-new').value || '';
   const confirm = document.getElementById('first-pw-confirm').value || '';
   const err = validateNewPassword(pw, confirm);
   if (err) return authSetError('first-pw-error', err);
 
-  const users = authLoadUsers();
-  if (!users[id]) {
-    return authSetError('first-pw-error', '등록되지 않은 아이디입니다.');
+  authSetBusy(form, true);
+  var r;
+  try {
+    r = await authRpc('auth_set_password', { p_id: pending.id, p_old: pending.pw, p_new: pw });
+  } catch (ex) {
+    return authSetError('first-pw-error', AUTH_NETWORK_ERR);
+  } finally {
+    authSetBusy(form, false);
   }
-  users[id].hash = await hashPw(pw);
-  users[id].mustChange = false;
-  authSaveUsers(users);
-  enterPlatform(id);
+  if (!r || !r.ok) return authSetError('first-pw-error', setPasswordErrorText(r && r.error));
+  enterPlatform(pending.id, r.role, r.token);
 }
 
 function logoutUser() {
@@ -278,6 +269,7 @@ function closePwChangeModal() {
 
 async function handlePwChangeSubmit(e) {
   e.preventDefault();
+  const form = e.currentTarget;
   const session = getAuthSession();
   if (!session) return;
   const cur = document.getElementById('pw-cur').value || '';
@@ -285,21 +277,20 @@ async function handlePwChangeSubmit(e) {
   const cf = document.getElementById('pw-confirm').value || '';
   authSetError('pw-change-error', '');
   if (!cur) return authSetError('pw-change-error', '현재 비밀번호를 입력해 주세요.');
-
-  const users = authLoadUsers();
-  const user = users[session.id];
-  if (!user || user.hash !== await hashPw(cur)) {
-    return authSetError('pw-change-error', '현재 비밀번호가 올바르지 않습니다.');
-  }
   const err = validateNewPassword(nw, cf);
   if (err) return authSetError('pw-change-error', err);
-  if (await hashPw(nw) === user.hash) {
-    return authSetError('pw-change-error', '현재 비밀번호와 다른 비밀번호를 입력해 주세요.');
+
+  authSetBusy(form, true);
+  var r;
+  try {
+    r = await authRpc('auth_set_password', { p_id: session.id, p_old: cur, p_new: nw });
+  } catch (ex) {
+    return authSetError('pw-change-error', AUTH_NETWORK_ERR);
+  } finally {
+    authSetBusy(form, false);
   }
-  user.hash = await hashPw(nw);
-  user.mustChange = false;
-  users[session.id] = user;
-  authSaveUsers(users);
+  if (!r || !r.ok) return authSetError('pw-change-error', setPasswordErrorText(r && r.error));
+  setAuthSession(session.id, r.role, r.token);
   closePwChangeModal();
 }
 
@@ -320,33 +311,52 @@ function closeAdminUsersModal() {
   if (modal) modal.classList.remove('is-open');
 }
 
-function renderAdminUsersList() {
+function adminErrorText(code) {
+  switch (code) {
+    case 'forbidden': return '관리자 세션이 만료되었습니다. 다시 로그인해 주세요.';
+    case 'invalid_id': return '아이디는 영문, 숫자, 한글, . _ - 2~20자만 사용할 수 있습니다.';
+    case 'exists': return '이미 등록된 아이디입니다.';
+    case 'not_found': return '등록되지 않은 아이디입니다.';
+    case 'self': return '현재 로그인한 계정은 삭제할 수 없습니다.';
+    case 'protected': return '관리자·기본 계정은 삭제할 수 없습니다.';
+    default: return '요청을 처리하지 못했습니다.';
+  }
+}
+
+async function renderAdminUsersList() {
   const wrap = document.getElementById('admin-users-list');
-  if (!wrap) return;
-  const users = authLoadUsers();
-  const ids = Object.keys(users).sort(function (a, b) {
-    if (a === AUTH_ADMIN_ID) return -1;
-    if (b === AUTH_ADMIN_ID) return 1;
-    return a.localeCompare(b, 'ko');
-  });
-  if (!ids.length) {
+  const session = getAuthSession();
+  if (!wrap || !session) return;
+  var r;
+  try {
+    r = await authRpc('auth_admin_list', { p_token: session.token });
+  } catch (ex) {
+    wrap.innerHTML = '<p class="admin-users-empty">' + AUTH_NETWORK_ERR + '</p>';
+    return;
+  }
+  if (!r || !r.ok) {
+    wrap.innerHTML = '<p class="admin-users-empty">' + adminErrorText(r && r.error) + '</p>';
+    return;
+  }
+  const users = r.users || [];
+  if (!users.length) {
     wrap.innerHTML = '<p class="admin-users-empty">등록된 계정이 없습니다.</p>';
     return;
   }
-  wrap.innerHTML = ids.map(function (id) {
-    const u = users[id];
+  wrap.innerHTML = users.map(function (u) {
+    const id = u.id;
     const isAdmin = u.role === 'admin' || id === AUTH_ADMIN_ID;
     const isPreset = isPresetUserId(id);
-    const status = u.mustChange ? '최초 로그인 대기' : '사용 중';
+    const status = u.must_change ? '최초 로그인 대기' : '사용 중';
+    const resetBtn = '<button type="button" class="admin-row-btn" data-act="reset" data-id="' + id + '">비밀번호 초기화</button>';
     const actions = (isAdmin || isPreset)
-      ? '<button type="button" class="admin-row-btn" data-act="reset" data-id="' + id + '">비밀번호 초기화</button>'
-      : '<button type="button" class="admin-row-btn" data-act="reset" data-id="' + id + '">비밀번호 초기화</button>' +
-        '<button type="button" class="admin-row-btn danger" data-act="delete" data-id="' + id + '">삭제</button>';
+      ? resetBtn
+      : resetBtn + '<button type="button" class="admin-row-btn danger" data-act="delete" data-id="' + id + '">삭제</button>';
     return '<div class="admin-user-row">' +
       '<div class="admin-user-meta">' +
         '<strong>' + id + '</strong>' +
         '<span class="admin-user-badge' + (isAdmin ? ' is-admin' : '') + '">' + (isAdmin ? '관리자' : '사용자') + '</span>' +
-        '<span class="admin-user-status' + (u.mustChange ? ' is-wait' : '') + '">' + status + '</span>' +
+        '<span class="admin-user-status' + (u.must_change ? ' is-wait' : '') + '">' + status + '</span>' +
       '</div>' +
       '<div class="admin-user-actions">' + actions + '</div>' +
     '</div>';
@@ -355,80 +365,70 @@ function renderAdminUsersList() {
 
 async function handleAdminAddUser(e) {
   e.preventDefault();
-  if (!isAdminSession()) return;
+  const session = getAuthSession();
+  if (!session || session.role !== 'admin') return;
   const input = document.getElementById('admin-new-id');
   const id = ((input && input.value) || '').trim();
   const err = validateUserId(id);
   if (err) return authSetError('admin-users-msg', err);
 
-  const users = authLoadUsers();
-  if (users[id]) return authSetError('admin-users-msg', '이미 등록된 아이디입니다.');
-
-  users[id] = {
-    hash: await hashPw(AUTH_DEFAULT_PW),
-    mustChange: true,
-    role: 'user'
-  };
-  authSaveUsers(users);
-  if (input) input.value = '';
-  authSetError('admin-users-msg', '');
-  const msg = document.getElementById('admin-users-msg');
-  if (msg) {
-    msg.classList.add('is-ok');
-    msg.textContent = id + ' 아이디를 등록했습니다.';
+  var r;
+  try {
+    r = await authRpc('auth_admin_add', { p_token: session.token, p_id: id });
+  } catch (ex) {
+    return authSetError('admin-users-msg', AUTH_NETWORK_ERR);
   }
+  if (!r || !r.ok) return authSetError('admin-users-msg', adminErrorText(r && r.error));
+  if (input) input.value = '';
+  authSetOk('admin-users-msg', id + ' 아이디를 등록했습니다.');
   renderAdminUsersList();
 }
 
 async function handleAdminUserAction(e) {
   const btn = e.target.closest('[data-act]');
-  if (!btn || !isAdminSession()) return;
+  const session = getAuthSession();
+  if (!btn || !session || session.role !== 'admin') return;
   const id = btn.getAttribute('data-id');
   const act = btn.getAttribute('data-act');
-  const users = authLoadUsers();
-  if (!users[id]) return;
-
-  const msg = document.getElementById('admin-users-msg');
-  if (msg) msg.classList.remove('is-ok');
-
-  if (act === 'reset') {
-    users[id].hash = await hashPw(AUTH_DEFAULT_PW);
-    users[id].mustChange = true;
-    authSaveUsers(users);
-    if (msg) {
-      msg.classList.add('is-ok');
-      msg.textContent = id + ' 비밀번호를 초기화했습니다.';
-    }
-    renderAdminUsersList();
-    return;
-  }
+  authSetError('admin-users-msg', '');
 
   if (act === 'delete') {
-    if (id === AUTH_ADMIN_ID || users[id].role === 'admin') {
-      return authSetError('admin-users-msg', '관리자 계정은 삭제할 수 없습니다.');
+    if (id === AUTH_ADMIN_ID || isPresetUserId(id)) {
+      return authSetError('admin-users-msg', adminErrorText('protected'));
     }
-    if (isPresetUserId(id)) {
-      return authSetError('admin-users-msg', '기본 계정은 삭제할 수 없습니다.');
-    }
-    const session = getAuthSession();
-    if (session && session.id === id) {
-      return authSetError('admin-users-msg', '현재 로그인한 계정은 삭제할 수 없습니다.');
-    }
-    delete users[id];
-    authSaveUsers(users);
-    if (msg) {
-      msg.classList.add('is-ok');
-      msg.textContent = id + ' 아이디를 삭제했습니다.';
-    }
-    renderAdminUsersList();
+    if (id === session.id) return authSetError('admin-users-msg', adminErrorText('self'));
   }
+
+  const fn = act === 'reset' ? 'auth_admin_reset' : act === 'delete' ? 'auth_admin_delete' : null;
+  if (!fn) return;
+  var r;
+  try {
+    r = await authRpc(fn, { p_token: session.token, p_id: id });
+  } catch (ex) {
+    return authSetError('admin-users-msg', AUTH_NETWORK_ERR);
+  }
+  if (!r || !r.ok) return authSetError('admin-users-msg', adminErrorText(r && r.error));
+  authSetOk('admin-users-msg', act === 'reset'
+    ? id + ' 비밀번호를 초기화했습니다.'
+    : id + ' 아이디를 삭제했습니다.');
+  renderAdminUsersList();
 }
 
 (function initAuth() {
   localStorage.removeItem(AUTH_SESSION_KEY);
-  ensureAdminUser().then(function () {
-    refreshAuthUI();
-  });
+  localStorage.removeItem(AUTH_LEGACY_USERS_KEY);
+  refreshAuthUI();
+  const session = getAuthSession();
+  if (session) {
+    authRpc('auth_session', { p_token: session.token }).then(function (r) {
+      if (!r || !r.ok) {
+        sessionStorage.removeItem(AUTH_SESSION_KEY);
+      } else {
+        setAuthSession(r.id, r.role, session.token);
+      }
+      refreshAuthUI();
+    }).catch(function () {});
+  }
   const loginForm = document.getElementById('login-form');
   const firstForm = document.getElementById('first-pw-form');
   const laterForm = document.getElementById('pw-change-form');
