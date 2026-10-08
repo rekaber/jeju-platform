@@ -4,7 +4,7 @@ var AUTH_LEGACY_USERS_KEY = 'jeju_auth_users_v2';
 var AUTH_SESSION_KEY = 'jeju_auth_session';
 var AUTH_DEFAULT_PW = '1234!';
 var AUTH_ADMIN_ID = 'admin';
-var AUTH_PRESET_IDS = ['jejusoa6891', 'jjy0811', 'jeju'];
+var AUTH_PRESET_IDS = ['jejusoa6891', 'jjy0811', 'jeju', 'jeju2343'];
 var AUTH_PENDING = null;
 
 async function authRpc(fn, params) {

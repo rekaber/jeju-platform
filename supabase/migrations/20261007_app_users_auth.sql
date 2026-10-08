@@ -27,7 +27,8 @@ INSERT INTO public.app_users (id, pw_hash, must_change, role) VALUES
   ('admin',       extensions.crypt('1234!', extensions.gen_salt('bf')), TRUE, 'admin'),
   ('jejusoa6891', extensions.crypt('1234!', extensions.gen_salt('bf')), TRUE, 'user'),
   ('jjy0811',     extensions.crypt('1234!', extensions.gen_salt('bf')), TRUE, 'user'),
-  ('jeju',        extensions.crypt('1234!', extensions.gen_salt('bf')), TRUE, 'user')
+  ('jeju',        extensions.crypt('1234!', extensions.gen_salt('bf')), TRUE, 'user'),
+  ('jeju2343',    extensions.crypt('1234!', extensions.gen_salt('bf')), TRUE, 'user')
 ON CONFLICT (id) DO NOTHING;
 
 -- ── 내부 헬퍼 ─────────────────────────────────────────
@@ -177,7 +178,7 @@ BEGIN
   IF p_id = v_admin THEN
     RETURN json_build_object('ok', FALSE, 'error', 'self');
   END IF;
-  IF p_id IN ('admin', 'jejusoa6891', 'jjy0811', 'jeju')
+  IF p_id IN ('admin', 'jejusoa6891', 'jjy0811', 'jeju', 'jeju2343')
      OR EXISTS (SELECT 1 FROM app_users WHERE id = p_id AND role = 'admin') THEN
     RETURN json_build_object('ok', FALSE, 'error', 'protected');
   END IF;
